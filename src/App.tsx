@@ -286,11 +286,11 @@ export default function App() {
       monsterDamage: (mode === 'category' || mode === 'subcategory') ? 4 : 8,
       monsterQuestions,
       monsterImagePath: (mode === 'category' || mode === 'subcategory')
-        ? "/img/monsters/training_slime_battle.jpg" 
-        : "/img/monsters/drill_golem_battle.jpg",
+        ? "./img/monsters/training_slime_battle.jpg" 
+        : "./img/monsters/drill_golem_battle.jpg",
       monsterThumbnailPath: (mode === 'category' || mode === 'subcategory')
-        ? "/img/monsters/training_slime_thumb.jpg" 
-        : "/img/monsters/drill_golem_thumb.jpg"
+        ? "./img/monsters/training_slime_thumb.jpg" 
+        : "./img/monsters/drill_golem_thumb.jpg"
     };
 
     const choiceCount = (mode === 'category' || mode === 'subcategory') ? 4 : 6;

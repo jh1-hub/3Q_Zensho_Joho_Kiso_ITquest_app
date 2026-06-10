@@ -325,7 +325,7 @@ export default function TitleScreen({
         </div>
 
         {/* メインアクションボタン */}
-        <div className="flex flex-col gap-4 w-full justify-center max-w-2xl mt-4 text-xs font-bold font-sans z-15">
+        <div className="relative z-20 flex flex-col gap-4 w-full justify-center max-w-2xl mt-4 text-xs font-bold font-sans">
           <button
             onClick={onOpenTimeAttack}
             className="w-full py-4 px-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-extrabold rounded-xl shadow-lg hover:shadow-xl hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 border-2 border-indigo-400 uppercase tracking-wider text-sm"

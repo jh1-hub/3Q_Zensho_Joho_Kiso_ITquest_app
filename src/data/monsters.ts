@@ -20,11 +20,11 @@ export interface MonsterTemplate {
 
 // エリア（階層）ごとの場所名の候補一覧（ドラクエ風ライトファンタジー調）
 export const AREA_LOCATIONS: Record<number, string[]> = {
-  0: ['はじまりの丘', '旅立ちの草原', '光さす街道', 'わくわく平原'],
-  1: ['まよいの森林', 'ざわざわの谷', '木漏れ日の並木路', '霧深きぬかるみ'],
-  2: ['ひそひそ洞くつ', 'ガサゴソの廃墟', 'じめじめ石牢', '毒々魔泥沼'],
-  3: ['ギラギラ火山', 'ゴロゴロ山腹', '獄炎の溶岩だまり', '灼熱の裂け目'],
-  4: ['魔王城・終極コア', '大魔王コード神殿', '闇のバグ牙城']
+  0: ['はじまりの丘', '旅立ちの広場'],
+  1: ['接続の平原', 'パケットの森'],
+  2: ['記憶の遺跡', 'セキュアな城'],
+  3: ['論理の塔', 'バックアップの谷'],
+  4: ['マスターの祭壇']
 };
 
 // 難易度・階層ごとの魔物プール
@@ -40,8 +40,8 @@ export const MONSTER_POOLS: Record<number, { easy: MonsterTemplate[]; hard: Mons
         minDamage: 6,
         maxDamage: 8,
         questions: 6,
-        thumbnailPath: '/img/monsters/it_slime_thumb.jpg',
-        imagePath: '/img/monsters/it_slime_battle.jpg',
+        thumbnailPath: './img/monsters/it_slime_thumb.jpg',
+        imagePath: './img/monsters/it_slime_battle.jpg',
         fallbackUnsplashThumb: 'https://images.unsplash.com/photo-1597839219216-a773cb2473e4?auto=format&fit=crop&w=400&q=80',
         fallbackUnsplashBattle: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=400&q=80'
       },
@@ -53,8 +53,8 @@ export const MONSTER_POOLS: Record<number, { easy: MonsterTemplate[]; hard: Mons
         minDamage: 7,
         maxDamage: 9,
         questions: 6,
-        thumbnailPath: '/img/monsters/bug_dracky_thumb.jpg',
-        imagePath: '/img/monsters/bug_dracky_battle.jpg',
+        thumbnailPath: './img/monsters/bug_dracky_thumb.jpg',
+        imagePath: './img/monsters/bug_dracky_battle.jpg',
         fallbackUnsplashThumb: 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&w=400&q=80',
         fallbackUnsplashBattle: 'https://images.unsplash.com/photo-1555685812-4b943f1cb0eb?auto=format&fit=crop&w=400&q=80'
       },
@@ -66,8 +66,8 @@ export const MONSTER_POOLS: Record<number, { easy: MonsterTemplate[]; hard: Mons
         minDamage: 6,
         maxDamage: 7,
         questions: 6,
-        thumbnailPath: '/img/monsters/compile_cat_thumb.jpg',
-        imagePath: '/img/monsters/compile_cat_battle.jpg',
+        thumbnailPath: './img/monsters/compile_cat_thumb.jpg',
+        imagePath: './img/monsters/compile_cat_battle.jpg',
         fallbackUnsplashThumb: 'https://images.unsplash.com/photo-1514539079130-25950c84af65?auto=format&fit=crop&w=400&q=80',
         fallbackUnsplashBattle: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=400&q=80'
       }
@@ -81,8 +81,8 @@ export const MONSTER_POOLS: Record<number, { easy: MonsterTemplate[]; hard: Mons
         minDamage: 11,
         maxDamage: 13,
         questions: 8,
-        thumbnailPath: '/img/monsters/router_thumb.jpg',
-        imagePath: '/img/monsters/router_battle.jpg',
+        thumbnailPath: './img/monsters/router_thumb.jpg',
+        imagePath: './img/monsters/router_battle.jpg',
         fallbackUnsplashThumb: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=400&q=80',
         fallbackUnsplashBattle: 'https://images.unsplash.com/photo-1510511459019-5dda7724fd87?auto=format&fit=crop&w=400&q=80'
       },
@@ -94,8 +94,8 @@ export const MONSTER_POOLS: Record<number, { easy: MonsterTemplate[]; hard: Mons
         minDamage: 12,
         maxDamage: 14,
         questions: 8,
-        thumbnailPath: '/img/monsters/hacker_man_thumb.jpg',
-        imagePath: '/img/monsters/hacker_man_battle.jpg',
+        thumbnailPath: './img/monsters/hacker_man_thumb.jpg',
+        imagePath: './img/monsters/hacker_man_battle.jpg',
         fallbackUnsplashThumb: 'https://images.unsplash.com/photo-1544256718-3bcf237f3974?auto=format&fit=crop&w=400&q=80',
         fallbackUnsplashBattle: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=400&q=80'
       }
@@ -112,8 +112,8 @@ export const MONSTER_POOLS: Record<number, { easy: MonsterTemplate[]; hard: Mons
         minDamage: 9,
         maxDamage: 11,
         questions: 8,
-        thumbnailPath: '/img/monsters/lan_cable_thumb.jpg',
-        imagePath: '/img/monsters/lan_cable_battle.jpg',
+        thumbnailPath: './img/monsters/lan_cable_thumb.jpg',
+        imagePath: './img/monsters/lan_cable_battle.jpg',
         fallbackUnsplashThumb: 'https://images.unsplash.com/photo-1597839219216-a773cb2473e4?auto=format&fit=crop&w=400&q=80',
         fallbackUnsplashBattle: 'https://images.unsplash.com/photo-1504639725590-34d0984388bd?auto=format&fit=crop&w=400&q=80'
       },
@@ -125,8 +125,8 @@ export const MONSTER_POOLS: Record<number, { easy: MonsterTemplate[]; hard: Mons
         minDamage: 10,
         maxDamage: 12,
         questions: 8,
-        thumbnailPath: '/img/monsters/packet_thumb.jpg',
-        imagePath: '/img/monsters/packet_battle.jpg',
+        thumbnailPath: './img/monsters/packet_thumb.jpg',
+        imagePath: './img/monsters/packet_battle.jpg',
         fallbackUnsplashThumb: 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&w=400&q=80',
         fallbackUnsplashBattle: 'https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?auto=format&fit=crop&w=400&q=80'
       },
@@ -138,8 +138,8 @@ export const MONSTER_POOLS: Record<number, { easy: MonsterTemplate[]; hard: Mons
         minDamage: 9,
         maxDamage: 11,
         questions: 8,
-        thumbnailPath: '/img/monsters/noise_shroom_thumb.jpg',
-        imagePath: '/img/monsters/noise_shroom_battle.jpg',
+        thumbnailPath: './img/monsters/noise_shroom_thumb.jpg',
+        imagePath: './img/monsters/noise_shroom_battle.jpg',
         fallbackUnsplashThumb: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&w=400&q=80',
         fallbackUnsplashBattle: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=400&q=80'
       }
@@ -153,8 +153,8 @@ export const MONSTER_POOLS: Record<number, { easy: MonsterTemplate[]; hard: Mons
         minDamage: 15,
         maxDamage: 18,
         questions: 10,
-        thumbnailPath: '/img/monsters/killer_hdd_thumb.jpg',
-        imagePath: '/img/monsters/killer_hdd_battle.jpg',
+        thumbnailPath: './img/monsters/killer_hdd_thumb.jpg',
+        imagePath: './img/monsters/killer_hdd_battle.jpg',
         fallbackUnsplashThumb: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=400&q=80',
         fallbackUnsplashBattle: 'https://images.unsplash.com/photo-1510511459019-5dda7724fd87?auto=format&fit=crop&w=400&q=80'
       },
@@ -166,8 +166,8 @@ export const MONSTER_POOLS: Record<number, { easy: MonsterTemplate[]; hard: Mons
         minDamage: 16,
         maxDamage: 19,
         questions: 10,
-        thumbnailPath: '/img/monsters/stray_port_thumb.jpg',
-        imagePath: '/img/monsters/stray_port_battle.jpg',
+        thumbnailPath: './img/monsters/stray_port_thumb.jpg',
+        imagePath: './img/monsters/stray_port_battle.jpg',
         fallbackUnsplashThumb: 'https://images.unsplash.com/photo-1544256718-3bcf237f3974?auto=format&fit=crop&w=400&q=80',
         fallbackUnsplashBattle: 'https://images.unsplash.com/photo-1504639725590-34d0984388bd?auto=format&fit=crop&w=400&q=80'
       }
@@ -184,8 +184,8 @@ export const MONSTER_POOLS: Record<number, { easy: MonsterTemplate[]; hard: Mons
         minDamage: 11,
         maxDamage: 13,
         questions: 8,
-        thumbnailPath: '/img/monsters/scorpion_thumb.jpg',
-        imagePath: '/img/monsters/scorpion_battle.jpg',
+        thumbnailPath: './img/monsters/scorpion_thumb.jpg',
+        imagePath: './img/monsters/scorpion_battle.jpg',
         fallbackUnsplashThumb: 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&w=400&q=80',
         fallbackUnsplashBattle: 'https://images.unsplash.com/photo-1555685812-4b943f1cb0eb?auto=format&fit=crop&w=400&q=80'
       },
@@ -197,8 +197,8 @@ export const MONSTER_POOLS: Record<number, { easy: MonsterTemplate[]; hard: Mons
         minDamage: 10,
         maxDamage: 12,
         questions: 8,
-        thumbnailPath: '/img/monsters/cookie_mud_thumb.jpg',
-        imagePath: '/img/monsters/cookie_mud_battle.jpg',
+        thumbnailPath: './img/monsters/cookie_mud_thumb.jpg',
+        imagePath: './img/monsters/cookie_mud_battle.jpg',
         fallbackUnsplashThumb: 'https://images.unsplash.com/photo-1597839219216-a773cb2473e4?auto=format&fit=crop&w=400&q=80',
         fallbackUnsplashBattle: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=400&q=80'
       },
@@ -210,8 +210,8 @@ export const MONSTER_POOLS: Record<number, { easy: MonsterTemplate[]; hard: Mons
         minDamage: 12,
         maxDamage: 14,
         questions: 8,
-        thumbnailPath: '/img/monsters/memory_bomb_thumb.jpg',
-        imagePath: '/img/monsters/memory_bomb_battle.jpg',
+        thumbnailPath: './img/monsters/memory_bomb_thumb.jpg',
+        imagePath: './img/monsters/memory_bomb_battle.jpg',
         fallbackUnsplashThumb: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&w=400&q=80',
         fallbackUnsplashBattle: 'https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?auto=format&fit=crop&w=400&q=80'
       }
@@ -225,8 +225,8 @@ export const MONSTER_POOLS: Record<number, { easy: MonsterTemplate[]; hard: Mons
         minDamage: 17,
         maxDamage: 20,
         questions: 10,
-        thumbnailPath: '/img/monsters/virus_golem_thumb.jpg',
-        imagePath: '/img/monsters/virus_golem_battle.jpg',
+        thumbnailPath: './img/monsters/virus_golem_thumb.jpg',
+        imagePath: './img/monsters/virus_golem_battle.jpg',
         fallbackUnsplashThumb: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=400&q=80',
         fallbackUnsplashBattle: 'https://images.unsplash.com/photo-1510511459019-5dda7724fd87?auto=format&fit=crop&w=400&q=80'
       },
@@ -238,8 +238,8 @@ export const MONSTER_POOLS: Record<number, { easy: MonsterTemplate[]; hard: Mons
         minDamage: 18,
         maxDamage: 21,
         questions: 10,
-        thumbnailPath: '/img/monsters/security_satan_thumb.jpg',
-        imagePath: '/img/monsters/security_satan_battle.jpg',
+        thumbnailPath: './img/monsters/security_satan_thumb.jpg',
+        imagePath: './img/monsters/security_satan_battle.jpg',
         fallbackUnsplashThumb: 'https://images.unsplash.com/photo-1544256718-3bcf237f3974?auto=format&fit=crop&w=400&q=80',
         fallbackUnsplashBattle: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=400&q=80'
       }
@@ -256,8 +256,8 @@ export const MONSTER_POOLS: Record<number, { easy: MonsterTemplate[]; hard: Mons
         minDamage: 14,
         maxDamage: 16,
         questions: 10,
-        thumbnailPath: '/img/monsters/zombie_server_thumb.jpg',
-        imagePath: '/img/monsters/zombie_server_battle.jpg',
+        thumbnailPath: './img/monsters/zombie_server_thumb.jpg',
+        imagePath: './img/monsters/zombie_server_battle.jpg',
         fallbackUnsplashThumb: 'https://images.unsplash.com/photo-1597839219216-a773cb2473e4?auto=format&fit=crop&w=400&q=80',
         fallbackUnsplashBattle: 'https://images.unsplash.com/photo-1504639725590-34d0984388bd?auto=format&fit=crop&w=400&q=80'
       },
@@ -269,8 +269,8 @@ export const MONSTER_POOLS: Record<number, { easy: MonsterTemplate[]; hard: Mons
         minDamage: 13,
         maxDamage: 15,
         questions: 10,
-        thumbnailPath: '/img/monsters/logic_gate_thumb.jpg',
-        imagePath: '/img/monsters/logic_gate_battle.jpg',
+        thumbnailPath: './img/monsters/logic_gate_thumb.jpg',
+        imagePath: './img/monsters/logic_gate_battle.jpg',
         fallbackUnsplashThumb: 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&w=400&q=80',
         fallbackUnsplashBattle: 'https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?auto=format&fit=crop&w=400&q=80'
       }
@@ -284,8 +284,8 @@ export const MONSTER_POOLS: Record<number, { easy: MonsterTemplate[]; hard: Mons
         minDamage: 22,
         maxDamage: 25,
         questions: 10,
-        thumbnailPath: '/img/monsters/ransomware_beast_thumb.jpg',
-        imagePath: '/img/monsters/ransomware_beast_battle.jpg',
+        thumbnailPath: './img/monsters/ransomware_beast_thumb.jpg',
+        imagePath: './img/monsters/ransomware_beast_battle.jpg',
         fallbackUnsplashThumb: 'https://images.unsplash.com/photo-1544256718-3bcf237f3974?auto=format&fit=crop&w=400&q=80',
         fallbackUnsplashBattle: 'https://images.unsplash.com/photo-1555685812-4b943f1cb0eb?auto=format&fit=crop&w=400&q=80'
       },
@@ -297,8 +297,8 @@ export const MONSTER_POOLS: Record<number, { easy: MonsterTemplate[]; hard: Mons
         minDamage: 21,
         maxDamage: 24,
         questions: 10,
-        thumbnailPath: '/img/monsters/gigadeath_db_thumb.jpg',
-        imagePath: '/img/monsters/gigadeath_db_battle.jpg',
+        thumbnailPath: './img/monsters/gigadeath_db_thumb.jpg',
+        imagePath: './img/monsters/gigadeath_db_battle.jpg',
         fallbackUnsplashThumb: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=400&q=80',
         fallbackUnsplashBattle: 'https://images.unsplash.com/photo-1510511459019-5dda7724fd87?auto=format&fit=crop&w=400&q=80'
       }
@@ -316,8 +316,8 @@ export const MONSTER_POOLS: Record<number, { easy: MonsterTemplate[]; hard: Mons
         minDamage: 30,
         maxDamage: 34,
         questions: 15,
-        thumbnailPath: '/img/monsters/code_master_thumb.jpg',
-        imagePath: '/img/monsters/code_master_battle.jpg',
+        thumbnailPath: './img/monsters/code_master_thumb.jpg',
+        imagePath: './img/monsters/code_master_battle.jpg',
         fallbackUnsplashThumb: 'https://images.unsplash.com/photo-1544256718-3bcf237f3974?auto=format&fit=crop&w=400&q=80',
         fallbackUnsplashBattle: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=400&q=80'
       }

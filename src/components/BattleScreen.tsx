@@ -107,8 +107,8 @@ export default function BattleScreen({
   // タイマーのインターバル管理
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // プレイヤー画像：量子魔導ハッカー (仮画像: /img/player/hero.jpg | フォールバック: Unsplash)
-  const PLAYER_IMAGE = '/img/player/hero.jpg';
+  // プレイヤー画像：量子魔導ハッカー (仮画像: ./img/player/hero.jpg | フォールバック: Unsplash)
+  const PLAYER_IMAGE = './img/player/hero.jpg';
   const FALLBACK_PLAYER_IMAGE = 'https://images.unsplash.com/photo-1514539079130-25950c84af65?auto=format&fit=crop&w=400&q=80';
 
   // 敵のカテゴリに応じたUnsplashイラスト（戦闘画面専用：迫力がある攻撃的なグラフィック。すべて被りなしで別の画像を指定）

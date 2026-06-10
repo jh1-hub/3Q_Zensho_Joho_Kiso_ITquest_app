@@ -55,7 +55,18 @@ export default function TimeAttackScreen({ onClose, gameStats, onUpdateStats }: 
   // BGM/効果音的なテンション維持のためのオーディオ・フィードバック用（合成音声などの実装も検討できますが、今回はシンプルな音響API Web Audio APIでビープ音を作成して楽しさを引き立てます）
   const playSound = (type: 'correct' | 'wrong' | 'comboUp' | 'superCombo' | 'tick' | 'timesUp' | 'start') => {
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) {
+        return;
+      }
+      
+      // Iframeやブラウザ自動再生制限によりインスタンス生成時にセキュリティエラーやDOM例外が発生するのを完全ガード
+      const ctx = new AudioContextClass();
+      if (ctx.state === 'suspended') {
+        // iframe sandboxポリシーでsuspendedの場合は、再生を拒否されるため早期に安全に終了する
+        return;
+      }
+
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
