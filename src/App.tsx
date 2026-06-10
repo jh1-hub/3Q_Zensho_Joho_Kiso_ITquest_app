@@ -1092,9 +1092,18 @@ export default function App() {
         <TimeAttackScreen
           onClose={() => setScreen('title')}
           gameStats={gameStats}
+          collectedCardIds={player.collectedCards}
           onUpdateStats={(updatedStats) => {
             setGameStats(updatedStats);
             saveToStorage(player.collectedCards, bestTime, wrongTerms, player.level, player.xp, updatedStats);
+          }}
+          onAcquireCards={(newCardIds) => {
+            const updatedCollected = [...player.collectedCards, ...newCardIds];
+            setPlayer(prev => ({
+              ...prev,
+              collectedCards: updatedCollected
+            }));
+            saveToStorage(updatedCollected, bestTime, wrongTerms, player.level, player.xp, gameStats);
           }}
         />
       )}

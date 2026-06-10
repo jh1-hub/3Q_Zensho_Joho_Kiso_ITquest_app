@@ -32,26 +32,8 @@ export function calculatePlayerBonus(collectedIds: string[], runCardIds: string[
   let timerBonus = 0;
   const activeClusters: string[] = [];
 
-  // 1. 各カードの各永続個別ボーナス (これまでに獲得したカードすべて：最大強化幅を「全部集めきっても＋10％」となるようにスケーリング)
-  // 全カード3枚コンプリート（最大収集）時に、最大HP +10.0, 攻撃力 +1.0, 経験値 +10%, タイマー +3.0秒に収まるようにします。
-  let sumAllHp = 0;
-  let sumAllAttack = 0;
-  let sumAllXpBonus = 0;
-  let sumAllTimerBonus = 0;
-
-  TERM_CARDS.forEach(card => {
-    sumAllHp += (card.statsBonus.hp || 0);
-    sumAllAttack += (card.statsBonus.attack || 0);
-    sumAllXpBonus += (card.statsBonus.xpBonus || 0);
-    sumAllTimerBonus += (card.statsBonus.timerBonus || 0);
-  });
-
-  // 各最大目標値 (すべて3枚集め切った時の永続バフ上限値：基準値HP100, ATK10に対して約10%底上げ)
-  const LIMIT_PERMANENT_HP = 10.0;       // HP: 最大 +10
-  const LIMIT_PERMANENT_ATK = 1.0;       // ATK: 最大 +1.0 (10%増)
-  const LIMIT_PERMANENT_XP = 0.10;       // XP: 最大 +10% (0.1)
-  const LIMIT_PERMANENT_TIMER = 3.0;     // 制限時間: 最大 +3.0秒
-
+  // 1. 各カードの各永続個別ボーナス (これまでに獲得したカードすべて：重複も含めて単純累積)
+  // 表示されている「statsBonus * 0.5」の効果がそのまま、被り枚数分だけ累積されます。
   let rawCollectedHp = 0;
   let rawCollectedAttack = 0;
   let rawCollectedXpBonus = 0;
@@ -60,31 +42,17 @@ export function calculatePlayerBonus(collectedIds: string[], runCardIds: string[
   collectedIds.forEach(id => {
     const card = TERM_CARDS.find(c => c.id === id);
     if (card) {
-      rawCollectedHp += (card.statsBonus.hp || 0);
-      rawCollectedAttack += (card.statsBonus.attack || 0);
-      rawCollectedXpBonus += (card.statsBonus.xpBonus || 0);
-      rawCollectedTimerBonus += (card.statsBonus.timerBonus || 0);
+      rawCollectedHp += (card.statsBonus.hp || 0) * 0.5;
+      rawCollectedAttack += (card.statsBonus.attack || 0) * 0.5;
+      rawCollectedXpBonus += (card.statsBonus.xpBonus || 0) * 0.5;
+      rawCollectedTimerBonus += (card.statsBonus.timerBonus || 0) * 0.5;
     }
   });
 
-  // 全カードを3枚最大状態での合計 (3枚コンプ)
-  const maxRawHp = sumAllHp * 3;
-  const maxRawAttack = sumAllAttack * 3;
-  const maxRawXpBonus = sumAllXpBonus * 3;
-  const maxRawTimerBonus = sumAllTimerBonus * 3;
-
-  if (maxRawHp > 0) {
-    hp += (rawCollectedHp / maxRawHp) * LIMIT_PERMANENT_HP;
-  }
-  if (maxRawAttack > 0) {
-    attack += (rawCollectedAttack / maxRawAttack) * LIMIT_PERMANENT_ATK;
-  }
-  if (maxRawXpBonus > 0) {
-    xpBonus += (rawCollectedXpBonus / maxRawXpBonus) * LIMIT_PERMANENT_XP;
-  }
-  if (maxRawTimerBonus > 0) {
-    timerBonus += (rawCollectedTimerBonus / maxRawTimerBonus) * LIMIT_PERMANENT_TIMER;
-  }
+  hp += rawCollectedHp;
+  attack += rawCollectedAttack;
+  xpBonus += rawCollectedXpBonus / 100;
+  timerBonus += rawCollectedTimerBonus;
 
   // 2. この冒険中に獲得したカードの個別ボーナス（こちらは一時的なシナジー快感のため、元々の強さを保つ。ただしゲーム崩壊を防ぐためマイルドにする）
   runCardIds.forEach(id => {
