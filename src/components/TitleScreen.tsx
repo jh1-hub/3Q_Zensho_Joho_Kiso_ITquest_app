@@ -146,7 +146,7 @@ export default function TitleScreen({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-300 via-sky-100 to-emerald-100 text-slate-800 flex flex-col justify-between p-4 sm:p-6 pb-12 relative font-sans select-none border-t-8 border-blue-600">
+    <div className="w-full min-h-screen bg-gradient-to-b from-sky-300 via-sky-100 to-emerald-100 text-slate-800 flex flex-col items-center justify-start p-4 sm:p-6 pb-16 relative font-sans select-none border-t-8 border-blue-600 overflow-y-auto">
       
       {/* 優しい王道ファンタジーを感じる陽光 */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.6)_0%,transparent_80%)] pointer-events-none"></div>
@@ -154,7 +154,7 @@ export default function TitleScreen({
       <div className="absolute -bottom-12 -left-12 w-64 h-64 bg-emerald-200/50 rounded-full blur-3xl pointer-events-none"></div>
 
       {/* トップレール */}
-      <div className="max-w-4xl w-full mx-auto flex justify-between items-center z-10 border-b border-blue-200 pb-3">
+      <div className="max-w-4xl w-full mx-auto flex justify-between items-center z-10 border-b border-blue-200 pb-3 mb-4">
         <div className="flex items-center gap-1.5 bg-blue-600 px-3 py-1.5 rounded-full text-xs text-white font-bold tracking-wide shadow-md">
           <Zap size={13} className="animate-bounce text-yellow-300" />
           <span>IT QUEST // 冒険の準備完了</span>
@@ -325,19 +325,19 @@ export default function TitleScreen({
         </div>
 
         {/* メインアクションボタン */}
-        <div className="flex flex-col gap-4 w-full justify-center max-w-2xl mt-2 text-xs font-bold font-sans">
+        <div className="flex flex-col gap-4 w-full justify-center max-w-2xl mt-4 text-xs font-bold font-sans z-15">
           <button
             onClick={onOpenTimeAttack}
-            className="w-full py-4.5 px-4 bg-gradient-to-r from-indigo-600 via-purple-650 to-pink-600 text-white font-extrabold rounded-xl shadow-lg hover:shadow-xl hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 border-2 border-indigo-400 uppercase tracking-wider text-sm"
+            className="w-full py-4 px-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-extrabold rounded-xl shadow-lg hover:shadow-xl hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 border-2 border-indigo-400 uppercase tracking-wider text-sm"
             id="open-timeattack-btn"
           >
-            <Timer size={16} className="animate-spin text-cyan-300" style={{ animationDuration: '4s' }} />
+            <Timer size={16} className="animate-[spin_4s_linear_infinite] text-cyan-300" />
             <span>ときのかいろう（タイムアタック）</span>
           </button>
 
           <button
             onClick={onStartGame}
-            className="w-full py-4.5 px-4 bg-gradient-to-r from-yellow-500 to-amber-500 text-white font-extrabold rounded-xl shadow-lg hover:shadow-xl hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 border-2 border-yellow-300 uppercase tracking-wider text-sm animation-delay-0"
+            className="w-full py-4 px-4 bg-gradient-to-r from-yellow-500 to-amber-500 text-white font-extrabold rounded-xl shadow-lg hover:shadow-xl hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 border-2 border-yellow-300 uppercase tracking-wider text-sm"
             id="start-game-btn"
           >
             <Play size={16} className="fill-white animate-pulse" />
