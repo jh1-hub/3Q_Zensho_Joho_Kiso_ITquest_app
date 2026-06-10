@@ -1,0 +1,6 @@
+{
+  "name": "用語ローグライク IT Quest",
+  "description": "情報処理検定の用語をローグライク形式のマップで学習する、テンポ抜群のカード収集RPG。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

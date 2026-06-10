@@ -1,0 +1,18 @@
+{
+  "name": "IT QUEST",
+  "short_name": "IT QUEST",
+  "description": "IT用語を詠唱して魔物から平和を取り戻せ！",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

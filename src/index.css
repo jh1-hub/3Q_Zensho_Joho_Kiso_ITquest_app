@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', sans-serif;
+  --color-primary: #38BDF8;
+  --color-slate-900: #0F172A;
+  --color-slate-950: #020617;
+  --color-slate-800: #1E293B;
+  --color-slate-700: #334155;
+}
+
+@layer utilities {
+  .geo-glow {
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.35);
+  }
+  .geo-glow-lg {
+    box-shadow: 0 0 30px rgba(56, 189, 248, 0.2);
+  }
+}
+
+/* ゲーム用カスタムアニメーション */
+@keyframes damage-float {
+  0% {
+    transform: translateY(15px) scale(0.5);
+    opacity: 0;
+  }
+  15% {
+    transform: translateY(-5px) scale(1.3);
+    opacity: 1;
+  }
+  35% {
+    transform: translateY(-15px) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-45px) scale(0.85);
+    opacity: 0;
+  }
+}
+
+@keyframes character-hit-shake {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  10%, 30%, 50%, 70%, 90% { transform: translate(-8px, -2px) rotate(-1deg); }
+  20%, 40%, 60%, 80% { transform: translate(8px, 2px) rotate(1deg); }
+}
+
+@keyframes screen-shake-attack {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  10%, 30%, 50%, 70%, 90% { transform: translate(-16px, 0px) rotate(-0.5deg); }
+  20%, 40%, 60%, 80% { transform: translate(16px, 0px) rotate(0.5deg); }
+}
+
+@keyframes screen-shake-damage {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  10%, 30%, 50%, 70%, 90% { transform: translate(-4px, 16px) rotate(-2deg); }
+  20%, 40%, 60%, 80% { transform: translate(4px, -16px) rotate(2deg); }
+}
+
+@keyframes flash-damage-red {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.5) sepia(1) hue-rotate(-50deg) saturate(3); }
+}
+
+@keyframes flash-damage-gold {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.6) sepia(0.5) saturate(2); }
+}
+
+.animate-damage-float {
+  animation: damage-float 1.2s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+}
+
+.animate-hit-shake {
+  animation: character-hit-shake 0.4s ease-in-out;
+}
+
+.animate-screen-attack-shake {
+  animation: screen-shake-attack 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+.animate-screen-damage-shake {
+  animation: screen-shake-damage 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+.animate-flash-red {
+  animation: flash-damage-red 0.4s ease-in-out;
+}
+
+.animate-flash-gold {
+  animation: flash-damage-gold 0.4s ease-in-out;
+}
