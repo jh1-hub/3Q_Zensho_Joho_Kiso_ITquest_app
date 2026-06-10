@@ -70,31 +70,31 @@ export function calculatePlayerBonus(collectedIds: string[], runCardIds: string[
     }
   });
 
-  // クラスタ完成ボーナス (マイルドかつバランスよく)
+  // クラスタ完成ボーナス (マイルドかつバランスよく - HP10倍、ATK50倍)
   CLUSTERS.forEach(cluster => {
     const isCompleted = cluster.cardIds.length > 0 && cluster.cardIds.every(cid => collectedIds.includes(cid));
     if (isCompleted) {
       activeClusters.push(cluster.id);
       if (cluster.id === '1-a') {
-        hp += 0.1;
+        hp += 0.1 * 10;
       } else if (cluster.id === '1-b') {
-        attack += 0.02;
+        attack += 0.02 * 50;
       } else if (cluster.id === '1-c') {
-        hp += 0.05;
+        hp += 0.05 * 10;
       } else if (cluster.id === '2-a') {
         timerBonus += 0.05;
       } else if (cluster.id === '2-b') {
-        attack += 0.02;
+        attack += 0.02 * 50;
       } else if (cluster.id === '2-c') {
-        hp += 0.05;
+        hp += 0.05 * 10;
       } else if (cluster.id === '2-d') {
-        attack += 0.04;
+        attack += 0.04 * 50;
       } else if (cluster.id === '3-a') {
         xpBonus += 0.002;
       } else if (cluster.id === '3-b') {
         timerBonus += 0.05;
       } else if (cluster.id === '3-c') {
-        attack += 0.04;
+        attack += 0.04 * 50;
       }
     }
   });
@@ -245,8 +245,8 @@ export function getEnemyConfig(type: 'battle_easy' | 'battle_hard' | 'boss', ste
   if (type === 'boss') {
     return {
       name: '量子コア・オメガ「NEO-HYDRA」 (Quantum Core "NEO-HYDRA")',
-      maxHp: Math.round(220 * scale), // 攻撃力10+ボーナス 程度で約12問、高速回答でも7〜8問正解が必要
-      damage: Math.round(22 * scale),
+      maxHp: Math.round(2200 * scale), // HP scaled up by 10x
+      damage: Math.round(1100 * scale), // damage scaled up by 50x (22 * 50 = 1100)
       questions: 15
     };
   }
@@ -254,8 +254,8 @@ export function getEnemyConfig(type: 'battle_easy' | 'battle_hard' | 'boss', ste
   if (type === 'battle_hard') {
     return {
       name: step === 1 ? '防衛セキュリティ「AEGIS_V2」 (Sentinel Defense "AEGIS_V2")' : '亡霊コードウィーバー「LEPTO.java」 (Call-Weaver "LEPTO.java")',
-      maxHp: Math.round(140 * scale), // 攻撃力10+ボーナス 程度で約7〜9問正解が必要
-      damage: Math.round(16 * scale),
+      maxHp: Math.round(1400 * scale), // HP scaled up by 10x
+      damage: Math.round(800 * scale), // damage scaled up by 50x (16 * 50 = 800)
       questions: 10
     };
   }
@@ -263,8 +263,8 @@ export function getEnemyConfig(type: 'battle_easy' | 'battle_hard' | 'boss', ste
   // battle_easy
   return {
     name: step === 0 ? '微細バグウイルス「BUG-GOBLIN」 (Micro-Virus "BUG-GOBLIN")' : '液状エラー「DATA-LEAK SLIME」 (Leaking Core "DATA-LEAK SLIME")',
-    maxHp: Math.round(85 * scale), // 攻撃力10〜12 程度で約5〜7問正解が必要
-    damage: Math.round(10 * scale),
+    maxHp: Math.round(850 * scale), // HP scaled up by 10x
+    damage: Math.round(500 * scale), // damage scaled up by 50x (10 * 50 = 500)
     questions: 8
   };
 }

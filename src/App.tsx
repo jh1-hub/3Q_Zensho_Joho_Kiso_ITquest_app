@@ -72,9 +72,9 @@ export default function App() {
   const [overrideCardsPool, setOverrideCardsPool] = useState<TermCard[] | undefined>(undefined);
   const [forceFullyRandom, setForceFullyRandom] = useState<boolean>(false);
   const [player, setPlayer] = useState<PlayerState>({
-    hp: 100,
-    maxHp: 100,
-    attack: 10,
+    hp: 1000,
+    maxHp: 1000,
+    attack: 100,
     level: 1,
     xp: 0,
     xpToNextLevel: 10,
@@ -131,9 +131,9 @@ export default function App() {
           xpToNextLevel: getXpToNextLevel(1),
           collectedCards: parsed.collectedCards || [],
           activeRunCardIds: [],
-          maxHp: 100, // レベル1＋ボーナスの最大HP
-          hp: 100 + bonus.hp,
-          attack: 10 + bonus.attack
+          maxHp: 1000, // レベル1＋ボーナスの最大HP (10倍スケール)
+          hp: 1000 + bonus.hp,
+          attack: 100 + bonus.attack
         }));
         setBestTime(parsed.bestTimeSeconds || null);
         setWrongTerms(parsed.wrongTerms || []);
@@ -182,13 +182,13 @@ export default function App() {
     
     // 修行用プレイヤーHP等の構成（王道のカード補正のみを適用。冒険中カードactiveRunCardIdsは修行では無効）
     const bonus = calculatePlayerBonus(player.collectedCards, []);
-    const maxHpWithBonus = 100 + bonus.hp;
-    const currentAttack = 10 + bonus.attack;
+    const maxHpWithBonus = 1000 + bonus.hp;
+    const currentAttack = 100 + bonus.attack;
 
     setPlayer(prev => ({
       ...prev,
       hp: maxHpWithBonus,
-      maxHp: 100,
+      maxHp: 1000,
       attack: currentAttack,
       activeRunCardIds: [], // 修行中の冒険内カードバフは初期化
       penaltySeconds: 0
@@ -376,8 +376,8 @@ export default function App() {
     
     // レベルを毎回1に、XPを0にリセットしてゲーム開始
     const bonus = calculatePlayerBonus(player.collectedCards, []);
-    const maxHpWithBonus = 100 + bonus.hp;
-    const currentAttack = 10 + bonus.attack;
+    const maxHpWithBonus = 1000 + bonus.hp;
+    const currentAttack = 100 + bonus.attack;
 
     setPlayer(prev => ({
       ...prev,
@@ -385,7 +385,7 @@ export default function App() {
       xp: 0,
       xpToNextLevel: getXpToNextLevel(1),
       hp: maxHpWithBonus,
-      maxHp: 100,
+      maxHp: 1000,
       attack: currentAttack,
       activeRunCardIds: [], // Reset run cards
       totalTimeSeconds: 0,
@@ -810,9 +810,9 @@ export default function App() {
         level: 1,
         xp: 0,
         xpToNextLevel: getXpToNextLevel(1),
-        maxHp: 100,
-        hp: 100 + freshBonus.hp,
-        attack: 10 + freshBonus.attack,
+        maxHp: 1000,
+        hp: 1000 + freshBonus.hp,
+        attack: 100 + freshBonus.attack,
         collectedCards: updatedCollected,
         activeRunCardIds: [], // Reset run cards
         totalTimeSeconds: runSeconds
@@ -851,8 +851,8 @@ export default function App() {
     }
 
     // レベルアップした場合は基本ステータスを上げる
-    const nextMaxHp = 100 + (nextLvl - 1) * 15;
-    const nextPlayerAttack = 10 + (nextLvl - 1) * 3;
+    const nextMaxHp = 1000 + (nextLvl - 1) * 150;
+    const nextPlayerAttack = 100 + (nextLvl - 1) * 30;
 
     // 前回の戦果報酬をステートに記録
     setLastDroppedCard(selectedCard);
@@ -930,9 +930,9 @@ export default function App() {
       level: 1,
       xp: 0,
       xpToNextLevel: getXpToNextLevel(1),
-      maxHp: 100,
-      hp: 100 + bonus.hp,
-      attack: 10 + bonus.attack,
+      maxHp: 1000,
+      hp: 1000 + bonus.hp,
+      attack: 100 + bonus.attack,
       activeRunCardIds: [], // Clear run cards!
       totalTimeSeconds: runSeconds
     }));
@@ -950,9 +950,9 @@ export default function App() {
   const handleResetAllData = () => {
     localStorage.removeItem('it-rogue-save-data');
     setPlayer({
-      hp: 100,
-      maxHp: 100,
-      attack: 10,
+      hp: 1000,
+      maxHp: 1000,
+      attack: 100,
       level: 1,
       xp: 0,
       xpToNextLevel: 10,

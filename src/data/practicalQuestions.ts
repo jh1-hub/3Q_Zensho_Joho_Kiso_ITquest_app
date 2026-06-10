@@ -145,12 +145,12 @@ export const practicalQuestions: PracticalQuestion[] = [
       '生徒：なるほど、すべてのカードを確認し終わったとき、（ ア ）に残っている数字が、全体の（ イ ）ということですね。'
     ],
     options: [
-      '最小値　　イ．最大値',
-      '最大値候補　イ．最大値',
-      '最大値候補　イ．合計値',
-      '平均値　　イ．最大値'
+      'ア．最小値　　イ．最大値',
+      'ア．最大値候補　イ．最大値',
+      'ア．最大値候補　イ．合計値',
+      'ア．平均値　　イ．最大値'
     ],
-    correctAnswer: '最大値候補　イ．最大値',
+    correctAnswer: 'ア．最大値候補　イ．最大値',
     displayType: 'single'
   },
   {
@@ -169,18 +169,18 @@ export const practicalQuestions: PracticalQuestion[] = [
   {
     id: 'm2-q32',
     categoryId: '3-c',
-    description: '本人確認の方法に関する先生と生徒の会話文の（ア）、（イ）にあてはまる適切な語句の組み合わせとして正しいものはどれか。',
+    description: '本人確認の方法に関する先生と生徒 of 会話文の（ア）、（イ）にあてはまる適切な語句の組み合わせとして正しいものはどれか。',
     subDescriptions: [
       '先生：本人しか知らない情報を用いる（ ア ）認証や、指紋や顔など身体的特徴を用いる（ イ ）認証などがあります。',
       '生徒：二つの方法を組み合わせることで、セキュリティをより強固にできるのですね。'
     ],
     options: [
-      'パスワード　イ．パスコード',
-      'バイオメトリクス　イ．パスワード',
-      'パスワード　イ．バイオメトリクス',
-      '所持品　　イ．バイオメトリクス'
+      'ア．パスワード　イ．パスコード',
+      'ア．バイオメトリクス　イ．パスワード',
+      'ア．パスワード　イ．バイオメトリクス',
+      'ア．所持品　　イ．バイオメトリクス'
     ],
-    correctAnswer: 'パスワード　イ．バイオメトリクス',
+    correctAnswer: 'ア．パスワード　イ．バイオメトリクス',
     displayType: 'single'
   },
   {
@@ -188,12 +188,12 @@ export const practicalQuestions: PracticalQuestion[] = [
     categoryId: '2-c',
     description: '２進数の「11111」を 10 進数に変換した答え（ア）と，10 進数の「28」を 2 進数に変換した答え（イ）の組み合わせとして正しいものはどれか。',
     options: [
-      '29　　イ．11110',
-      '29　　イ．11100',
-      '31　　イ．11110',
-      '31　　イ．11100'
+      'ア．29　　イ．11110',
+      'ア．29　　イ．11100',
+      'ア．31　　イ．11110',
+      'ア．31　　イ．11100'
     ],
-    correctAnswer: '31　　イ．11100',
+    correctAnswer: 'ア．31　　イ．11100',
     displayType: 'single'
   },
   {
@@ -206,12 +206,12 @@ export const practicalQuestions: PracticalQuestion[] = [
       '先生：はい、この機能は（ イ ）と呼ばれ、指定した文字列や画像に設定できるほか、文書やメールに URL やメールアドレスを直接入力した場合に、その文字列に自動的に設定されるものもあります。'
     ],
     options: [
-      'ブラウザ　　イ．ハイパーリンク',
-      'メーラ　　　イ．ハイパーリンク',
-      'ブラウザ　　イ．ハイパーテキスト',
-      'メーラ　　　イ．ハイパーテキスト'
+      'ア．ブラウザ　　イ．ハイパーリンク',
+      'ア．メーラ　　　イ．ハイパーリンク',
+      'ア．ブラウザ　　イ．ハイパーテキスト',
+      'ア．メーラ　　　イ．ハイパーテキスト'
     ],
-    correctAnswer: 'ブラウザ　　イ．ハイパーリンク',
+    correctAnswer: 'ア．ブラウザ　　イ．ハイパーリンク',
     displayType: 'single'
   },
   {
@@ -223,12 +223,12 @@ export const practicalQuestions: PracticalQuestion[] = [
       '上司：それはいい考えだね。平均に加えて、５から１のうち、どの回答が最も多く出現するかも重要な要素になるため、（ イ ）も項目ごとに算出してもらえるかな。'
     ],
     options: [
-      '代表値　　イ．中央値',
-      '代表値　　イ．最頻値',
-      '欠損値　　イ．中央値',
-      '欠損値　　イ．最頻値'
+      'ア．代表値　　イ．中央値',
+      'ア．代表値　　イ．最頻値',
+      'ア．欠損値　　イ．中央値',
+      'ア．欠損値　　イ．最頻値'
     ],
-    correctAnswer: '代表値　　イ．最頻値',
+    correctAnswer: 'ア．代表値　　イ．最頻値',
     displayType: 'single'
   },
   {
@@ -239,12 +239,12 @@ export const practicalQuestions: PracticalQuestion[] = [
       '先生：ユーザインタフェースには、文字による表示や入力を基本とする（ ア ）と、絵や図形による表示と画面内の位置を指示する操作を基本とする（ イ ）の大きく二つの種類があります。'
     ],
     options: [
-      'CUI　　イ．GUI',
-      'GUI　　イ．CUI',
-      'CUI　　イ．OS',
-      'GUI　　イ．OS'
+      'ア．CUI　　イ．GUI',
+      'ア．GUI　　イ．CUI',
+      'ア．CUI　　イ．OS',
+      'ア．GUI　　イ．OS'
     ],
-    correctAnswer: 'CUI　　イ．GUI',
+    correctAnswer: 'ア．CUI　　イ．GUI',
     displayType: 'single'
   },
   {
@@ -255,12 +255,12 @@ export const practicalQuestions: PracticalQuestion[] = [
       '集積回路（IC）には，集積度を高めた大規模集積回路（ ア ），さらに高めた超大規模集積回路（ イ ），超々大規模集積回路（ ウ ）などもある。'
     ],
     options: [
-      'LSI　　イ．ULSI　　ウ．VLSI',
-      'LSI　　イ．VLSI　　ウ．ULSI',
-      'ULSI　　イ．VLSI　　ウ．LSI',
-      'VLSI　　イ．LSI　　ウ．ULSI'
+      'ア．LSI　　イ．ULSI　　ウ．VLSI',
+      'ア．LSI　　イ．VLSI　　ウ．ULSI',
+      'ア．ULSI　　イ．VLSI　　ウ．LSI',
+      'ア．VLSI　　イ．LSI　　ウ．ULSI'
     ],
-    correctAnswer: 'LSI　　イ．VLSI　　ウ．ULSI',
+    correctAnswer: 'ア．LSI　　イ．VLSI　　ウ．ULSI',
     displayType: 'single'
   },
   {
@@ -312,12 +312,12 @@ export const practicalQuestions: PracticalQuestion[] = [
       'このうち、（ イ ）には、特許権・（ ウ ）・意匠権・商標権の四つがあります。'
     ],
     options: [
-      '肖像権　　イ．産業財産権　　ウ．実用新案権',
-      '著作権　　イ．財産管理権　　ウ．実用新案権',
-      '著作権　　イ．産業財産権　　ウ．命名権',
-      '著作権　　イ．産業財産権　　ウ．実用新案権'
+      'ア．肖像権　　イ．産業財産権　　ウ．実用新案権',
+      'ア．著作権　　イ．財産管理権　　ウ．実用新案権',
+      'ア．著作権　　イ．産業財産権　　ウ．命名権',
+      'ア．著作権　　イ．産業財産権　　ウ．実用新案権'
     ],
-    correctAnswer: '著作権　　イ．産業財産権　　ウ．実用新案権',
+    correctAnswer: 'ア．著作権　　イ．産業財産権　　ウ．実用新案権',
     displayType: 'single'
   },
   {
@@ -325,12 +325,12 @@ export const practicalQuestions: PracticalQuestion[] = [
     categoryId: '2-c',
     description: '10 進数の「25」を 2 進数に変換した答え（ア）と、2 進数の「11110」を 10 進数に変換した答え（イ）の組み合わせはどれか答えなさい。',
     options: [
-      '11001　　イ．28',
-      '11001　　イ．30',
-      '11011　　イ．30',
-      '11101　　イ．32'
+      'ア．11001　　イ．28',
+      'ア．11001　　イ．30',
+      'ア．11011　　イ．30',
+      'ア．11101　　イ．32'
     ],
-    correctAnswer: '11001　　イ．30',
+    correctAnswer: 'ア．11001　　イ．30',
     displayType: 'single'
   },
   {
@@ -420,18 +420,18 @@ export const practicalQuestions: PracticalQuestion[] = [
       'スパイウェアには、パソコンのキーボード操作を監視する（ イ ）や、勝手に広告を表示する（ ウ ）などがあります。'
     ],
     options: [
-      'パスワード　　イ．スパムメール　　ウ．ランサムウェア',
-      '認証コード　　イ．スパムメール　　ウ．アドウェア',
-      'パスワード　　イ．キーロガー　　　ウ．アドウェア',
-      '認証コード　　イ．キーロガー　　　ウ．ランサムウェア'
+      'ア．パスワード　　イ．スパムメール　　ウ．ランサムウェア',
+      'ア．認証コード　　イ．スパムメール　　ウ．アドウェア',
+      'ア．パスワード　　イ．キーロガー　　　ウ．アドウェア',
+      'ア．認証コード　　イ．キーロガー　　　ウ．ランサムウェア'
     ],
-    correctAnswer: 'パスワード　　イ．キーロガー　　　ウ．アドウェア',
+    correctAnswer: 'ア．パスワード　　イ．キーロガー　　　ウ．アドウェア',
     displayType: 'single'
   },
   {
     id: 'm6-q43',
     categoryId: '3-b',
-    description: '散布図における無相関の事例のすべてを挙げたものはどれか答えなさい。',
+    description: '散布図における無相関 of 事例のすべてを挙げたものはどれか答えなさい。',
     subDescriptions: [
       'ア．「パンの売上高」と「パソコンの売上高」',
       'イ．「平均気温」と「都市人口」',
@@ -458,12 +458,12 @@ export const practicalQuestions: PracticalQuestion[] = [
       '次世代の IPv6 は、IP アドレスを（ ウ ）ビットで管理します。'
     ],
     options: [
-      '地域　　イ．23 億　　ウ．64',
-      '住所　　イ．43 億　　ウ．128',
-      '地域　　イ．43 億　　ウ．64',
-      '住所　　イ．23 億　　ウ．128'
+      'ア．地域　　イ．23 億　　ウ．64',
+      'ア．住所　　イ．43 億　　ウ．128',
+      'ア．地域　　イ．43 億　　ウ．64',
+      'ア．住所　　イ．23 億　　ウ．128'
     ],
-    correctAnswer: '住所　　イ．43 億　　ウ．128',
+    correctAnswer: 'ア．住所　　イ．43 億　　ウ．128',
     displayType: 'single'
   },
   // --- 第8回 模擬試験 ---

@@ -4122,6 +4122,10 @@ quizCategories.forEach(cat => {
         else timerBonus = parseFloat((0.64 * uniqueFactor).toFixed(3));
       }
 
+      // HPを10倍に、ATKを50倍（10倍かつ5倍）にしてバフ効果をわかりやすく実感できるようにする
+      if (hp !== 0) hp = parseFloat((hp * 10).toFixed(3));
+      if (attack !== 0) attack = parseFloat((attack * 50).toFixed(3));
+
       TERM_CARDS.push({
         id: termId,
         name: term.name,
@@ -4148,5 +4152,5 @@ export const LEGENDARY_COMPLETION_CARD: TermCard = {
   flavorText: '「あなたはもう初心者ではない。用語の断片をつなぎ、全体を見通せる賢者の瞳を得た。」',
   rarity: 'LG',
   clusterId: 'general',
-  statsBonus: { hp: 5, attack: 1.5, xpBonus: 2.5, timerBonus: 3.0 }
+  statsBonus: { hp: 50, attack: 75, xpBonus: 2.5, timerBonus: 3.0 } // HP 10x, ATK 50x
 };
