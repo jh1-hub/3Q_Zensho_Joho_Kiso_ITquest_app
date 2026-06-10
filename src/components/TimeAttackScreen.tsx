@@ -6,8 +6,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Timer, Zap, RotateCcw, Home, Award, AlertCircle, Sparkles, Swords, Heart, Shield, HelpCircle } from 'lucide-react';
 import { RawProblem, ActiveProblem, GameStats, TermCard } from '../types';
-import { RAW_PROBLEMS, TERM_CARDS } from '../data/problems';
-import { generateActiveProblem, shuffleArray, drawCard } from '../utils/gameHelpers';
+import { RAW_PROBLEMS, TERM_CARDS, CLUSTERS } from '../data/problems';
+import { generateActiveProblem, shuffleArray, drawCard, getTermEmoji } from '../utils/gameHelpers';
 
 interface TimeAttackScreenProps {
   onClose: () => void;
@@ -18,8 +18,15 @@ interface TimeAttackScreenProps {
 }
 
 export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds, onUpdateStats, onAcquireCards }: TimeAttackScreenProps) {
-  // ゲームの状態: 'intro' | 'playing' | 'result'
-  const [gameState, setGameState] = useState<'intro' | 'playing' | 'result'>('intro');
+  // ゲームの状態: 'intro' | 'playing' | 'looting' | 'result'
+  const [gameState, setGameState] = useState<'intro' | 'playing' | 'looting' | 'result'>('intro');
+
+  // お宝クリスタル選択（Loot Phase）関連の状態
+  const [lootRound, setLootRound] = useState<number>(0);
+  const [lootOptions, setLootOptions] = useState<TermCard[]>([]);
+  const [selectedLootIndex, setSelectedLootIndex] = useState<number | null>(null);
+  const [lootRevealed, setLootRevealed] = useState<boolean>(false);
+  const [draftedCardsList, setDraftedCardsList] = useState<TermCard[]>([]);
 
   // カウントダウン (3, 2, 1, 開始!)
   const [startCountdown, setStartCountdown] = useState<number>(3);
@@ -74,14 +81,30 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
   // メッセージ表示用
   const [gameMessage, setGameMessage] = useState<string>('おのれの幻影が たちふさがった！');
 
-  // BGM / 効果音 Web Audio
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close().catch(() => {});
+      }
+    };
+  }, []);
+
+  // BGM / 効果音 Web Audio (シングルトン構成でメモリ・デバイス負荷を最適化)
   const playSound = (type: 'correct' | 'wrong' | 'comboUp' | 'superCombo' | 'tick' | 'timesUp' | 'start' | 'damage' | 'victory') => {
     try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContextClass) return;
-
-      const ctx = new AudioContextClass();
-      if (ctx.state === 'suspended') return;
+      if (!audioCtxRef.current) {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) {
+          audioCtxRef.current = new AudioContextClass();
+        }
+      }
+      const ctx = audioCtxRef.current;
+      if (!ctx) return;
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
 
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -229,30 +252,36 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
     }
   }, [gameState, problemPool, currentPoolIndex, activeProblem]);
 
-  // 時間カウント監視
+  // 時間カウント監視 (非ネスト構成で安定した時間毎の秒数減少処理)
   useEffect(() => {
     if (gameState === 'playing') {
       const timerInterval = setInterval(() => {
         setTimeRemaining((prev) => {
-          if (prev <= 1) {
+          const nextVal = prev - 1;
+          if (nextVal <= 0) {
             clearInterval(timerInterval);
-            handleTimesUp();
             return 0;
           }
-          if (prev <= 6) {
+          if (nextVal <= 6) {
             playSound('tick');
           }
-          return prev - 1;
+          return nextVal;
         });
       }, 1000);
       return () => clearInterval(timerInterval);
     }
   }, [gameState]);
 
-  // 時間切れ判定
+  // 時間残量が0になった場合のトリガーをReactライフサイクル外に完全配置し、高負荷時の画面ロック/無限再更新を完全に撲滅
+  useEffect(() => {
+    if (gameState === 'playing' && timeRemaining <= 0) {
+      handleTimesUp();
+    }
+  }, [timeRemaining, gameState]);
+
+  // 時間切れ判定と報酬獲得フェーズの初期化
   const handleTimesUp = () => {
     playSound('timesUp');
-    setGameState('result');
 
     const currentHighScore = gameStats.timeAttackHighScore || 0;
     const currentMaxCombo = gameStats.timeAttackMaxCombo || 0;
@@ -280,20 +309,136 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
 
     onUpdateStats(newStats);
 
-    // 幻影撃破数に応じたカード獲得を処理
-    // drawCard を繰り返し呼ぶことで、各撃破数が完全にカード1枚の新規ドロップに該当
-    const cardsGained: TermCard[] = [];
-    const tempCollected = [...collectedCardIds];
-    
-    // 倒した幻影の数だけカードを獲得
-    for (let i = 0; i < defeatedCount; i++) {
-      const drawn = drawCard(tempCollected);
-      if (drawn) {
-        cardsGained.push(drawn);
-        tempCollected.push(drawn.id); // 次回抽選に重複を反映できるようにする
+    // 幻影を1体以上討伐した場合は「いつものカード選択画面(Loot Phase)」に移る。
+    // そうでなければ直接リザルト判定へ移動
+    if (defeatedCount > 0) {
+      setGameState('looting');
+      setLootRound(0);
+      setDraftedCardsList([]);
+      generateLootOptions([]);
+    } else {
+      setGainedCards([]);
+      setGameState('result');
+    }
+  };
+
+  // 報酬お宝カードの抽選オプション作成、未所持を優先
+  const generateLootOptions = (gainedSoFar: TermCard[]) => {
+    const pool = TERM_CARDS;
+    const tempSelected: TermCard[] = [];
+    const collectedAndGained = [...collectedCardIds, ...gainedSoFar.map(c => c.id)];
+
+    const getTargetRarity = () => {
+      const r = Math.random() * 100;
+      if (r < 35) return 'C';
+      if (r < 65) return 'UC';
+      if (r < 85) return 'SR';
+      if (r < 96) return 'UR';
+      return 'LG';
+    };
+
+    let tries = 0;
+    while (tempSelected.length < 3 && tries < 200) {
+      tries++;
+      const targetRarity = getTargetRarity();
+      let candidates = pool.filter(c => c.rarity === targetRarity || (targetRarity === 'UC' && c.rarity === 'R'));
+      if (candidates.length === 0) candidates = pool;
+      
+      const uncollected = candidates.filter(c => !collectedAndGained.includes(c.id));
+      let finalPool = uncollected.length > 0 ? uncollected : candidates;
+      finalPool = finalPool.filter(c => !tempSelected.some(ts => ts.id === c.id));
+      
+      if (finalPool.length > 0) {
+        const picked = finalPool[Math.floor(Math.random() * finalPool.length)];
+        tempSelected.push(picked);
       }
     }
-    setGainedCards(cardsGained);
+
+    while (tempSelected.length < 3) {
+      const additional = pool.filter(c => !tempSelected.some(ts => ts.id === c.id));
+      if (additional.length === 0) {
+        tempSelected.push(pool[0]);
+      } else {
+        tempSelected.push(additional[Math.floor(Math.random() * additional.length)]);
+      }
+    }
+
+    setLootOptions(shuffleArray(tempSelected).slice(0, 3));
+    setSelectedLootIndex(null);
+    setLootRevealed(false);
+  };
+
+  const handleLootCardClick = (idx: number) => {
+    if (lootRevealed) return;
+    setSelectedLootIndex(idx);
+    setLootRevealed(true);
+    playSound('correct');
+  };
+
+  const handleLootConfirm = () => {
+    if (selectedLootIndex === null) return;
+    const chosenCard = lootOptions[selectedLootIndex];
+    const newDrafted = [...draftedCardsList, chosenCard];
+    setDraftedCardsList(newDrafted);
+    
+    playSound('victory');
+
+    const nextRound = lootRound + 1;
+    if (nextRound < defeatedCount) {
+      setLootRound(nextRound);
+      generateLootOptions(newDrafted);
+    } else {
+      // 討伐数分すべての選択ドロップを完了し、リザルト画面に引き渡す
+      setGainedCards(newDrafted);
+      setGameState('result');
+    }
+  };
+
+  // 各種レアリティバッジ/スタイルのヘルパー群
+  const getRarityBadgeColor = (rarity: string) => {
+    switch (rarity) {
+      case 'C': return 'text-slate-400 bg-slate-900 border border-slate-700 px-2 py-0.5 rounded font-mono text-[9px] uppercase tracking-wider font-extrabold';
+      case 'UC': return 'text-cyan-400 bg-cyan-950 border border-cyan-800 px-2 py-0.5 rounded font-mono text-[9px] uppercase tracking-wider font-extrabold';
+      case 'R': return 'text-blue-400 bg-blue-950 border border-blue-800 px-2 py-0.5 rounded font-mono text-[9px] uppercase tracking-wider font-extrabold';
+      case 'SR': return 'text-purple-400 bg-purple-950 border border-purple-800 px-2 py-0.5 rounded font-mono text-[9px] uppercase tracking-wider font-extrabold';
+      case 'UR': return 'text-amber-400 bg-amber-955 border border-amber-800 px-2 py-0.5 rounded font-mono text-[9px] uppercase tracking-wider font-extrabold';
+      case 'LG': return 'text-red-400 bg-red-955 border border-red-800 px-2 py-0.5 rounded font-mono text-[9px] uppercase tracking-wider font-extrabold font-black animate-pulse';
+      default: return 'text-slate-400 bg-slate-900 px-2 py-0.5 rounded font-mono text-[9px]';
+    }
+  };
+
+  const getRarityName = (rarity: string) => {
+    switch (rarity) {
+      case 'C': return '◆ Common ◆';
+      case 'UC': return '◆ Uncommon ◆';
+      case 'R': return '◆ Rare ◆';
+      case 'SR': return '◆ Super Rare ◆';
+      case 'UR': return '◆ Ultra Rare ◆';
+      case 'LG': return '◆ Legend ◆';
+      default: return '◆ CARD ◆';
+    }
+  };
+
+  const getMysticalCardStyle = (rarity: string, isFaceDown: boolean) => {
+    if (isFaceDown) {
+      return 'bg-gradient-to-b from-slate-900 to-slate-950 border-3 border-dashed border-blue-500 hover:border-yellow-400/80 hover:shadow-[0_0_15px_rgba(234,179,8,0.25)] text-slate-300';
+    }
+    switch (rarity) {
+      case 'C': 
+        return 'bg-gradient-to-b from-slate-900 to-slate-950 border-3 border-slate-700 text-slate-100 shadow-[0_4px_12px_rgba(255,255,255,0.05)]';
+      case 'UC': 
+        return 'bg-gradient-to-b from-indigo-950/70 to-slate-950 border-3 border-cyan-500 text-slate-100 shadow-[0_4px_15px_rgba(6,182,212,0.25)]';
+      case 'R': 
+        return 'bg-gradient-to-b from-blue-950/70 to-slate-950 border-3 border-blue-500 text-slate-100 shadow-[0_5px_18px_rgba(59,130,246,0.3)]';
+      case 'SR': 
+        return 'bg-gradient-to-b from-purple-950/70 to-slate-950 border-3 border-purple-500 text-slate-100 shadow-[0_6px_22px_rgba(168,85,247,0.35)]';
+      case 'UR': 
+        return 'bg-gradient-to-b from-amber-950/70 to-slate-950 border-3 border-amber-400 text-slate-100 shadow-[0_8px_25px_rgba(245,158,11,0.45)] animate-[pulse_4s_infinite]';
+      case 'LG': 
+        return 'bg-gradient-to-b from-red-950/70 to-slate-950 border-3 border-rose-500 text-slate-100 shadow-[0_10px_30px_rgba(244,63,94,0.55)] animate-[pulse_2s_infinite]';
+      default: 
+        return 'bg-slate-900 border-3 border-slate-700 text-slate-100';
+    }
   };
 
   // 解答処理
@@ -694,6 +839,145 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
 
             </div>
 
+          </div>
+        )}
+
+        {/* ==============================================
+            B. ほうしゅうお宝選択（Loot Phase）
+           ============================================== */}
+        {gameState === 'looting' && (
+          <div className="w-full max-w-3xl flex flex-col items-center gap-6 py-4 animate-fade-in z-50">
+            <div className="text-center space-y-2">
+              <div className="flex items-center justify-center gap-1.5 bg-yellow-400/15 border border-yellow-500/40 px-4 py-1.5 rounded-full text-xs text-yellow-300 font-extrabold uppercase tracking-wider shadow-md">
+                <Sparkles size={13} className="text-yellow-300 animate-bounce" />
+                <span>お宝報酬カードの選択 ({lootRound + 1} / {defeatedCount} 枚目)</span>
+              </div>
+              <h2 className="text-xl md:text-2xl font-black text-white tracking-widest mt-1">
+                幻影の秘宝を ハックせよ！
+              </h2>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                幻影を撃破した力で、3つのクリスタルカードから1つを実用カードとして持ち帰ることができます。
+              </p>
+            </div>
+
+            {/* 3つの選択肢 */}
+            {!lootRevealed ? (
+              <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 px-4 md:px-8 justify-center items-stretch my-6">
+                {lootOptions.map((card, idx) => (
+                  <div
+                    key={card.id + '_' + idx}
+                    onClick={() => handleLootCardClick(idx)}
+                    className={`relative min-h-[280px] rounded-2xl cursor-pointer transition-all duration-350 transform-gpu hover:-translate-y-2 flex flex-col justify-center items-center ${getMysticalCardStyle(card.rarity, true)} p-5 shadow-lg group text-center space-y-4`}
+                    id={`timeattack-loot-card-${idx}`}
+                  >
+                    <div className="w-14 h-14 rounded-full bg-slate-950 border-2 border-dashed border-cyan-400 flex items-center justify-center text-cyan-400 text-2xl group-hover:text-yellow-405 group-hover:border-yellow-404 transition-all duration-300">
+                      ★
+                    </div>
+                    <div>
+                      <span className="text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-900 px-2 py-0.5 rounded font-mono font-bold tracking-widest block mb-1">
+                        CRYSTAL CARD
+                      </span>
+                      <span className="text-xs font-bold text-slate-400 group-hover:text-slate-250 transition-colors">
+                        クリックして解放
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* 開封後・詳細カードプレビュー */
+              <div className="max-w-md w-full flex flex-col items-center px-4 relative my-4 z-55">
+                <div className="w-full text-center text-[10px] sm:text-xs font-black text-yellow-400 mb-3 bg-yellow-950/50 px-3 py-1.5 border border-yellow-850 rounded-full animate-pulse tracking-widest uppercase">
+                  ★ 幻影のクリスタルが 実体化した！ ★
+                </div>
+
+                {selectedLootIndex !== null && (
+                  <div className={`w-full rounded-2xl text-slate-100 transition-all duration-300 font-sans flex flex-col justify-between ${getMysticalCardStyle(lootOptions[selectedLootIndex].rarity, false)} border-3 p-5 shadow-2xl relative overflow-hidden`}>
+                    
+                    {/* カードヘッダー */}
+                    <div className="border-b border-slate-800 pb-2 flex justify-between items-center text-[10px] sm:text-xs">
+                      <span className={getRarityBadgeColor(lootOptions[selectedLootIndex].rarity)}>
+                        {getRarityName(lootOptions[selectedLootIndex].rarity)}
+                      </span>
+                      <span className="text-[9.5px] text-slate-400 font-mono font-bold tracking-wider truncate max-w-[150px]">
+                        {CLUSTERS.find(c => c.id === lootOptions[selectedLootIndex].clusterId)?.name || 'IT分野'}
+                      </span>
+                    </div>
+
+                    {/* メイン部分：絵文字枠と見出し */}
+                    <div className="flex items-center gap-4 mt-3">
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-3.5xl sm:text-4.5xl shrink-0 shadow-inner">
+                        {getTermEmoji(lootOptions[selectedLootIndex].id)}
+                      </div>
+                      <div className="flex flex-col min-w-0 text-left">
+                        <h3 className="text-base sm:text-lg font-black tracking-normal text-slate-100 leading-tight">
+                          {lootOptions[selectedLootIndex].name}
+                        </h3>
+                        {collectedCardIds.includes(lootOptions[selectedLootIndex].id) ? (
+                          <span className="text-[9px] sm:text-[10px] font-black tracking-wider mt-1 uppercase leading-none text-slate-400 bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded shadow-sm self-start">
+                            所持: {collectedCardIds.filter(id => id === lootOptions[selectedLootIndex].id).length}枚
+                          </span>
+                        ) : (
+                          <span className="text-[9px] sm:text-[10px] bg-rose-950/60 text-rose-350 border border-rose-800 font-black px-1.5 py-0.5 rounded tracking-wider mt-1 animate-pulse uppercase leading-none self-start">
+                            ★ 新規カード解放 !
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* カード解説 */}
+                    <div className="my-3 text-left flex flex-col gap-2">
+                      <div className="text-xs sm:text-sm font-extrabold text-slate-200 leading-relaxed bg-black/55 border border-slate-850 p-3 sm:p-4 rounded-xl">
+                        <span className="text-cyan-400 text-[10px] font-black block mb-1 tracking-wider">// 用語の定義:</span>
+                        {lootOptions[selectedLootIndex].definition}
+                      </div>
+                      {lootOptions[selectedLootIndex].flavorText && (
+                        <div className="text-xs text-slate-400 italic leading-relaxed pl-2 bg-slate-950 border-l-4 border-slate-705 rounded-r-xl py-1 px-2">
+                          {lootOptions[selectedLootIndex].flavorText}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 効果バフ */}
+                    <div className="mt-1 border-t border-slate-850 pt-2 flex flex-col gap-1.5">
+                      <div className="flex flex-col gap-1.5 text-[10px] sm:text-xs bg-slate-950 border border-slate-850 px-3 py-2 rounded-lg font-bold">
+                        <div className="flex justify-between items-center text-slate-300 border-b border-slate-850 pb-1">
+                          <span>永続効果:</span>
+                          <span className="font-mono text-cyan-400 font-black">
+                            {lootOptions[selectedLootIndex].statsBonus.hp ? `HP +${(lootOptions[selectedLootIndex].statsBonus.hp * 0.1).toFixed(1)} ` : ''}
+                            {lootOptions[selectedLootIndex].statsBonus.attack ? `ATK +${(lootOptions[selectedLootIndex].statsBonus.attack * 0.1).toFixed(1)} ` : ''}
+                            {lootOptions[selectedLootIndex].statsBonus.xpBonus ? `XP +${(lootOptions[selectedLootIndex].statsBonus.xpBonus * 0.1).toFixed(1)}% ` : ''}
+                            {lootOptions[selectedLootIndex].statsBonus.timerBonus ? `Time +${(lootOptions[selectedLootIndex].statsBonus.timerBonus * 0.1).toFixed(1)}秒` : ''}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                )}
+
+                {/* 決定ボタン */}
+                <div className="flex gap-3 w-full mt-4 justify-center">
+                  <button
+                    onClick={() => {
+                      setLootRevealed(false);
+                      setSelectedLootIndex(null);
+                    }}
+                    className="px-5 py-3.5 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 font-black rounded-xl active:scale-95 transition-all cursor-pointer text-xs sm:text-sm"
+                    id="loot-cancel-btn"
+                  >
+                    [ 別のクリスタルを選ぶ ]
+                  </button>
+                  <button
+                    onClick={handleLootConfirm}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-6 py-3.5 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-450 hover:to-amber-450 text-slate-950 font-black rounded-xl border border-yellow-405 shadow-lg active:scale-95 transition-all cursor-pointer text-xs sm:text-sm tracking-wider"
+                    id="loot-confirm-btn"
+                  >
+                    <span>[ このお宝を受け取る ]</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
