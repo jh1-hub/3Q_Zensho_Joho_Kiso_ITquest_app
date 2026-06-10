@@ -295,10 +295,10 @@ export default function LootScreen({
               <div className="mt-4 pt-2 border-t border-slate-200 text-[10px] sm:text-xs font-bold flex justify-between items-center text-slate-655 bg-slate-100 px-2 py-1 rounded">
                 <span className="font-sans">冒険中効果:</span>
                 <span className="text-blue-900 font-mono text-[10px] font-extrabold">
-                  {card.statsBonus.hp ? `HP +${(card.statsBonus.hp * 0.5 * 10).toFixed(0)}  ` : ''}
-                  {card.statsBonus.attack ? `ATK +${(card.statsBonus.attack * 0.5 * 10).toFixed(1)}  ` : ''}
-                  {card.statsBonus.xpBonus ? `XP +${(card.statsBonus.xpBonus * 0.5 * 10).toFixed(0)}%  ` : ''}
-                  {card.statsBonus.timerBonus ? `Time +${(card.statsBonus.timerBonus * 0.5 * 10).toFixed(0)}秒` : ''}
+                  {card.statsBonus.hp ? `HP +${(card.statsBonus.hp * 0.5 * 30).toFixed(0)}  ` : ''}
+                  {card.statsBonus.attack ? `ATK +${(card.statsBonus.attack * 0.5 * 30).toFixed(1)}  ` : ''}
+                  {card.statsBonus.xpBonus ? `XP +${(card.statsBonus.xpBonus * 0.5 * 30).toFixed(0)}%  ` : ''}
+                  {card.statsBonus.timerBonus ? `Time +${(card.statsBonus.timerBonus * 0.5 * 30).toFixed(0)}秒` : ''}
                 </span>
               </div>
             </div>
@@ -375,10 +375,10 @@ export default function LootScreen({
                 <div className="flex justify-between items-center text-emerald-950 text-[10px] sm:text-[11px] font-black">
                   <span>冒険中効果:</span>
                   <span className="font-mono text-emerald-700 font-bold">
-                    {options[selectedIndex!].statsBonus.hp ? `HP +${(options[selectedIndex!].statsBonus.hp * 0.5 * 10).toFixed(0)} ` : ''}
-                    {options[selectedIndex!].statsBonus.attack ? `ATK +${(options[selectedIndex!].statsBonus.attack * 0.5 * 10).toFixed(1)} ` : ''}
-                    {options[selectedIndex!].statsBonus.xpBonus ? `XP +${(options[selectedIndex!].statsBonus.xpBonus * 0.5 * 10).toFixed(0)}% ` : ''}
-                    {options[selectedIndex!].statsBonus.timerBonus ? `Time +${(options[selectedIndex!].statsBonus.timerBonus * 0.5 * 10).toFixed(0)}秒` : ''}
+                    {options[selectedIndex!].statsBonus.hp ? `HP +${(options[selectedIndex!].statsBonus.hp * 0.5 * 30).toFixed(0)} ` : ''}
+                    {options[selectedIndex!].statsBonus.attack ? `ATK +${(options[selectedIndex!].statsBonus.attack * 0.5 * 30).toFixed(1)} ` : ''}
+                    {options[selectedIndex!].statsBonus.xpBonus ? `XP +${(options[selectedIndex!].statsBonus.xpBonus * 0.5 * 30).toFixed(0)}% ` : ''}
+                    {options[selectedIndex!].statsBonus.timerBonus ? `Time +${(options[selectedIndex!].statsBonus.timerBonus * 0.5 * 30).toFixed(0)}秒` : ''}
                   </span>
                 </div>
               </div>

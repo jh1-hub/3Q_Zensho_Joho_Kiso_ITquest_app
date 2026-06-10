@@ -54,14 +54,14 @@ export function calculatePlayerBonus(collectedIds: string[], runCardIds: string[
   xpBonus += rawCollectedXpBonus / 100;
   timerBonus += rawCollectedTimerBonus;
 
-  // 2. この冒険中に獲得したカードの個別ボーナス（こちらは一時的なシナジー快感のため、元々の強さを保つ。ただしゲーム崩壊を防ぐためマイルドにする）
+  // 2. この冒険中に獲得したカードの個別ボーナス（こちらは一時的なシナジー快感のため、元々の強さを保つ。ただしゲーム崩壊を防ぐためマイルドにする -> 30倍へ増加）
   runCardIds.forEach(id => {
     const card = TERM_CARDS.find(c => c.id === id);
     if (card) {
-      const runHp = (card.statsBonus.hp || 0) * 0.5 * 3;      // 8倍から3倍へ
-      const runAttack = (card.statsBonus.attack || 0) * 0.5 * 3;
-      const runXpBonus = (card.statsBonus.xpBonus || 0) * 0.5 * 3;
-      const runTimerBonus = (card.statsBonus.timerBonus || 0) * 0.5 * 3;
+      const runHp = (card.statsBonus.hp || 0) * 0.5 * 30;
+      const runAttack = (card.statsBonus.attack || 0) * 0.5 * 30;
+      const runXpBonus = (card.statsBonus.xpBonus || 0) * 0.5 * 30;
+      const runTimerBonus = (card.statsBonus.timerBonus || 0) * 0.5 * 30;
 
       hp += runHp;
       attack += runAttack;
@@ -241,11 +241,12 @@ export function getChoiceCountForStep(step: number | 'boss'): number {
  * Slay the Spire風のファンタジー魔物にカスタマイズ
  */
 export function getEnemyConfig(type: 'battle_easy' | 'battle_hard' | 'boss', step: number) {
+  const scale = 1.0 + step * 0.15;
   if (type === 'boss') {
     return {
       name: '量子コア・オメガ「NEO-HYDRA」 (Quantum Core "NEO-HYDRA")',
-      maxHp: 220, // 攻撃力10+ボーナス 程度で約12問、高速回答でも7〜8問正解が必要
-      damage: 22,
+      maxHp: Math.round(220 * scale), // 攻撃力10+ボーナス 程度で約12問、高速回答でも7〜8問正解が必要
+      damage: Math.round(22 * scale),
       questions: 15
     };
   }
@@ -253,8 +254,8 @@ export function getEnemyConfig(type: 'battle_easy' | 'battle_hard' | 'boss', ste
   if (type === 'battle_hard') {
     return {
       name: step === 1 ? '防衛セキュリティ「AEGIS_V2」 (Sentinel Defense "AEGIS_V2")' : '亡霊コードウィーバー「LEPTO.java」 (Call-Weaver "LEPTO.java")',
-      maxHp: 140, // 攻撃力10+ボーナス 程度で約7〜9問正解が必要
-      damage: 16,
+      maxHp: Math.round(140 * scale), // 攻撃力10+ボーナス 程度で約7〜9問正解が必要
+      damage: Math.round(16 * scale),
       questions: 10
     };
   }
@@ -262,8 +263,8 @@ export function getEnemyConfig(type: 'battle_easy' | 'battle_hard' | 'boss', ste
   // battle_easy
   return {
     name: step === 0 ? '微細バグウイルス「BUG-GOBLIN」 (Micro-Virus "BUG-GOBLIN")' : '液状エラー「DATA-LEAK SLIME」 (Leaking Core "DATA-LEAK SLIME")',
-    maxHp: 85, // 攻撃力10〜12 程度で約5〜7問正解が必要
-    damage: 10,
+    maxHp: Math.round(85 * scale), // 攻撃力10〜12 程度で約5〜7問正解が必要
+    damage: Math.round(10 * scale),
     questions: 8
   };
 }

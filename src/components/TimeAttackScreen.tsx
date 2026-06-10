@@ -516,216 +516,96 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
                   </div>
                   <div className="flex items-start gap-1">
                     <span className="text-cyan-405 font-bold shrink-0">・撃破ほうしゅう:</span>
-                    <span>幻影を倒した数だけ、終了時に<strong>お宝カードをもれなく獲得</strong>！</span>
+                    <span>幻影をはらいのけた数だけ、実用カードを試練終了時に持ち帰れる！</span>
                   </div>
                 </div>
 
-                {/* ドラクエ歴史ボード */}
-                <div className="flex justify-center gap-6 py-2 bg-black border border-slate-800 rounded-lg max-w-sm mx-auto font-mono text-center">
-                  <div>
-                    <span className="block text-[8px] text-slate-400 font-sans font-bold">最高記録</span>
-                    <span className="text-sm font-bold text-yellow-400">{gameStats.timeAttackHighScore || 0} pts</span>
-                  </div>
-                  <div className="w-px bg-slate-800" />
-                  <div>
-                    <span className="block text-[8px] text-slate-400 font-sans font-bold">最高連撃</span>
-                    <span className="text-sm font-bold text-purple-400">{gameStats.timeAttackMaxCombo || 0} 連撃</span>
-                  </div>
+                <div className="pt-2">
+                  <button
+                    onClick={() => {
+                      setIsCounting(true);
+                      setStartCountdown(3);
+                    }}
+                    disabled={isCounting}
+                    className="w-full py-3 bg-blue-900 border-2 border-white rounded-md text-white font-bold select-none hover:bg-white hover:text-slate-950 transition-all cursor-pointer shadow-md active:scale-95"
+                  >
+                    ▶ 試練に いどむ
+                  </button>
                 </div>
-
-                {/* DQ戦闘開始コマンドボタン */}
-                <button
-                  onClick={startTimerAndGame}
-                  className="w-full max-w-sm py-3.5 bg-blue-900 border-2 border-white rounded-md text-white font-bold text-xs select-none tracking-widest hover:bg-white hover:text-slate-950 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1 shadow-md"
-                >
-                  <span>▶ 鏡の迷宮の門を ひらく（戦闘開始）</span>
-                </button>
               </div>
             )}
           </div>
         )}
 
-        {/* ==============================================
-            B. ドラクエ風戦闘プレイ画面
-           ============================================== */}
         {gameState === 'playing' && activeProblem && (
-          <div className="w-full flex flex-col items-center space-y-4">
+          <div className="w-full flex flex-col items-center gap-5 md:gap-6 flex-1">
             
-            {/* 1) DQ風ステータスウィンドウ (上部) */}
-            <div className="w-full grid grid-cols-3 gap-3">
+            {/* 1) 巨大えいしょう残り時間メーター (ヘッダー近くで圧倒的に目立たせる構成) */}
+            <div className="w-full bg-slate-900 border-4 border-cyan-500 rounded-xl p-3.5 shadow-[0_0_20px_rgba(6,182,212,0.35)] relative overflow-hidden flex flex-col gap-2 z-10">
+              <div className="flex justify-between items-center px-1">
+                <div className="flex items-center gap-2 align-middle">
+                  <Timer className={`w-5 h-5 ${timeRemaining <= 10 ? 'text-red-500 animate-pulse' : 'text-cyan-405'}`} />
+                  <span className="text-xs font-black text-cyan-200 tracking-wider uppercase mb-[-1px]">えいしょう残り時間 (REMAINING TIME)</span>
+                </div>
+                <div className={`text-xl sm:text-2xl font-black font-mono tracking-tight ${timeRemaining <= 10 ? 'text-red-500 animate-pulse' : 'text-cyan-400'}`}>
+                  {timeRemaining.toFixed(1)} <span className="text-xs text-slate-400">秒</span>
+                </div>
+              </div>
               
-              {/* ステータス左：勇者（Player） */}
-              <div className="bg-slate-900 border-4 border-double border-white rounded-lg p-2.5 font-mono text-center relative flex flex-col justify-between">
-                <span className="text-[10px] text-slate-400 block font-sans font-bold">ゆうしゃ</span>
-                <span className="text-xs md:text-sm font-bold text-slate-100 block mt-0.5">じかんの旅人</span>
-                
-                {/* 連続コンボ */}
-                <div className="mt-2 text-[10px] text-slate-300">
-                  れんげき: <span className={`font-black ${combo >= 5 ? 'text-yellow-400 animate-pulse text-xs' : 'text-slate-200'}`}>{combo}</span>
+              {/* 高い視認性の太い残り時間プログレスバー */}
+              <div className="w-full bg-slate-950 border border-slate-800 h-5.5 rounded-full overflow-hidden p-[1px] relative">
+                <div 
+                  className={`h-full rounded-full transition-all duration-300 relative ${
+                    timeRemaining <= 10 
+                      ? 'bg-gradient-to-r from-red-650 via-rose-500 to-red-650 animate-pulse' 
+                      : 'bg-gradient-to-r from-cyan-500 via-sky-450 to-cyan-550'
+                  }`}
+                  style={{ width: `${Math.min(100, (timeRemaining / 30) * 100)}%` }}
+                >
+                  {/* 流れるグロー光沢エフェクト */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-30 animate-[shimmer_2s_infinite]" />
                 </div>
               </div>
 
-              {/* ステータス中：残り詠唱時間 (Timer) */}
-              <div className="bg-slate-900 border-4 border-double border-white rounded-lg p-2.5 font-mono text-center relative flex flex-col justify-between">
-                <span className="text-[10px] text-slate-400 block font-sans font-bold">えいしょう</span>
-                <span className={`text-lg md:text-xl font-bold tracking-tight block ${timeRemaining <= 10 ? 'text-red-500 animate-pulse' : 'text-cyan-400'}`}>
-                  {timeRemaining}s
-                </span>
-                
-                {/* タイムメーター */}
-                <div className="w-full bg-slate-850 h-1.5 rounded overflow-hidden p-[1px] mt-1 border border-slate-800">
-                  <div 
-                    className={`h-full rounded transition-all duration-300 ${timeRemaining <= 10 ? 'bg-red-600 animate-pulse' : 'bg-cyan-500'}`}
-                    style={{ width: `${(timeRemaining / 30) * 100}%` }}
-                  />
+              {/* タイム増減アニメーションインジケータ */}
+              {timeBonusState.visible && (
+                <div key={timeBonusState.key + '_header'} className={`absolute right-4 top-2 text-[10.5px] font-black px-2.5 py-0.5 border rounded shadow-lg z-30 animate-scale-up ${
+                  timeBonusState.amount > 0 ? 'bg-emerald-950 text-emerald-350 border-emerald-400/50' : 'bg-red-955 text-red-305 border-red-500/40'
+                }`}>
+                  {timeBonusState.amount > 0 ? `+${timeBonusState.amount}s!` : `${timeBonusState.amount}s!`}
                 </div>
-
-                {/* タイム増減アニメーションインジケータ */}
-                {timeBonusState.visible && (
-                  <div key={timeBonusState.key} className={`absolute -top-4 left-1/2 -translate-x-1/2 text-[10px] font-bold px-1.5 py-0.5 border rounded shadow-md z-30 animate-scale-up ${
-                    timeBonusState.amount > 0 ? 'bg-emerald-900 text-emerald-300 border-emerald-400/50' : 'bg-red-950 text-red-300 border-red-500/50'
-                  }`}>
-                    {timeBonusState.amount > 0 ? `+${timeBonusState.amount}s` : `${timeBonusState.amount}s`}
-                  </div>
-                )}
-              </div>
-
-              {/* ステータス右：スコア（Score） */}
-              <div className="bg-slate-900 border-4 border-double border-white rounded-lg p-2.5 font-mono text-center relative flex flex-col justify-between">
-                <span className="text-[10px] text-slate-400 block font-sans font-bold">ゴールド（SCORE）</span>
-                <span className="text-sm md:text-base font-bold text-yellow-400 block mt-0.5">
-                  {score}
-                </span>
-
-                {/* スコア通知ポップ */}
-                {scoreBonusState.visible && (
-                  <div key={scoreBonusState.key} className="absolute -top-4 left-1/2 -translate-x-1/2 text-[9px] font-bold px-1 py-0.5 text-yellow-400 bg-yellow-950/90 border border-yellow-500/50 rounded shadow-md z-30 animate-scale-up">
-                    +{scoreBonusState.amount} G
-                  </div>
-                )}
-
-                <span className="text-[9px] text-slate-505 font-sans block mt-1">
-                  最高: {gameStats.timeAttackHighScore || 0}
-                </span>
-              </div>
-
+              )}
             </div>
 
-            {/* 2) DQ風敵対峙グラフィック (中央 - 要望により幻影を大きくし、アクションログ側を小さく) */}
-            <div className="w-full bg-slate-950 border-4 border-double border-white rounded-lg p-4 flex flex-col md:flex-row items-center justify-between gap-4 relative overflow-hidden min-h-[170px]">
-              
-              {/* 星空・暗黒エフェクト背景 */}
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(31,41,55,0.4)_0%,transparent_75%)] pointer-events-none" />
-
-              {/* 左：モンスター画像としての「自分自身」 [flex-growを1.3にしてより大きく] */}
-              <div className="flex-[1.3] flex flex-col items-center justify-center relative">
-                
-                {/* 己の幻影HPバー */}
-                <div className="w-32 text-center mb-1.5 font-mono text-[9px] text-slate-300 bg-slate-900/80 py-0.5 px-2.5 rounded border border-slate-700 shadow flex flex-col gap-0.5">
-                  <span>おのれの幻影: HP {enemyHp}/{enemyMaxHp}</span>
-                  <div className="w-full bg-slate-800 h-1.5 rounded overflow-hidden mt-1 p-[1px] border border-slate-950">
-                    <div 
-                      className="bg-red-500 h-full rounded transition-all duration-300" 
-                      style={{ width: `${Math.max(0, (enemyHp / enemyMaxHp) * 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="relative overflow-hidden rounded-lg shadow-2xl">
-                  {/* ロード失敗時の Unsplash フォールバックと自身のヒーロー画像 */}
-                  <img
-                    src={PLAYER_IMAGE}
-                    alt="おのれの幻影"
-                    referrerPolicy="no-referrer"
-                    className={`w-32 h-32 object-cover rounded-lg border-2 border-slate-500/55 transition-all ${
-                      enemyFlash ? 'animate-hit-shake' : ''
-                    }`}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1544256718-3bcf237f3974?auto=format&fit=crop&w=400&q=80';
-                    }}
-                  />
-                  {/* シャドー敵（心の迷い）を表現するために画像に紫の暗黒オーバーレイを軽く重ねる */}
-                  <div className="absolute inset-0 bg-purple-950/20 mix-blend-color-burn rounded-lg pointer-events-none" />
-
-                  {/* 攻撃成功時の聖なる斬撃エフェクト (通常戦闘を凌駕する派手さ) */}
-                  {showStrikeSlash && (
-                    <div className="absolute inset-0 z-40 bg-yellow-400/25 flex items-center justify-center pointer-events-none overflow-hidden animate-[pulse_0.15s_infinite]">
-                      {/* 閃光斜線1 */}
-                      <div className="absolute bg-white border-2 border-yellow-300 h-2 w-[160%] rotate-45 shadow-[0_0_16px_#fbbf24] animate-[ping_0.2s_ease-out_infinite]" />
-                      {/* 閃光斜線2 */}
-                      <div className="absolute bg-white border-2 border-yellow-300 h-2 w-[160%] -rotate-45 shadow-[0_0_16px_#fbbf24] animate-[ping_0.2s_ease-out_infinite]" />
-                      <div className="absolute text-yellow-101 drop-shadow-[0_4px_14px_#fbbf24] font-black text-4xl animate-bounce">⚡⚡</div>
-                    </div>
-                  )}
-
-                  {/* 自爆被弾の結晶ひび割れエフェクト */}
-                  {showBarrierCrack && (
-                    <div className="absolute inset-0 z-40 bg-red-600/35 flex items-center justify-center pointer-events-none overflow-hidden">
-                      <div className="absolute border-4 border-dashed border-red-500 w-full h-full rotate-12 scale-110 opacity-70 animate-ping" />
-                      <div className="absolute border-4 border-dashed border-purple-505 w-[85%] h-[85%] -rotate-12 opacity-80 animate-pulse" />
-                      <div className="absolute text-red-101 drop-shadow-[0_4px_12px_#ef4444] font-black text-3xl animate-bounce">💥</div>
-                    </div>
-                  )}
-                </div>
-
-                {/* ダメージポップアップエフェクト */}
-                {damagePopup && damagePopup.visible && (
-                  <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-mono font-black text-2xl z-30 drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] animate-scale-up ${
-                    damagePopup.isPlayer ? 'text-red-500' : 'text-yellow-400'
-                  }`}>
-                    {damagePopup.isCrit ? '会心の一撃！ ' : ''}-{damagePopup.amount} HP
-                  </div>
-                )}
-              </div>
-
-              {/* 右：ドラクエメッセージウィンドウ (要望によりアクションログを小さくし、文字をスマートに整理) */}
-              <div className="flex-[0.7] md:max-w-[40%] h-full w-full bg-slate-900 border-4 border-double border-slate-750 p-2 rounded-lg flex flex-col justify-between font-mono text-[11px] leading-normal opacity-90">
-                <div className="text-slate-400 text-[8.5px] uppercase tracking-wider border-b border-slate-800 pb-1 mb-1 select-none">
-                  あくしょんログ
-                </div>
-                <p className="text-slate-200 font-bold select-text min-h-[32px] line-clamp-3">
-                  {gameMessage}
-                </p>
-                <div className="border-t border-slate-800 pt-1.5 mt-1.5 flex justify-between text-[8px] text-slate-500 font-sans">
-                  <span>撃破: {defeatedCount} 体</span>
-                  <span>全問: {correctCount} / {currentPoolIndex + 1}</span>
-                </div>
-              </div>
-
-            </div>
-
-            {/* 3) ドラクエ風メッセージテキストボックス [要望により問題内容の詠唱パネルを大きく表示するように拡張] */}
-            <div className={`w-full bg-slate-900 border-4 border-double p-5 rounded-lg flex flex-col justify-between relative shadow-2xl transition-all duration-200 ${
-              isAnswered ? (isCorrect ? 'border-emerald-600 bg-emerald-950/15' : 'border-red-650 bg-red-950/15') : 'border-white'
+            {/* 2) 超巨大・超鮮明な問題文表示（詠唱）パネル (要望に合わせ構成：余計な説明文は完全カットして最大可読性) */}
+            <div className={`w-full bg-slate-900 border-4 p-6 sm:p-8 md:p-10 rounded-2xl flex flex-col justify-between relative shadow-[0_12px_24px_rgba(0,0,0,0.55)] transition-all duration-300 ${
+              isAnswered ? (isCorrect ? 'border-emerald-500 bg-emerald-950/20' : 'border-red-500 bg-red-950/20') : 'border-slate-800'
             }`}>
-              
-              <div className="absolute top-2 left-3.5 text-[9px] text-slate-400 font-black font-mono tracking-widest uppercase select-none">
-                【 問いの詠唱 】 STAGE #{currentPoolIndex + 1}
+              <div className="absolute top-2.5 left-4 text-[9px] text-slate-450 font-black font-mono tracking-widest uppercase select-none">
+                🛡️ 鏡の試練 // QUESTION STAGE #{currentPoolIndex + 1}
               </div>
 
-              <div className="my-auto py-5 text-center px-2">
-                <h3 className="font-black text-slate-100 leading-relaxed select-text text-base md:text-lg tracking-wide">
-                  <span>『 {activeProblem.raw.definition} 』</span>
+              <div className="my-auto py-5 text-center">
+                {/* 非常に大きく読みやすい問題文 */}
+                <h3 className="font-sans font-black text-slate-100 select-text text-lg sm:text-2xl md:text-3xl lg:text-3.5xl leading-relaxed tracking-wider px-2 break-words">
+                  『 {activeProblem.raw.definition} 』
                 </h3>
-                <span className="block text-[11px] text-yellow-400 font-extrabold mt-3 border-t border-dashed border-slate-800 pt-2 font-sans tracking-wider">
-                  この説明に最もあてはまる 「IT用語のハック名」 を選択せよ！
-                </span>
               </div>
             </div>
 
-            {/* 4) クイズ用の解答パネル [要望により選択肢が押しやすく・大きく表示されるようにサイズアップ] */}
+            {/* 3) クイズ用の解答パネル [要望により選択肢が押しやすく・大きく表示されるようにサイズアップ] */}
             <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
               {activeProblem.choices.map((choice, index) => {
                 const isSelected = selectedAnswer === index;
                 const isThisChoiceCorrect = index === activeProblem.correctIndex;
                 
-                let btnStyle = 'border-slate-700 bg-slate-900 text-slate-100 hover:border-yellow-400 hover:bg-slate-850 active:scale-[0.99]';
+                let btnStyle = 'border-slate-700 bg-slate-900 text-slate-100 hover:border-yellow-400 hover:bg-slate-850 active:scale-[0.99] hover:shadow-lg transition-all duration-150';
                 
                 if (isAnswered) {
                   if (isThisChoiceCorrect) {
-                     btnStyle = 'border-emerald-450 bg-emerald-900/70 text-emerald-250 font-black shadow-lg scale-[1.01]';
+                     btnStyle = 'border-emerald-450 bg-emerald-950 text-emerald-300 font-extrabold shadow-lg scale-[1.015]';
                   } else if (isSelected) {
-                     btnStyle = 'border-red-500 bg-red-950 text-red-300';
+                     btnStyle = 'border-red-500 bg-red-950 text-red-300 font-bold';
                   } else {
                      btnStyle = 'border-slate-950 opacity-15 bg-slate-950 text-slate-800 scale-[0.98] pointer-events-none';
                   }
@@ -736,11 +616,11 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
                     key={index}
                     onClick={() => handleAnswerSelect(index)}
                     disabled={isAnswered}
-                    className={`w-full min-h-[64px] p-4 md:p-5 rounded-xl border-3 text-left flex items-center gap-3.5 transition-all outline-none leading-relaxed text-xs md:text-sm cursor-pointer select-none font-bold ${btnStyle}`}
+                    className={`w-full min-h-[82px] p-5 sm:p-6 rounded-2xl border-3 text-left flex items-center gap-4 transition-all outline-none leading-relaxed text-sm sm:text-base md:text-lg cursor-pointer select-none font-black ${btnStyle}`}
                     id={`timeattack-choice-${index}`}
                   >
-                    {/* ドラクエ風コマンドカーソルラベル */}
-                    <span className="font-mono bg-black border border-slate-705 text-yellow-405 font-extrabold w-5 h-5 rounded flex items-center justify-center shrink-0 text-[10px]">
+                    {/* コマンドカーソルラベル */}
+                    <span className="font-mono bg-black border border-slate-600 text-yellow-405 font-extrabold w-7 h-7 rounded flex items-center justify-center shrink-0 text-xs shadow-inner">
                       {getChoiceLabel(index)}
                     </span>
                     <span className="flex-1 leading-snug break-words">
@@ -749,6 +629,69 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
                   </button>
                 );
               })}
+            </div>
+
+            {/* 4) DQ風おまけHUD (戦闘状態・グラフィック・アクティビティログをコンパクトに下部にまとめる) */}
+            <div className="w-full mt-auto bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs relative overflow-hidden shadow-md">
+              {/* 薄暗い背景 */}
+              <div className="absolute inset-0 bg-[#000000]/60 pointer-events-none" />
+
+              {/* 幻影グラフィック (控えめ。おまけ) */}
+              <div className="flex items-center gap-2.5 relative z-10 shrink-0">
+                <div className="relative">
+                  <img
+                    src={PLAYER_IMAGE}
+                    alt="おのれの幻影"
+                    referrerPolicy="no-referrer"
+                    className={`w-9 h-9 object-cover rounded border border-slate-700 transition-all ${
+                      enemyFlash ? 'animate-hit-shake' : ''
+                    }`}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1544256718-3bcf237f3974?auto=format&fit=crop&w=400&q=80';
+                    }}
+                  />
+                  {showStrikeSlash && (
+                    <div className="absolute inset-0 z-40 bg-yellow-400/20 flex items-center justify-center pointer-events-none">
+                      <div className="absolute bg-white h-0.5 w-[140%] rotate-45 shadow-[0_0_8px_#fbbf24]" />
+                      <div className="absolute bg-white h-0.5 w-[140%] -rotate-45 shadow-[0_0_8px_#fbbf24]" />
+                    </div>
+                  )}
+                  {showBarrierCrack && (
+                    <div className="absolute inset-0 z-40 bg-red-600/30 flex items-center justify-center pointer-events-none">
+                      <div className="absolute border border-red-500 w-full h-full rotate-12" />
+                    </div>
+                  )}
+                  {damagePopup && damagePopup.visible && (
+                    <div className={`absolute top-0 left-0 font-mono font-black text-[10px] z-30 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] animate-scale-up ${
+                      damagePopup.isPlayer ? 'text-red-500' : 'text-yellow-405'
+                    }`}>
+                      -{damagePopup.amount} HP
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col">
+                  <span className="text-[9px] text-slate-400 font-bold leading-none">おのれの幻影</span>
+                  <span className="text-[10px] text-slate-350 font-mono font-bold mt-1">HP {enemyHp}/{enemyMaxHp}</span>
+                </div>
+              </div>
+
+              {/* ログ部分 (コンパクトにおまけ表示) */}
+              <div className="flex-1 min-w-[120px] bg-slate-950 border border-slate-800 px-2.5 py-1 rounded relative z-10 h-8 flex items-center">
+                <p className="text-slate-300 font-mono text-[9.5px] sm:text-[10.5px] leading-tight line-clamp-1 select-text font-bold">
+                  {gameMessage}
+                </p>
+              </div>
+
+              {/* ステータス & 数値カウンター */}
+              <div className="flex items-center gap-3 relative z-10 text-[10px] font-mono shrink-0 select-none bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+                <div>れんげき: <span className={`font-black ${combo >= 5 ? 'text-yellow-405 animate-pulse text-xs' : 'text-slate-200'}`}>{combo}</span></div>
+                <div className="w-px bg-slate-800 h-3" />
+                <div>スコア: <span className="text-yellow-400 font-bold">{score} G</span></div>
+                <div className="w-px bg-slate-800 h-3" />
+                <div>撃破: <span className="text-cyan-405 font-bold">{defeatedCount}</span></div>
+              </div>
+
             </div>
 
           </div>

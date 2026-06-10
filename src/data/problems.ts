@@ -4096,30 +4096,30 @@ quizCategories.forEach(cat => {
       const typeIndex = term.id % 4; 
 
       if (r === 'C') {
-        if (typeIndex === 0) hp = parseFloat((0.4 * uniqueFactor).toFixed(2));
-        else if (typeIndex === 1) attack = parseFloat((0.08 * uniqueFactor).toFixed(3));
-        else if (typeIndex === 2) xpBonus = parseFloat((1.0 * uniqueFactor).toFixed(2));
-        else timerBonus = parseFloat((0.4 * uniqueFactor).toFixed(2));
+        if (typeIndex === 0) hp = parseFloat((0.04 * uniqueFactor).toFixed(3));
+        else if (typeIndex === 1) attack = parseFloat((0.008 * uniqueFactor).toFixed(4));
+        else if (typeIndex === 2) xpBonus = parseFloat((0.10 * uniqueFactor).toFixed(3));
+        else timerBonus = parseFloat((0.04 * uniqueFactor).toFixed(3));
       } else if (r === 'R' || r === 'UC') {
-        if (typeIndex === 0) hp = parseFloat((0.8 * uniqueFactor).toFixed(2));
-        else if (typeIndex === 1) attack = parseFloat((0.16 * uniqueFactor).toFixed(3));
-        else if (typeIndex === 2) xpBonus = parseFloat((2.0 * uniqueFactor).toFixed(2));
-        else timerBonus = parseFloat((0.8 * uniqueFactor).toFixed(2));
+        if (typeIndex === 0) hp = parseFloat((0.08 * uniqueFactor).toFixed(3));
+        else if (typeIndex === 1) attack = parseFloat((0.016 * uniqueFactor).toFixed(4));
+        else if (typeIndex === 2) xpBonus = parseFloat((0.20 * uniqueFactor).toFixed(3));
+        else timerBonus = parseFloat((0.08 * uniqueFactor).toFixed(3));
       } else if (r === 'SR') {
-        if (typeIndex === 0) hp = parseFloat((1.6 * uniqueFactor).toFixed(2));
-        else if (typeIndex === 1) attack = parseFloat((0.32 * uniqueFactor).toFixed(3));
-        else if (typeIndex === 2) xpBonus = parseFloat((4.0 * uniqueFactor).toFixed(2));
-        else timerBonus = parseFloat((1.6 * uniqueFactor).toFixed(2));
+        if (typeIndex === 0) hp = parseFloat((0.16 * uniqueFactor).toFixed(3));
+        else if (typeIndex === 1) attack = parseFloat((0.032 * uniqueFactor).toFixed(4));
+        else if (typeIndex === 2) xpBonus = parseFloat((0.40 * uniqueFactor).toFixed(3));
+        else timerBonus = parseFloat((0.16 * uniqueFactor).toFixed(3));
       } else if (r === 'UR') {
-        if (typeIndex === 0) hp = parseFloat((3.2 * uniqueFactor).toFixed(2));
-        else if (typeIndex === 1) attack = parseFloat((0.64 * uniqueFactor).toFixed(3));
-        else if (typeIndex === 2) xpBonus = parseFloat((8.0 * uniqueFactor).toFixed(2));
-        else timerBonus = parseFloat((3.2 * uniqueFactor).toFixed(2));
+        if (typeIndex === 0) hp = parseFloat((0.32 * uniqueFactor).toFixed(3));
+        else if (typeIndex === 1) attack = parseFloat((0.064 * uniqueFactor).toFixed(4));
+        else if (typeIndex === 2) xpBonus = parseFloat((0.80 * uniqueFactor).toFixed(3));
+        else timerBonus = parseFloat((0.32 * uniqueFactor).toFixed(3));
       } else if (r === 'LG') {
-        if (typeIndex === 0) hp = parseFloat((6.4 * uniqueFactor).toFixed(2));
-        else if (typeIndex === 1) attack = parseFloat((1.28 * uniqueFactor).toFixed(3));
-        else if (typeIndex === 2) xpBonus = parseFloat((15.0 * uniqueFactor).toFixed(2));
-        else timerBonus = parseFloat((6.4 * uniqueFactor).toFixed(2));
+        if (typeIndex === 0) hp = parseFloat((0.64 * uniqueFactor).toFixed(3));
+        else if (typeIndex === 1) attack = parseFloat((0.128 * uniqueFactor).toFixed(4));
+        else if (typeIndex === 2) xpBonus = parseFloat((1.50 * uniqueFactor).toFixed(3));
+        else timerBonus = parseFloat((0.64 * uniqueFactor).toFixed(3));
       }
 
       TERM_CARDS.push({

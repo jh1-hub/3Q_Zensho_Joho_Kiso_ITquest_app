@@ -106,7 +106,7 @@ export default function MapScreen({
           )}
         </button>
 
-        <span className="text-[10px] text-stone-300 font-sans text-center mt-2 font-medium line-clamp-1">
+        <span className="text-[10.5px] text-stone-200 font-sans text-center mt-2 font-semibold break-words px-1 max-w-full block leading-tight">
           {node.label}
         </span>
         <span className="text-[8px] text-stone-500 font-mono tracking-wider mt-0.5 uppercase">

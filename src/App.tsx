@@ -404,8 +404,9 @@ export default function App() {
       const templates = isBoss ? pool.hard : (type === 'battle_easy' ? pool.easy : pool.hard);
       const template = templates[Math.floor(Math.random() * templates.length)];
       
-      const hp = Math.floor(Math.random() * (template.maxHp - template.minHp + 1)) + template.minHp;
-      const dmg = Math.floor(Math.random() * (template.maxDamage - template.minDamage + 1)) + template.minDamage;
+      const scaleFactor = 1.0 + step * 0.15;
+      const hp = Math.floor((Math.floor(Math.random() * (template.maxHp - template.minHp + 1)) + template.minHp) * scaleFactor);
+      const dmg = Math.floor((Math.floor(Math.random() * (template.maxDamage - template.minDamage + 1)) + template.minDamage) * scaleFactor);
       
       return {
         id,
