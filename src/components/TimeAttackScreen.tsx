@@ -96,108 +96,9 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
     };
   }, []);
 
-  // BGM / 効果音 Web Audio (シングルトン構成でメモリ・デバイス負荷を最適化)
+  // 効果音・BGMは冒険の仕様に合わせて完全無効化（パフォーマンス優先で動作軽量化）
   const playSound = (type: 'correct' | 'wrong' | 'comboUp' | 'superCombo' | 'tick' | 'timesUp' | 'start' | 'damage' | 'victory') => {
-    try {
-      if (!audioCtxRef.current) {
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioContextClass) {
-          audioCtxRef.current = new AudioContextClass();
-        }
-      }
-      const ctx = audioCtxRef.current;
-      if (!ctx) return;
-      if (ctx.state === 'suspended') {
-        ctx.resume();
-      }
-
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      if (type === 'correct') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
-        osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.08); // E5
-        osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.16); // G5
-        gain.gain.setValueAtTime(0.08, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.4);
-      } else if (type === 'wrong') {
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(220, ctx.currentTime); 
-        osc.frequency.setValueAtTime(147, ctx.currentTime + 0.15); 
-        gain.gain.setValueAtTime(0.12, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.45);
-      } else if (type === 'comboUp') {
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-        osc.frequency.setValueAtTime(880.00, ctx.currentTime + 0.06); // A5
-        gain.gain.setValueAtTime(0.08, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.25);
-      } else if (type === 'superCombo') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(523.25, ctx.currentTime);
-        osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.05);
-        osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.1);
-        osc.frequency.setValueAtTime(1046.50, ctx.currentTime + 0.15); // C6
-        gain.gain.setValueAtTime(0.1, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.45);
-      } else if (type === 'tick') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, ctx.currentTime);
-        gain.gain.setValueAtTime(0.02, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.06);
-      } else if (type === 'timesUp') {
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(294, ctx.currentTime);
-        osc.frequency.setValueAtTime(196, ctx.currentTime + 0.15);
-        osc.frequency.setValueAtTime(147, ctx.currentTime + 0.3);
-        gain.gain.setValueAtTime(0.12, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.6);
-      } else if (type === 'start') {
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(349.23, ctx.currentTime); // F4
-        osc.frequency.setValueAtTime(523.25, ctx.currentTime + 0.1);  // C5
-        osc.frequency.setValueAtTime(698.46, ctx.currentTime + 0.2);  // F5
-        gain.gain.setValueAtTime(0.08, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.4);
-      } else if (type === 'damage') {
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(120, ctx.currentTime);
-        gain.gain.setValueAtTime(0.15, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.15);
-      } else if (type === 'victory') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(523.25, ctx.currentTime);
-        osc.frequency.setValueAtTime(587.33, ctx.currentTime + 0.06);
-        osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.12);
-        osc.frequency.setValueAtTime(698.46, ctx.currentTime + 0.18);
-        osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.24);
-        gain.gain.setValueAtTime(0.1, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.5);
-      }
-    } catch (e) {
-      // AudioContext blocks
-    }
+    // 完全に無効化（空関数）
   };
 
   // カウントダウン開始
@@ -521,7 +422,7 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
 
       // タイム増（最大30sリミット）
       setTimeRemaining((prev) => {
-        const nextTime = prev + 2;
+        const nextTime = prev + 3; // 正解時ボーナスを3秒に増加
         const boundedTime = nextTime > 30 ? 30 : nextTime;
         const gained = boundedTime - prev;
         if (gained > 0) {
@@ -856,16 +757,33 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
                   </div>
                 </div>
                 
-                <div className="w-full bg-slate-950 border border-slate-800 h-4 rounded-full overflow-hidden p-[1px] relative">
+                <div className="w-full bg-black border-2 border-slate-700 h-8 rounded-lg overflow-hidden p-[2px] relative shadow-[inset_0_4px_6px_rgba(0,0,0,0.9)]">
+                  {/* スタイリッシュな5秒ごとのグリッド目盛り(視認性強化) */}
+                  <div className="absolute inset-0 flex justify-between pointer-events-none z-20">
+                    {[...Array(7)].map((_, idx) => (
+                      <div 
+                        key={idx} 
+                        className={`h-full w-0.5 ${idx === 0 || idx === 6 ? 'bg-transparent' : 'bg-slate-800/80 border-r border-slate-950/40'}`} 
+                        style={{ left: `${(idx / 6) * 100}%` }}
+                      />
+                    ))}
+                  </div>
+
                   <div 
-                    className={`h-full rounded-full transition-all duration-300 relative ${
+                    className={`h-full rounded-md transition-all duration-300 relative z-10 flex items-center justify-end ${
                       timeRemaining <= 10 
-                        ? 'bg-gradient-to-r from-red-650 via-rose-500 to-red-650 animate-pulse' 
-                        : 'bg-gradient-to-r from-cyan-500 via-sky-450 to-cyan-550'
+                        ? 'bg-gradient-to-r from-red-600 via-rose-500 to-red-500 animate-pulse shadow-[0_0_12px_#ef4444]' 
+                        : timeRemaining <= 20
+                        ? 'bg-gradient-to-r from-amber-500 via-yellow-450 to-amber-500 shadow-[0_0_10px_#f59e0b]'
+                        : 'bg-gradient-to-r from-emerald-500 via-teal-450 to-cyan-550 shadow-[0_0_10px_#10b981]'
                     }`}
                     style={{ width: `${Math.min(100, (timeRemaining / 30) * 100)}%` }}
                   >
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-30 animate-[shimmer_2s_infinite]" />
+                    {/* 先端の白いフラッシュラインで視認性をさらに劇的アップ */}
+                    <div className="w-1.5 h-full bg-white opacity-85 blur-[1px] rounded-r-md shadow-[0_0_8px_#ffffff]" />
+                    
+                    {/* 斜線ストライプの光沢エフェクト */}
+                    <div className="absolute inset-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.1)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.1)_50%,rgba(255,255,255,0.1)_75%,transparent_75%,transparent)] bg-[size:16px_16px] opacity-40 pointer-events-none" />
                   </div>
                 </div>
 

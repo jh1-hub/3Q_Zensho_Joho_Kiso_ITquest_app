@@ -245,8 +245,8 @@ export function getEnemyConfig(type: 'battle_easy' | 'battle_hard' | 'boss', ste
   if (type === 'boss') {
     return {
       name: '量子コア・オメガ「NEO-HYDRA」 (Quantum Core "NEO-HYDRA")',
-      maxHp: Math.round(2200 * scale), // HP scaled up by 10x
-      damage: Math.round(1100 * scale), // damage scaled up by 50x (22 * 50 = 1100)
+      maxHp: Math.round(1500 * scale), // HP: 1500 scale
+      damage: Math.round(350 * scale),  // Damage: 350 scale (3-4 mistakes allowed)
       questions: 15
     };
   }
@@ -254,8 +254,8 @@ export function getEnemyConfig(type: 'battle_easy' | 'battle_hard' | 'boss', ste
   if (type === 'battle_hard') {
     return {
       name: step === 1 ? '防衛セキュリティ「AEGIS_V2」 (Sentinel Defense "AEGIS_V2")' : '亡霊コードウィーバー「LEPTO.java」 (Call-Weaver "LEPTO.java")',
-      maxHp: Math.round(1400 * scale), // HP scaled up by 10x
-      damage: Math.round(800 * scale), // damage scaled up by 50x (16 * 50 = 800)
+      maxHp: Math.round(750 * scale),   // HP: 750 scale
+      damage: Math.round(250 * scale),  // Damage: 250 scale (4 mistakes allowed)
       questions: 10
     };
   }
@@ -263,8 +263,8 @@ export function getEnemyConfig(type: 'battle_easy' | 'battle_hard' | 'boss', ste
   // battle_easy
   return {
     name: step === 0 ? '微細バグウイルス「BUG-GOBLIN」 (Micro-Virus "BUG-GOBLIN")' : '液状エラー「DATA-LEAK SLIME」 (Leaking Core "DATA-LEAK SLIME")',
-    maxHp: Math.round(850 * scale), // HP scaled up by 10x
-    damage: Math.round(500 * scale), // damage scaled up by 50x (10 * 50 = 500)
+    maxHp: Math.round(400 * scale),    // HP: 400 scale (3-4 hits to defeat at default ATK 100)
+    damage: Math.round(150 * scale),   // Damage: 150 scale (6-7 mistakes allowed)
     questions: 8
   };
 }

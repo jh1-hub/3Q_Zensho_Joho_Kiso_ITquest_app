@@ -85,6 +85,20 @@ export default function App() {
     history: []
   });
 
+  // プレイヤーの最大HP（ベース ＋ カードボーナス）を安全に計算する
+  const getPlayerMaxHp = (lvl: number, collected: string[], activeRun: string[]) => {
+    const base = 1000 + (lvl - 1) * 150;
+    const bonus = calculatePlayerBonus(collected, activeRun);
+    return base + bonus.hp;
+  };
+
+  // プレイヤーの攻撃力（ベース ＋ カードボーナス）を安全に計算する
+  const getPlayerAttack = (lvl: number, collected: string[], activeRun: string[]) => {
+    const base = 100 + (lvl - 1) * 15;
+    const bonus = calculatePlayerBonus(collected, activeRun);
+    return base + bonus.attack;
+  };
+
   const [bestTime, setBestTime] = useState<number | null>(null);
   const [selectedRoute, setSelectedRoute] = useState<'easy' | 'hard' | null>(null);
   const [currentStep, setCurrentStep] = useState<number>(0);
@@ -123,17 +137,19 @@ export default function App() {
       const dataStr = localStorage.getItem('it-rogue-save-data');
       if (dataStr) {
         const parsed = JSON.parse(dataStr) as SaveData;
-        const bonus = calculatePlayerBonus(parsed.collectedCards || [], []);
+        const collected = parsed.collectedCards || [];
+        const mhp = getPlayerMaxHp(1, collected, []);
+        const atk = getPlayerAttack(1, collected, []);
         setPlayer(prev => ({
           ...prev,
           level: 1,
           xp: 0,
           xpToNextLevel: getXpToNextLevel(1),
-          collectedCards: parsed.collectedCards || [],
+          collectedCards: collected,
           activeRunCardIds: [],
-          maxHp: 1000, // レベル1＋ボーナスの最大HP (10倍スケール)
-          hp: 1000 + bonus.hp,
-          attack: 100 + bonus.attack
+          maxHp: mhp,
+          hp: mhp,
+          attack: atk
         }));
         setBestTime(parsed.bestTimeSeconds || null);
         setWrongTerms(parsed.wrongTerms || []);
@@ -173,6 +189,12 @@ export default function App() {
     loadSaveData();
   }, []);
 
+  // 画面遷移時にスクロール位置を最上部にリセット
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+    document.documentElement.scrollTo({ top: 0 });
+  }, [screen]);
+
   // ----------------------------------------------------
   // 修行（しゅぎょう・たんれん）の開始
   // ----------------------------------------------------
@@ -181,15 +203,14 @@ export default function App() {
     setTrainingClusterId(clusterId);
     
     // 修行用プレイヤーHP等の構成（王道のカード補正のみを適用。冒険中カードactiveRunCardIdsは修行では無効）
-    const bonus = calculatePlayerBonus(player.collectedCards, []);
-    const maxHpWithBonus = 1000 + bonus.hp;
-    const currentAttack = 100 + bonus.attack;
+    const mhp = getPlayerMaxHp(player.level, player.collectedCards, []);
+    const atk = getPlayerAttack(player.level, player.collectedCards, []);
 
     setPlayer(prev => ({
       ...prev,
-      hp: maxHpWithBonus,
-      maxHp: 1000,
-      attack: currentAttack,
+      hp: mhp,
+      maxHp: mhp,
+      attack: atk,
       activeRunCardIds: [], // 修行中の冒険内カードバフは初期化
       penaltySeconds: 0
     }));
@@ -334,7 +355,7 @@ export default function App() {
       totalQuestionsInBattle: monsterQuestions,
       currentQuestionIndex: 0,
       activeProblem: activeProg,
-      playerHp: maxHpWithBonus,
+      playerHp: mhp,
       enemyHp: monsterMaxHp,
       enemyMaxHp: monsterMaxHp,
       enemyName: monsterName,
@@ -375,18 +396,17 @@ export default function App() {
     });
     
     // レベルを毎回1に、XPを0にリセットしてゲーム開始
-    const bonus = calculatePlayerBonus(player.collectedCards, []);
-    const maxHpWithBonus = 1000 + bonus.hp;
-    const currentAttack = 100 + bonus.attack;
+    const mhp = getPlayerMaxHp(1, player.collectedCards, []);
+    const atk = getPlayerAttack(1, player.collectedCards, []);
 
     setPlayer(prev => ({
       ...prev,
       level: 1,
       xp: 0,
       xpToNextLevel: getXpToNextLevel(1),
-      hp: maxHpWithBonus,
-      maxHp: 1000,
-      attack: currentAttack,
+      hp: mhp,
+      maxHp: mhp,
+      attack: atk,
       activeRunCardIds: [], // Reset run cards
       totalTimeSeconds: 0,
       penaltySeconds: 0
@@ -850,9 +870,9 @@ export default function App() {
       levelUpFlag = true;
     }
 
-    // レベルアップした場合は基本ステータスを上げる
-    const nextMaxHp = 1000 + (nextLvl - 1) * 150;
-    const nextPlayerAttack = 100 + (nextLvl - 1) * 30;
+    // レベルアップした場合は基本ステータスを上げる（共通ヘルパーにより上限値を一貫）
+    const mhp = getPlayerMaxHp(nextLvl, updatedCollected, updatedRunCards);
+    const atk = getPlayerAttack(nextLvl, updatedCollected, updatedRunCards);
 
     // 前回の戦果報酬をステートに記録
     setLastDroppedCard(selectedCard);
@@ -863,9 +883,9 @@ export default function App() {
       level: nextLvl,
       xp: nextXp,
       xpToNextLevel: required,
-      maxHp: nextMaxHp,
-      hp: levelUpFlag ? Math.min(prev.hp + (nextMaxHp - prev.maxHp), nextMaxHp + statsBonus.hp) : prev.hp, // レベルアップで全快しない
-      attack: nextPlayerAttack + statsBonus.attack,
+      maxHp: mhp,
+      hp: levelUpFlag ? Math.min(prev.hp + (mhp - prev.maxHp), mhp) : Math.min(prev.hp, mhp), // レベルアップ時、基礎上限上昇分回復
+      attack: atk,
       collectedCards: updatedCollected,
       activeRunCardIds: updatedRunCards
     }));
