@@ -971,6 +971,19 @@ export default function App() {
     setScreen('title');
   };
 
+  /**
+   * 全実績の開放 (全カードの取得) [デバッグ用・本番前に要削除]
+   */
+  const handleUnlockAllAchievements = () => {
+    const allCardIds = TERM_CARDS.map(card => card.id);
+    setPlayer(prev => ({
+      ...prev,
+      collectedCards: allCardIds
+    }));
+    saveToStorage(allCardIds, bestTime, wrongTerms, player.level, player.xp, gameStats);
+    console.log('【デバッグ】すべての図鑑カードを開放し、保存しました。');
+  };
+
   // ----------------------------------------------------
   // レンダリング処理
   // ----------------------------------------------------
@@ -1071,6 +1084,7 @@ export default function App() {
           collectedIds={player.collectedCards}
           onBack={() => setScreen('title')}
           onResetData={handleResetAllData}
+          onUnlockAllAchievements={handleUnlockAllAchievements}
         />
       )}
 
