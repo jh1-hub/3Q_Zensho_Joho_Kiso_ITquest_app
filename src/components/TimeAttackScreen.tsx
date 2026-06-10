@@ -38,7 +38,7 @@ export default function TimeAttackScreen({ onClose, gameStats, onUpdateStats }: 
 
   // 敵（己の幻影）のHP
   const [enemyHp, setEnemyHp] = useState<number>(100);
-  const [enemyMaxHp] = useState<number>(100);
+  const [enemyMaxHp, setEnemyMaxHp] = useState<number>(100);
   const [defeatedCount, setDefeatedCount] = useState<number>(0);
 
   // クイズプール
@@ -178,10 +178,15 @@ export default function TimeAttackScreen({ onClose, gameStats, onUpdateStats }: 
     setTotalAnswered(0);
     setTimeRemaining(30);
     setEnemyHp(100);
+    setEnemyMaxHp(100);
     setDefeatedCount(0);
     setGameState('intro');
     setGameMessage('おのれの幻影が たちふさがった！');
   };
+
+  useEffect(() => {
+    startTimerAndGame();
+  }, []);
 
   useEffect(() => {
     if (gameState === 'intro' && isCounting) {
@@ -206,7 +211,7 @@ export default function TimeAttackScreen({ onClose, gameStats, onUpdateStats }: 
   useEffect(() => {
     if (gameState === 'playing' && problemPool.length > 0 && activeProblem === null) {
       const rawProblem = problemPool[currentPoolIndex];
-      const type = Math.random() < 0.5 ? 'term_to_def' : 'def_to_term';
+      const type = 'def_to_term';
       const prob = generateActiveProblem(rawProblem, type, 4, RAW_PROBLEMS);
       setActiveProblem(prob);
       setSelectedAnswer(null);
@@ -307,19 +312,20 @@ export default function TimeAttackScreen({ onClose, gameStats, onUpdateStats }: 
       setTimeout(() => setDamagePopup(null), 800);
 
       // 敵のHP削減
-      setEnemyHp((prev) => {
-        const nextHp = prev - enemyDmgAmount;
-        if (nextHp <= 0) {
-          // 敵撃破！
-          playSound('victory');
-          setDefeatedCount((d) => d + 1);
-          setGameMessage('幻影を はらいのけた！ 新たなる幻影が あらわれた！');
-          return 100; // 完全連戦復活
-        } else {
-          setGameMessage(`幻影に ${enemyDmgAmount} の ハック攻撃！`);
-          return nextHp;
-        }
-      });
+      const nextHp = enemyHp - enemyDmgAmount;
+      if (nextHp <= 0) {
+        // 敵撃破！
+        playSound('victory');
+        setDefeatedCount((d) => d + 1);
+        setGameMessage('幻影を はらいのけた！ 新たなる幻影が あらわれた！');
+        
+        const nextMax = enemyMaxHp + 25;
+        setEnemyMaxHp(nextMax);
+        setEnemyHp(nextMax);
+      } else {
+        setEnemyHp(nextHp);
+        setGameMessage(`幻影に ${enemyDmgAmount} の ハック攻撃！`);
+      }
 
       // タイム増（最大30sリミット）
       setTimeRemaining((prev) => {
@@ -426,7 +432,7 @@ export default function TimeAttackScreen({ onClose, gameStats, onUpdateStats }: 
             {isCounting ? (
               <div className="py-8 flex flex-col items-center justify-center space-y-4">
                 <div className="text-xs font-bold tracking-widest text-amber-400 animate-pulse">
-                  詠唱の 精神を 集中している...
+                  せいしん を しゅうちゅう している
                 </div>
                 <div className="text-6xl font-black text-white tracking-widest font-mono select-none animate-ping">
                   {startCountdown}
@@ -629,19 +635,9 @@ export default function TimeAttackScreen({ onClose, gameStats, onUpdateStats }: 
                 【 問いの詠唱 】 STAGE #{currentPoolIndex + 1}
               </div>
 
-              <div className="absolute top-2 right-3.5 text-[9px] text-yellow-400 font-black tracking-wider select-none">
-                {activeProblem.type === 'term_to_def' ? '💡 用語の「意味」を解き明かせ！' : '🔍 この「説明」が指す用語は？'}
-              </div>
-
               <div className="my-auto py-3 text-center">
-                <h3 className={`font-bold text-slate-105 leading-relaxed select-text ${
-                  activeProblem.type === 'term_to_def' ? 'text-lg md:text-xl text-yellow-305' : 'text-xs md:text-sm text-slate-100'
-                }`}>
-                  {activeProblem.type === 'term_to_def' ? (
-                    <span>おのれの幻影「 <strong className="text-white text-xl md:text-2xl font-black underline decoration-cyan-405/40 underline-offset-4">{activeProblem.raw.termName}</strong> 」とは何か？</span>
-                  ) : (
-                    <span>『 {activeProblem.raw.definition} 』が表す用語は何だ？</span>
-                  )}
+                <h3 className="font-bold text-slate-105 leading-relaxed select-text text-xs md:text-sm text-slate-100">
+                  <span>『 {activeProblem.raw.definition} 』が表す用語は何だ？</span>
                 </h3>
               </div>
             </div>
@@ -682,11 +678,6 @@ export default function TimeAttackScreen({ onClose, gameStats, onUpdateStats }: 
                   </button>
                 );
               })}
-            </div>
-
-            {/* お助けミニインジケータ */}
-            <div className="text-[9.5px] font-mono text-slate-500 tracking-wider">
-              幻影はおのれの詠唱スピードを測っている...。正解数: {correctCount} / {currentPoolIndex + 1}
             </div>
 
           </div>
@@ -762,14 +753,6 @@ export default function TimeAttackScreen({ onClose, gameStats, onUpdateStats }: 
             {/* アクションコマンド */}
             <div className="flex flex-col gap-3 max-w-sm mx-auto pt-2 text-xs font-bold font-sans">
               <button
-                onClick={startTimerAndGame}
-                className="w-full py-3 bg-blue-900 border-2 border-white rounded-md text-white font-bold select-none hover:bg-white hover:text-slate-950 transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md active:scale-95"
-              >
-                <RotateCcw size={13} />
-                <span>▶ もういちど 試練をうける</span>
-              </button>
-              
-              <button
                 onClick={onClose}
                 className="w-full py-3 bg-slate-950 border border-slate-705 rounded-md text-slate-300 font-bold select-none hover:bg-slate-900 hover:text-white transition-all cursor-pointer flex items-center justify-center gap-1.5"
               >
@@ -781,12 +764,6 @@ export default function TimeAttackScreen({ onClose, gameStats, onUpdateStats }: 
           </div>
         )}
 
-      </div>
-
-      {/* チップス */}
-      <div className="max-w-2xl w-full mx-auto flex items-center justify-center gap-1.5 text-[9.5px] text-slate-500 leading-snug tracking-wide text-center shrink-0 bg-slate-900/30 p-2 rounded border border-slate-800 mt-2">
-        <Sparkles size={11} className="text-yellow-450" />
-        <span>【アドバイス】正解すると時間が＋2秒、間違うと−5秒だ！ 焦らず幻影の問いをしっかりと見極めよ！</span>
       </div>
 
     </div>
