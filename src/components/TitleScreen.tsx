@@ -146,7 +146,7 @@ export default function TitleScreen({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-300 via-sky-100 to-emerald-100 text-slate-800 flex flex-col justify-between p-6 relative overflow-y-auto font-sans select-none border-t-8 border-blue-600">
+    <div className="h-screen bg-gradient-to-b from-sky-300 via-sky-100 to-emerald-100 text-slate-800 flex flex-col justify-between p-6 relative overflow-y-auto font-sans select-none border-t-8 border-blue-600">
       
       {/* 優しい王道ファンタジーを感じる陽光 */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.6)_0%,transparent_80%)] pointer-events-none"></div>

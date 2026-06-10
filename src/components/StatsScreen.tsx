@@ -553,7 +553,7 @@ export default function StatsScreen({
   // ----------------------------------------------------
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-300 via-sky-101 to-emerald-100 text-slate-800 p-4 md:p-6 flex flex-col font-sans select-none relative overflow-hidden border-t-8 border-blue-600">
+    <div className="h-screen bg-gradient-to-b from-sky-300 via-sky-101 to-emerald-100 text-slate-800 p-4 md:p-6 flex flex-col font-sans select-none relative overflow-y-auto border-t-8 border-blue-600">
       
       {/* 優しい王道ファンタジーを感じる陽光 */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.6)_0%,transparent_80%)] pointer-events-none"></div>
