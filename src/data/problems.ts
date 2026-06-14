@@ -4045,15 +4045,15 @@ export const allTerms = Object.keys(allTermsMap);
 // クラスタ10個の定義(3分類10サブカテゴリ)
 export const CLUSTERS: Cluster[] = [
   { id: '1-a', name: '情報処理の重要性', description: '企業活動における情報・データの役割や、ICT社会 of インフラ基礎。', bonusText: '最大HP +0.5', cardIds: [] },
-  { id: '1-b', name: 'コミュニケーションと情報デザイン', description: 'メディアの特性、U/I、ユニバーサルデザイン、色の三属性や画像・光の表現。', bonusText: '攻撃力 +0.1', cardIds: [] },
+  { id: '1-b', name: 'コミュニケーションと情報デザイン', description: 'メディアの特性、U/I、ユニバーサルデザイン、色の三属性や画像・光の表現。', bonusText: 'ATK +0.1', cardIds: [] },
   { id: '1-c', name: '情報モラル', description: 'モラル、フィッシング/ワンクリック詐欺、知的財産権や著作権法などの法務。', bonusText: '最大HP +0.3', cardIds: [] },
   { id: '2-a', name: 'コンピュータシステムの概要', description: '5大装置、CPU、メモリ、SSD/HDD、解像度、OSやファイル・拡張子。', bonusText: '解答時間 +0.1秒', cardIds: [] },
-  { id: '2-b', name: '情報通信ネットワークの仕組みと構成', description: 'LAN/WAN、光ファイバ、Wi-Fi、DNS、IPアドレス、メールサーバなどのプロトコル。', bonusText: '攻撃力 +0.1', cardIds: [] },
+  { id: '2-b', name: '情報通信ネットワークの仕組みと構成', description: 'LAN/WAN、光ファイバ、Wi-Fi、DNS、IPアドレス、メールサーバなどのプロトコル。', bonusText: 'ATK +0.1', cardIds: [] },
   { id: '2-c', name: '情報通信ネットワークの活用', description: 'アップロード、検索エンジン、フィルタリング、BCC/CC、ファイルの圧縮解凍。', bonusText: '最大HP +0.3', cardIds: [] },
-  { id: '2-d', name: '情報セキュリティの確保と法規', description: 'サイバー攻撃、各種マルウェア、セキュリティのCIA、認証、暗号。', bonusText: '攻撃力 +0.2', cardIds: [] },
+  { id: '2-d', name: '情報セキュリティの確保と法規', description: 'サイバー攻撃、各種マルウェア、セキュリティのCIA、認証、暗号。', bonusText: 'ATK +0.2', cardIds: [] },
   { id: '3-a', name: 'ビジネスと統計', description: '全数/標本調査、代表値、分散と標準偏差、ヒストグラム、相関、ABC分析。', bonusText: '獲得経験値 +1%', cardIds: [] },
   { id: '3-b', name: '表・グラフの作成と情報の分析', description: '棒・円・折れ線・レーダーチャートなどの各種グラフの特徴と比較分析。', bonusText: '解答時間 +0.1秒', cardIds: [] },
-  { id: '3-c', name: '問題の発見と解決の方法', description: 'ロジカルシンキング、MECE、SWOT分析、PDCA、ブレスト、流れ図・アルゴリズム。', bonusText: '攻撃力 +0.2', cardIds: [] }
+  { id: '3-c', name: '問題の発見と解決の方法', description: 'ロジカルシンキング、MECE、SWOT分析、PDCA、ブレスト、流れ図・アルゴリズム。', bonusText: 'ATK +0.2', cardIds: [] }
 ];
 
 export const RAW_PROBLEMS: RawProblem[] = [];

@@ -445,7 +445,7 @@ export default function CardCollection({ collectedIds, onBack }: CardCollectionP
 
             <div 
               className={`bg-white border-8 ${shadowEffect} rounded-2xl max-w-sm md:max-w-md w-full p-6 md:p-8 relative flex flex-col gap-5 text-left text-slate-900 overflow-hidden font-sans m-auto animate-scale-up`}
-              onClick={() => setSelectedCard(null)}
+              onClick={(e) => e.stopPropagation()}
             >
               
               {/* 装飾コーナー */}
@@ -522,14 +522,25 @@ export default function CardCollection({ collectedIds, onBack }: CardCollectionP
               </div>
 
               <div className="border-t border-slate-100 pt-3 flex flex-col gap-4 z-10 font-sans">
-                <div className="flex justify-between items-center text-xs bg-blue-50/70 p-3 rounded-xl border border-blue-150 font-bold shadow-xs">
-                  <span className="text-slate-600">永続効果バフ:</span>
-                  <span className="text-blue-900 font-black font-mono">
-                    {selectedCard.statsBonus.hp ? `HP +${(selectedCard.statsBonus.hp * 0.5).toFixed(1)}` : ''}
-                    {selectedCard.statsBonus.attack ? `ATK +${(selectedCard.statsBonus.attack * 0.5).toFixed(1)}` : ''}
-                    {selectedCard.statsBonus.xpBonus ? `XP +${(selectedCard.statsBonus.xpBonus * 0.5).toFixed(1)}%` : ''}
-                    {selectedCard.statsBonus.timerBonus ? `Time +${(selectedCard.statsBonus.timerBonus * 0.5).toFixed(1)}秒` : ''}
-                  </span>
+                <div className="text-xs font-bold text-slate-700 bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col gap-2 font-mono">
+                  <div className="flex justify-between items-center text-blue-800 border-b border-slate-200 pb-1.5 text-[11px]">
+                    <span className="font-sans font-bold">常時図鑑ボーナス (パッシブ効果):</span>
+                    <span className="font-mono text-blue-900 font-extrabold text-[10px]">
+                      {selectedCard.statsBonus.hp ? `HP +${(selectedCard.statsBonus.hp * 0.5).toFixed(1)} ` : ''}
+                      {selectedCard.statsBonus.attack ? `ATK +${(selectedCard.statsBonus.attack * 0.5).toFixed(1)} ` : ''}
+                      {selectedCard.statsBonus.xpBonus ? `XP +${(selectedCard.statsBonus.xpBonus * 0.5).toFixed(1)}% ` : ''}
+                      {selectedCard.statsBonus.timerBonus ? `Time +${(selectedCard.statsBonus.timerBonus * 0.5).toFixed(1)}秒` : ''}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-emerald-800 text-[11px]">
+                    <span className="font-sans font-bold">アクティブ装備時効果 (冒険中のみ):</span>
+                    <span className="font-mono text-emerald-600 font-bold text-[10px]">
+                      {selectedCard.statsBonus.hp ? `HP +${(selectedCard.statsBonus.hp * 15).toFixed(0)} ` : ''}
+                      {selectedCard.statsBonus.attack ? `ATK +${(selectedCard.statsBonus.attack * 15).toFixed(1)} ` : ''}
+                      {selectedCard.statsBonus.xpBonus ? `XP +${(selectedCard.statsBonus.xpBonus * 15).toFixed(0)}% ` : ''}
+                      {selectedCard.statsBonus.timerBonus ? `Time +${(selectedCard.statsBonus.timerBonus * 15).toFixed(0)}秒` : ''}
+                    </span>
+                  </div>
                 </div>
                 
                 <button

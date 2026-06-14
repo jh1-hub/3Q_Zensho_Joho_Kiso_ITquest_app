@@ -346,7 +346,7 @@ export default function ExploreScreen({
                             {card.statsBonus.hp ? `HP +${(card.statsBonus.hp * 15).toFixed(0)}` : ''}
                             {card.statsBonus.attack ? `ATK +${(card.statsBonus.attack * 15).toFixed(1)}` : ''}
                             {card.statsBonus.xpBonus ? `XP +${(card.statsBonus.xpBonus * 15).toFixed(0)}%` : ''}
-                            {card.statsBonus.timerBonus ? `時間 +${(card.statsBonus.timerBonus * 15).toFixed(0)}秒` : ''}
+                            {card.statsBonus.timerBonus ? `Time +${(card.statsBonus.timerBonus * 15).toFixed(0)}秒` : ''}
                           </span>
                         </div>
                       </div>
@@ -386,6 +386,7 @@ export default function ExploreScreen({
           }`} />
 
           <div 
+            onClick={(e) => e.stopPropagation()}
             className={`bg-slate-900 border-4 ${
               selectedCard.rarity === 'LG' ? 'border-red-500 shadow-[0_0_50px_rgba(239,68,68,0.55)]' :
               selectedCard.rarity === 'UR' ? 'border-amber-400 shadow-[0_0_50px_rgba(245,158,11,0.55)]' :
@@ -439,7 +440,7 @@ export default function ExploreScreen({
             {/* 一体化されたバフ効果 */}
             <div className="text-xs font-bold text-yellow-350 bg-slate-950 p-3.5 rounded-xl border border-slate-850/60 flex flex-col gap-2 font-mono">
               <div className="flex justify-between items-center text-blue-300 border-b border-slate-900 pb-1.5 text-[11px]">
-                <span className="font-sans font-bold">永続効果 (図鑑加算):</span>
+                <span className="font-sans font-bold">常時図鑑ボーナス (パッシブ効果):</span>
                 <span className="font-mono text-blue-400 font-extrabold">
                   {selectedCard.statsBonus.hp ? `HP +${(selectedCard.statsBonus.hp * 0.5).toFixed(1)} ` : ''}
                   {selectedCard.statsBonus.attack ? `ATK +${(selectedCard.statsBonus.attack * 0.5).toFixed(1)} ` : ''}
@@ -448,7 +449,7 @@ export default function ExploreScreen({
                 </span>
               </div>
               <div className="flex justify-between items-center text-emerald-300 text-[11px] font-black">
-                <span className="font-sans font-bold">冒険中のみの効果:</span>
+                <span className="font-sans font-bold">アクティブ装備時効果 (冒険中のみ):</span>
                 <span className="font-mono text-emerald-400 font-bold">
                   {selectedCard.statsBonus.hp ? `HP +${(selectedCard.statsBonus.hp * 15).toFixed(0)} ` : ''}
                   {selectedCard.statsBonus.attack ? `ATK +${(selectedCard.statsBonus.attack * 15).toFixed(1)} ` : ''}

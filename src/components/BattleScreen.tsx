@@ -402,7 +402,7 @@ export default function BattleScreen({
   if (!activeProblem) return null;
 
   return (
-    <div className={`min-h-screen bg-gradient-to-b from-sky-200 via-sky-50 to-emerald-50 text-slate-800 p-4 md:p-6 flex flex-col justify-between font-sans relative overflow-hidden border-t-8 border-blue-500 select-none transition-all duration-300 ${screenAttackShake ? 'animate-screen-attack-shake' : ''} ${screenDamageShake ? 'animate-screen-damage-shake' : ''}`}>
+    <div className="min-h-screen bg-gradient-to-b from-sky-200 via-sky-50 to-emerald-50 text-slate-800 p-4 md:p-6 flex flex-col justify-between font-sans relative overflow-hidden border-t-8 border-blue-500 select-none transition-all duration-300">
       
       {/* タイムアウト/被弾時の血湧きフラッシュ（赤） */}
       <div className={`absolute inset-0 bg-red-600/35 pointer-events-none transition-opacity duration-150 ${playerFlash ? 'opacity-100' : 'opacity-0'} z-50`}></div>
@@ -432,7 +432,7 @@ export default function BattleScreen({
         </div>
       </div>
 
-      <div className="max-w-4xl w-full mx-auto grid grid-cols-1 md:grid-cols-12 gap-6 items-center flex-1 z-10">
+      <div className={`max-w-4xl w-full mx-auto grid grid-cols-1 md:grid-cols-12 gap-6 items-center flex-1 z-10 ${screenAttackShake ? 'animate-screen-attack-shake' : ''} ${screenDamageShake ? 'animate-screen-damage-shake' : ''}`}>
         
         {/* ステータス窓エリア (左4列) - ドラクエ風ステータスウィンドウ */}
         <div className="md:col-span-4 flex flex-col gap-4">
@@ -520,7 +520,7 @@ export default function BattleScreen({
             <div className="flex justify-end items-center text-xs font-bold text-white mt-1 w-full border-t border-blue-900 pt-2 px-1">
               <span className="flex items-center gap-1 text-yellow-300">
                 <Swords size={12} />
-                <span>攻撃力: {playerAttack.toFixed(1)}</span>
+                <span>ATK: {playerAttack.toFixed(1)}</span>
               </span>
             </div>
           </div>

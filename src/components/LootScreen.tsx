@@ -292,14 +292,25 @@ export default function LootScreen({
               </p>
 
               {/* ステータスバフ行: 表記「冒険中効果:」に変更 */}
-              <div className="mt-4 pt-2 border-t border-slate-200 text-[10px] sm:text-xs font-bold flex justify-between items-center text-slate-655 bg-slate-100 px-2 py-1 rounded">
-                <span className="font-sans">冒険中効果:</span>
-                <span className="text-blue-900 font-mono text-[10px] font-extrabold">
-                  {card.statsBonus.hp ? `HP +${(card.statsBonus.hp * 0.5 * 30).toFixed(0)}  ` : ''}
-                  {card.statsBonus.attack ? `ATK +${(card.statsBonus.attack * 0.5 * 30).toFixed(1)}  ` : ''}
-                  {card.statsBonus.xpBonus ? `XP +${(card.statsBonus.xpBonus * 0.5 * 30).toFixed(0)}%  ` : ''}
-                  {card.statsBonus.timerBonus ? `Time +${(card.statsBonus.timerBonus * 0.5 * 30).toFixed(0)}秒` : ''}
-                </span>
+              <div className="mt-4 pt-2 border-t border-slate-200 text-[9px] font-bold flex flex-col gap-1 text-slate-655 bg-slate-100/60 p-2 rounded">
+                <div className="flex justify-between items-center">
+                  <span className="text-blue-700">常時図鑑:</span>
+                  <span className="text-blue-900 font-mono text-[9px] font-black">
+                    {card.statsBonus.hp ? `HP+${(card.statsBonus.hp * 0.5).toFixed(1)} ` : ''}
+                    {card.statsBonus.attack ? `ATK+${(card.statsBonus.attack * 0.5).toFixed(1)} ` : ''}
+                    {card.statsBonus.xpBonus ? `XP+${(card.statsBonus.xpBonus * 0.5).toFixed(1)}% ` : ''}
+                    {card.statsBonus.timerBonus ? `Time+${(card.statsBonus.timerBonus * 0.5).toFixed(1)}s` : ''}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center border-t border-slate-200/50 pt-1 mt-0.5">
+                  <span className="text-emerald-700">そうび中:</span>
+                  <span className="text-emerald-900 font-mono text-[9px] font-black">
+                    {card.statsBonus.hp ? `HP+${(card.statsBonus.hp * 15).toFixed(0)} ` : ''}
+                    {card.statsBonus.attack ? `ATK+${(card.statsBonus.attack * 15).toFixed(1)} ` : ''}
+                    {card.statsBonus.xpBonus ? `XP+${(card.statsBonus.xpBonus * 15).toFixed(0)}% ` : ''}
+                    {card.statsBonus.timerBonus ? `Time+${(card.statsBonus.timerBonus * 15).toFixed(0)}s` : ''}
+                  </span>
+                </div>
               </div>
             </div>
           ))}
@@ -364,7 +375,7 @@ export default function LootScreen({
             <div className="mt-1 border-t border-slate-101 pt-2 flex flex-col gap-1.5 font-sans">
               <div className="flex flex-col gap-1.5 text-[10px] sm:text-xs bg-blue-50/70 border border-blue-150 px-3 py-2 rounded-lg font-bold shadow-3xs">
                 <div className="flex justify-between items-center text-blue-950 border-b border-blue-105 pb-1 text-[10px] sm:text-xs">
-                  <span>永続効果:</span>
+                  <span>常時図鑑ボーナス (パッシブ):</span>
                   <span className="font-mono text-blue-800 font-black">
                     {options[selectedIndex!].statsBonus.hp ? `HP +${(options[selectedIndex!].statsBonus.hp * 0.5).toFixed(1)} ` : ''}
                     {options[selectedIndex!].statsBonus.attack ? `ATK +${(options[selectedIndex!].statsBonus.attack * 0.5).toFixed(1)} ` : ''}
@@ -373,12 +384,12 @@ export default function LootScreen({
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-emerald-950 text-[10px] sm:text-[11px] font-black">
-                  <span>冒険中効果:</span>
-                  <span className="font-mono text-emerald-700 font-bold">
-                    {options[selectedIndex!].statsBonus.hp ? `HP +${(options[selectedIndex!].statsBonus.hp * 0.5 * 30).toFixed(0)} ` : ''}
-                    {options[selectedIndex!].statsBonus.attack ? `ATK +${(options[selectedIndex!].statsBonus.attack * 0.5 * 30).toFixed(1)} ` : ''}
-                    {options[selectedIndex!].statsBonus.xpBonus ? `XP +${(options[selectedIndex!].statsBonus.xpBonus * 0.5 * 30).toFixed(0)}% ` : ''}
-                    {options[selectedIndex!].statsBonus.timerBonus ? `Time +${(options[selectedIndex!].statsBonus.timerBonus * 0.5 * 30).toFixed(0)}秒` : ''}
+                  <span>アクティブ装備時効果 (冒険中):</span>
+                  <span className="font-mono text-emerald-750 font-bold">
+                    {options[selectedIndex!].statsBonus.hp ? `HP +${(options[selectedIndex!].statsBonus.hp * 15).toFixed(0)} ` : ''}
+                    {options[selectedIndex!].statsBonus.attack ? `ATK +${(options[selectedIndex!].statsBonus.attack * 15).toFixed(1)} ` : ''}
+                    {options[selectedIndex!].statsBonus.xpBonus ? `XP +${(options[selectedIndex!].statsBonus.xpBonus * 15).toFixed(0)}% ` : ''}
+                    {options[selectedIndex!].statsBonus.timerBonus ? `Time +${(options[selectedIndex!].statsBonus.timerBonus * 15).toFixed(0)}秒` : ''}
                   </span>
                 </div>
               </div>

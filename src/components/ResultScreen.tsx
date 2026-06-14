@@ -348,6 +348,7 @@ export default function ResultScreen({
             }`} />
 
             <div 
+              onClick={(e) => e.stopPropagation()}
               className={`bg-slate-900 border-4 ${
                 selectedDetailCard.rarity === 'LG' ? 'border-amber-400 shadow-[0_0_50px_rgba(245,158,11,0.55)]' :
                 selectedDetailCard.rarity === 'UR' ? 'border-purple-500 shadow-[0_0_50px_rgba(168,85,247,0.55)]' :
@@ -396,7 +397,7 @@ export default function ResultScreen({
               {/* 統一されたバフ効果 */}
               <div className="text-xs font-bold text-yellow-350 bg-slate-950 p-3.5 rounded-xl border border-slate-850/60 flex flex-col gap-2 font-mono">
                 <div className="flex justify-between items-center text-blue-300 border-b border-slate-900 pb-1.5 text-[11px]">
-                  <span className="font-sans font-bold">永続効果 (図記加算):</span>
+                  <span className="font-sans font-bold">常時図鑑ボーナス (パッシブ効果):</span>
                   <span className="font-mono text-blue-400 font-extrabold">
                     {selectedDetailCard.statsBonus.hp ? `HP +${(selectedDetailCard.statsBonus.hp * 0.5).toFixed(1)} ` : ''}
                     {selectedDetailCard.statsBonus.attack ? `ATK +${(selectedDetailCard.statsBonus.attack * 0.5).toFixed(1)} ` : ''}
@@ -405,7 +406,7 @@ export default function ResultScreen({
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-emerald-300 text-[11px] font-black">
-                  <span className="font-sans font-bold">冒険中のみの効果:</span>
+                  <span className="font-sans font-bold">アクティブ装備時効果 (冒険中のみ):</span>
                   <span className="font-mono text-emerald-400 font-bold">
                     {selectedDetailCard.statsBonus.hp ? `HP +${(selectedDetailCard.statsBonus.hp * 15).toFixed(0)} ` : ''}
                     {selectedDetailCard.statsBonus.attack ? `ATK +${(selectedDetailCard.statsBonus.attack * 15).toFixed(1)} ` : ''}
