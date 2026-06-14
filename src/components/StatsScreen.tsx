@@ -472,7 +472,7 @@ export default function StatsScreen({
   // ----------------------------------------------------
 
   return (
-    <div className="h-screen bg-gradient-to-b from-sky-300 via-sky-101 to-emerald-100 text-slate-800 p-4 md:p-6 flex flex-col font-sans select-none relative overflow-y-auto border-t-8 border-blue-600">
+    <div className="min-h-screen bg-gradient-to-b from-sky-300 via-sky-101 to-emerald-100 text-slate-800 p-4 md:p-6 flex flex-col font-sans select-none relative overflow-y-auto border-t-8 border-blue-600">
       
       {/* 優しい王道ファンタジーを感じる陽光 */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.6)_0%,transparent_80%)] pointer-events-none"></div>
@@ -602,7 +602,7 @@ export default function StatsScreen({
         </div>
 
         {/* 下段：詳細データグリッド */}
-        <div className="bg-white border-2 border-blue-300 rounded-2xl shadow-xl flex-1 flex flex-col overflow-hidden min-h-[400px] md:min-h-[550px] max-h-[85vh]">
+        <div className="bg-white border-2 border-blue-300 rounded-2xl shadow-xl flex-1 flex flex-col md:overflow-hidden min-h-[400px] md:min-h-[550px] md:max-h-[85vh] h-auto">
           
           {/* カテゴリ切り替えタブ */}
           <div className="bg-slate-50 border-b border-blue-200 flex overflow-x-auto select-none shrink-0">
@@ -741,7 +741,7 @@ export default function StatsScreen({
                 </div>
 
                 {/* 各カテゴリの詳細リスト */}
-                <div className="flex-1 overflow-y-auto p-4 bg-white space-y-3 scrollbar-thin">
+                <div className="flex-1 md:overflow-y-auto p-4 bg-white space-y-3 scrollbar-thin">
                   {sortedCards.length === 0 ? (
                     <div className="text-center py-12 text-slate-400 font-bold text-xs">
                       該当するIT用語は登録されていません。

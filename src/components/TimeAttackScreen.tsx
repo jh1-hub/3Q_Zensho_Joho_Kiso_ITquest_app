@@ -48,8 +48,8 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
   // 敵（己の幻影）のHP (要望により、最初の幻影はHP 500からスタート)
   const [enemyHp, setEnemyHp] = useState<number>(500);
   const [enemyMaxHp, setEnemyMaxHp] = useState<number>(500);
-  const [playerHp, setPlayerHp] = useState<number>(1000);
-  const [playerMaxHp, setPlayerMaxHp] = useState<number>(1000);
+  const [playerHp, setPlayerHp] = useState<number>(500);
+  const [playerMaxHp, setPlayerMaxHp] = useState<number>(500);
   const [defeatedCount, setDefeatedCount] = useState<number>(0);
 
   // 二重トリガーを完全に防ぐ防衛ガード
@@ -76,6 +76,8 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
 
   // タイムアタック終了時の獲得お宝（カード一覧）
   const [gainedCards, setGainedCards] = useState<TermCard[]>([]);
+  // 獲得カード詳細表示ポップアップ用
+  const [selectedDetailCard, setSelectedDetailCard] = useState<TermCard | null>(null);
 
   // ハイスコア通知
   const [isNewRecord, setIsNewRecord] = useState<boolean>(false);
@@ -492,8 +494,8 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
       setCombo(0);
       setWrongCount((prev) => prev + 1);
 
-      // 自爆ダメージ
-      const selfDmg = 15;
+      // 自爆ダメージ (初期 150 から進行状況に応じてスケール)
+      const selfDmg = Math.round(150 * (1.0 + defeatedCount * 0.15));
       setDamagePopup({ amount: selfDmg, isCrit: false, isPlayer: true, visible: true });
       setTimeout(() => setDamagePopup(null), 850);
       
@@ -1079,22 +1081,30 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
                   
                   <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1 py-1 custom-scrollbar">
                     {gainedCards.map((card, idx) => (
-                      <div key={idx} className="flex justify-between items-center bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs shadow-sm">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`text-[9px] font-black px-1 rounded ${
-                            card.rarity === 'UR' ? 'bg-purple-900 text-purple-200' :
-                            card.rarity === 'SR' ? 'bg-red-950 text-red-200' :
-                            card.rarity === 'UC' || card.rarity === 'R' ? 'bg-blue-950 text-blue-200' :
+                      <div 
+                        key={idx} 
+                        onClick={() => setSelectedDetailCard(card)}
+                        className="flex justify-between items-center bg-slate-900 hover:bg-slate-850 hover:border-cyan-500/50 border border-slate-800 p-2 rounded-lg text-xs shadow-sm cursor-pointer transition-all active:scale-98 group"
+                        title="タップでカード詳細を確認"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-6 h-6 rounded bg-slate-855 border border-slate-800 flex items-center justify-center text-xs shrink-0 select-none">
+                            {getTermEmoji(card.id)}
+                          </span>
+                          <span className={`text-[9px] font-black px-1 rounded shrink-0 ${
+                            card.rarity === 'UR' ? 'bg-purple-900/60 text-purple-200 border border-purple-500/30' :
+                            card.rarity === 'SR' ? 'bg-red-950/60 text-red-200 border border-red-500/30' :
+                            card.rarity === 'UC' || card.rarity === 'R' ? 'bg-blue-950/60 text-blue-200 border border-blue-500/30' :
                             'bg-slate-800 text-slate-300'
                           }`}>
                             {card.rarity}
                           </span>
-                          <span className="font-bold text-slate-200 truncate max-w-[120px]">{card.name}</span>
+                          <span className="font-bold text-slate-200 truncate group-hover:text-cyan-300 transition-colors">{card.name}</span>
                         </div>
-                        <span className="text-[9.5px] font-mono text-cyan-455 font-bold shrink-0">
-                          {card.statsBonus.hp ? `HP +${(card.statsBonus.hp * 0.5).toFixed(1)}` : ''}
-                          {card.statsBonus.attack ? `ATK +${(card.statsBonus.attack * 0.5).toFixed(1)}` : ''}
-                          {card.statsBonus.xpBonus ? `XP +${(card.statsBonus.xpBonus * 0.5).toFixed(1)}%` : ''}
+                        <span className="text-[9.5px] font-mono text-cyan-400 font-bold shrink-0 ml-1.5">
+                          {card.statsBonus.hp ? `HP +${(card.statsBonus.hp * 0.5).toFixed(1)} ` : ''}
+                          {card.statsBonus.attack ? `ATK +${(card.statsBonus.attack * 0.5).toFixed(1)} ` : ''}
+                          {card.statsBonus.xpBonus ? `XP +${(card.statsBonus.xpBonus * 0.5).toFixed(1)}% ` : ''}
                           {card.statsBonus.timerBonus ? `Time +${(card.statsBonus.timerBonus * 0.5).toFixed(1)}s` : ''}
                         </span>
                       </div>
@@ -1142,6 +1152,106 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
         )}
 
       </div>
+
+      {/* 獲得カード詳細表示ポップアップモーダル */}
+      {selectedDetailCard && (
+        <div 
+          className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center z-[100] p-4 cursor-pointer animate-fade-in"
+          onClick={() => setSelectedDetailCard(null)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className={`bg-slate-900 border-4 rounded-2xl max-w-sm md:max-w-md w-full p-6 md:p-8 relative flex flex-col gap-5 text-left text-slate-100 overflow-hidden font-sans m-auto animate-scale-up ${
+              selectedDetailCard.rarity === 'LG' ? 'border-amber-400 shadow-[0_0_50px_rgba(245,158,11,0.55)]' :
+              selectedDetailCard.rarity === 'UR' ? 'border-purple-500 shadow-[0_0_50px_rgba(168,85,247,0.55)]' :
+              selectedDetailCard.rarity === 'SR' ? 'border-red-500 shadow-[0_0_50px_rgba(239,68,68,0.55)]' :
+              selectedDetailCard.rarity === 'UC' || selectedDetailCard.rarity === 'R' ? 'border-blue-500 shadow-[0_0_50px_rgba(59,130,246,0.55)]' :
+              'border-slate-750 shadow-2xl'
+            }`}
+          >
+            {/* 装飾コーナー */}
+            <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl pointer-events-none"></div>
+
+            <button 
+              onClick={() => setSelectedDetailCard(null)}
+              className="absolute top-3.5 right-3.5 text-slate-400 hover:text-white transition-colors p-1.5 hover:bg-slate-800 rounded-full cursor-pointer z-50"
+              aria-label="閉じる"
+            >
+              <Zap size={16} className="rotate-45" />
+            </button>
+
+            {/* ヘッダーエリア */}
+            <div className="flex items-center gap-4 border-b border-slate-800 pb-4 z-10 font-sans">
+              <span className="p-3 bg-slate-950/80 border border-slate-800 rounded-2xl select-none text-4xl leading-none shadow-inner animate-[pulse_3s_infinite]">
+                {getTermEmoji(selectedDetailCard.id)}
+              </span>
+              <div className="flex flex-col min-w-0 font-sans">
+                <div className="flex items-center gap-2 mb-1.5 font-sans">
+                  <span className={`text-[10px] font-black tracking-widest px-2.5 py-0.5 rounded border ${
+                    selectedDetailCard.rarity === 'LG' ? 'bg-amber-950/90 text-amber-300 border-amber-500/50 text-[10px] animate-pulse' :
+                    selectedDetailCard.rarity === 'UR' ? 'bg-purple-950/90 text-purple-300 border-purple-500/50' :
+                    selectedDetailCard.rarity === 'SR' ? 'bg-red-950/90 text-red-300 border-red-500/50' :
+                    selectedDetailCard.rarity === 'UC' || selectedDetailCard.rarity === 'R' ? 'bg-blue-950/90 text-blue-300 border-blue-500/50' :
+                    'bg-slate-800 text-slate-300 border-slate-700'
+                  }`}>
+                    {selectedDetailCard.rarity === 'LG' ? 'LEGENDARY' :
+                     selectedDetailCard.rarity === 'UR' ? 'ULTRA RARE' :
+                     selectedDetailCard.rarity === 'SR' ? 'SUPER RARE' :
+                     selectedDetailCard.rarity === 'UC' || selectedDetailCard.rarity === 'R' ? 'UNCOMMON' : 'COMMON'}
+                  </span>
+                  <span className="text-[10.5px] text-slate-450 font-mono font-bold tracking-tight">ID: {selectedDetailCard.id}</span>
+                </div>
+                <h3 className="text-lg md:text-xl font-black text-white tracking-wide truncate leading-tight font-sans">
+                  {selectedDetailCard.name}
+                </h3>
+              </div>
+            </div>
+
+            {/* カード説明内容 */}
+            <div className="space-y-4 font-sans text-xs sm:text-sm leading-relaxed z-10 flex-1 overflow-y-auto max-h-60 pr-1 select-text custom-scrollbar font-sans border-b border-slate-800 pb-4">
+              <div className="font-bold text-slate-200">
+                <span className="text-cyan-400 font-bold mr-1 bg-cyan-950/30 px-1.5 py-0.5 rounded text-[11px] font-sans">定義</span>
+                {selectedDetailCard.definition}
+              </div>
+              
+              <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-850 text-slate-300 text-[11px] sm:text-xs leading-normal">
+                <span className="block text-purple-400 font-extrabold text-[10px] uppercase tracking-widest mb-1.5 font-sans">ハック解説 (試験対策知識)</span>
+                <p className="whitespace-pre-line leading-relaxed font-sans font-semibold">{selectedDetailCard.explanation}</p>
+              </div>
+            </div>
+
+            {/* 統一されたバフ効果 */}
+            <div className="text-xs font-bold text-yellow-350 bg-slate-950 p-3.5 rounded-xl border border-slate-850/60 flex flex-col gap-2 font-mono">
+              <div className="flex justify-between items-center text-blue-300 border-b border-slate-900 pb-1.5 text-[11px]">
+                <span className="font-sans font-bold">常時図鑑ボーナス (パッシブ効果):</span>
+                <span className="font-mono text-blue-400 font-extrabold animate-[pulse_4s_infinite]">
+                  {selectedDetailCard.statsBonus.hp ? `HP +${(selectedDetailCard.statsBonus.hp * 0.5).toFixed(1)} ` : ''}
+                  {selectedDetailCard.statsBonus.attack ? `ATK +${(selectedDetailCard.statsBonus.attack * 0.5).toFixed(1)} ` : ''}
+                  {selectedDetailCard.statsBonus.xpBonus ? `XP +${(selectedDetailCard.statsBonus.xpBonus * 0.5).toFixed(1)}% ` : ''}
+                  {selectedDetailCard.statsBonus.timerBonus ? `Time +${(selectedDetailCard.statsBonus.timerBonus * 0.5).toFixed(1)}s` : ''}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-emerald-300 text-[11px] font-black">
+                <span className="font-sans font-bold">アクティブ装備時効果 (冒険中のみ):</span>
+                <span className="font-mono text-emerald-400 font-bold">
+                  {selectedDetailCard.statsBonus.hp ? `HP +${(selectedDetailCard.statsBonus.hp * 15).toFixed(0)} ` : ''}
+                  {selectedDetailCard.statsBonus.attack ? `ATK +${(selectedDetailCard.statsBonus.attack * 15).toFixed(1)} ` : ''}
+                  {selectedDetailCard.statsBonus.xpBonus ? `XP +${(selectedDetailCard.statsBonus.xpBonus * 15).toFixed(0)}% ` : ''}
+                  {selectedDetailCard.statsBonus.timerBonus ? `Time +${(selectedDetailCard.statsBonus.timerBonus * 15).toFixed(0)}秒` : ''}
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setSelectedDetailCard(null)}
+              className="w-full py-3 bg-gradient-to-r from-slate-800 to-slate-750 hover:from-slate-700 hover:to-slate-650 rounded-xl text-white font-extrabold select-none transition-all cursor-pointer text-xs active:scale-97 border border-slate-700/50 shadow-md font-sans animate-pulse"
+            >
+              [ とじる ]
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

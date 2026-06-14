@@ -87,7 +87,7 @@ export default function App() {
 
   // プレイヤーの最大HP（ベース ＋ カードボーナス）を安全に計算する
   const getPlayerMaxHp = (lvl: number, collected: string[], activeRun: string[]) => {
-    const base = 1000 + (lvl - 1) * 150;
+    const base = 500 + (lvl - 1) * 75;
     const bonus = calculatePlayerBonus(collected, activeRun);
     return base + bonus.hp;
   };
