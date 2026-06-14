@@ -795,7 +795,7 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
                 <div className="flex justify-between items-center px-1">
                   <div className="flex items-center gap-1.5">
                     <Timer className={`w-5 h-5 ${timeRemaining <= 10 ? 'text-red-500 animate-pulse' : 'text-yellow-400'}`} />
-                    <span className="text-xs font-black text-yellow-300 tracking-wider mb-[-1px]">えいしょう残り時間（タイムリミット）</span>
+                    <span className="text-xs font-black text-yellow-300 tracking-wider mb-[-1px]">えいしょう残り時間</span>
                   </div>
                   <div className={`text-2xl font-black font-mono tracking-tight ${timeRemaining <= 10 ? 'text-red-500 animate-pulse' : 'text-yellow-400'}`}>
                     {timeRemaining.toFixed(1)} <span className="text-xs text-slate-400">秒</span>
@@ -953,7 +953,8 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
                     </div>
 
                     {/* メイン絵文字枠と見出し */}
-                    <div className="flex items-center gap-4 my-3 font-sans">
+                    <div className="flex items-center gap-3.5 my-3 font-sans">
+                      <span className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl select-none text-3xl leading-none shrink-0">{getTermEmoji(card.id)}</span>
                       <div className="flex flex-col text-left min-w-0 font-sans">
                         <h4 className="text-base font-black text-slate-900 leading-tight truncate group-hover:text-blue-705 transition-colors font-sans">
                           {card.name}
@@ -1017,7 +1018,7 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
             
             <div className="space-y-1">
               <span className="bg-red-950 text-red-400 border border-red-500/35 text-[9px] font-black tracking-widest px-3 py-1 rounded inline-block uppercase font-mono">
-                TIME LIMIT EXCEEDED
+                TIME'S UP
               </span>
               <h2 className="text-xl md:text-2xl font-bold text-yellow-300 tracking-wider">
                 ときのかいろう 試練終了

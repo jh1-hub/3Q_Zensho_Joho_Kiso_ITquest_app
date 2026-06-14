@@ -263,7 +263,7 @@ export default function TitleScreen({
             <div className="flex flex-col items-center py-2 sm:py-0">
               <span className="text-blue-600 text-[10.5px] uppercase tracking-wider font-extrabold mb-1">最短クリア記録</span>
               <span className="text-emerald-700 text-2xl font-black">
-                {bestTime ? formatTime(bestTime) : '未挑戦'}
+                {bestTime ? formatTime(bestTime) : '未クリア'}
               </span>
             </div>
 
@@ -332,7 +332,7 @@ export default function TitleScreen({
             id="open-timeattack-btn"
           >
             <Timer size={16} className="animate-[spin_4s_linear_infinite] text-cyan-300" />
-            <span>ときのかいろう（タイムアタック）</span>
+            <span>ときのかいろう</span>
           </button>
 
           <button
