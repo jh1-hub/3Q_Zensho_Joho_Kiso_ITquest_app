@@ -445,7 +445,7 @@ export default function CardCollection({ collectedIds, onBack }: CardCollectionP
 
             <div 
               className={`bg-white border-8 ${shadowEffect} rounded-2xl max-w-sm md:max-w-md w-full p-6 md:p-8 relative flex flex-col gap-5 text-left text-slate-900 overflow-hidden font-sans m-auto animate-scale-up`}
-              onClick={(e) => e.stopPropagation()}
+              onClick={() => setSelectedCard(null)}
             >
               
               {/* 装飾コーナー */}
@@ -473,7 +473,7 @@ export default function CardCollection({ collectedIds, onBack }: CardCollectionP
               </div>
 
               {/* 3つの説明文ビジュアルタブ・スイッチャー */}
-              <div className="flex flex-col gap-1.5 z-10">
+              <div className="flex flex-col gap-1.5 z-10" onClick={(e) => e.stopPropagation()}>
                 <div className="flex justify-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
                   {[1, 2, 3].map((vNum) => {
                     const isUnlocked = modalCount >= vNum;

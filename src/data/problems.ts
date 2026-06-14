@@ -4122,9 +4122,10 @@ quizCategories.forEach(cat => {
         else timerBonus = parseFloat((0.64 * uniqueFactor).toFixed(3));
       }
 
-      // HPを10倍に、ATKを50倍（10倍かつ5倍）にしてバフ効果をわかりやすく実感できるようにする
+      // HPを10倍に、ATKを50倍（10倍かつ5倍）、XPボーナスを10倍にしてバフ効果をわかりやすく実感できるようにする
       if (hp !== 0) hp = parseFloat((hp * 10).toFixed(3));
       if (attack !== 0) attack = parseFloat((attack * 50).toFixed(3));
+      if (xpBonus !== 0) xpBonus = parseFloat((xpBonus * 10).toFixed(3));
 
       TERM_CARDS.push({
         id: termId,

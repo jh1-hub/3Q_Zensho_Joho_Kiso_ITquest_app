@@ -310,11 +310,12 @@ export default function ResultScreen({
                         </div>
 
                         <div className="flex justify-between items-center text-[8.5px] font-black text-indigo-300 font-mono border-t border-slate-800/40 pt-1 mt-1">
-                          <span>そうび効果:</span>
-                          <span className="text-yellow-400 font-bold">
-                            {card.statsBonus.hp ? `HP +${(card.statsBonus.hp * 0.5 * 10).toFixed(0)} ` : ''}
-                            {card.statsBonus.attack ? `ATK +${(card.statsBonus.attack * 0.5 * 10).toFixed(1)} ` : ''}
-                            {card.statsBonus.timerBonus ? `Time +${(card.statsBonus.timerBonus * 0.5 * 10).toFixed(0)}s` : ''}
+                          <span>冒険中効果:</span>
+                          <span className="text-yellow-400 font-bold flex gap-1 flex-wrap justify-end">
+                            {card.statsBonus.hp ? `HP +${(card.statsBonus.hp * 15).toFixed(0)}` : ''}
+                            {card.statsBonus.attack ? `ATK +${(card.statsBonus.attack * 15).toFixed(1)}` : ''}
+                            {card.statsBonus.xpBonus ? `XP +${(card.statsBonus.xpBonus * 15).toFixed(0)}%` : ''}
+                            {card.statsBonus.timerBonus ? `Time +${(card.statsBonus.timerBonus * 15).toFixed(0)}s` : ''}
                           </span>
                         </div>
                       </div>
@@ -355,7 +356,6 @@ export default function ResultScreen({
                 selectedDetailCard.rarity === 'UC' ? 'border-emerald-500 shadow-[0_0_50px_rgba(16,185,129,0.45)]' :
                 'border-slate-500 shadow-2xl'
               } p-6 md:p-8 rounded-3xl relative max-w-sm md:max-w-md w-full flex flex-col gap-4 animate-scale-up text-left`}
-              onClick={(e) => e.stopPropagation()}
             >
               <div className="flex justify-between items-center">
                 <span className={`text-xs font-black px-3 py-1 rounded-full border ${getRarityBadgeColor(selectedDetailCard.rarity)}`}>
@@ -373,7 +373,7 @@ export default function ResultScreen({
               <div className="border-b border-slate-800 pb-3 mt-1">
                 <h3 className="font-black text-2xl md:text-3xl text-yellow-350 tracking-wider font-sans flex items-center gap-3">
                   <span className="text-4xl md:text-5xl shrink-0 mr-1">{getTermEmoji(selectedDetailCard.id)}</span>
-                  <span>{selectedDetailCard.name}</span>
+                  <span className="truncate">{selectedDetailCard.name}</span>
                 </h3>
               </div>
 
@@ -393,18 +393,30 @@ export default function ResultScreen({
                 </div>
               )}
 
-              <div className="text-xs font-bold text-yellow-350 bg-slate-950 p-3 rounded-xl border border-slate-850/60 flex flex-col gap-1 text-center font-mono">
-                <div className="text-[10px] text-slate-400 uppercase tracking-widest border-b border-slate-900 pb-1 mb-1 font-extrabold">冒険中に発動する永続効果バフ</div>
-                <div className="flex flex-wrap justify-around gap-1.5 text-[11px]">
-                  {selectedDetailCard.statsBonus.hp ? <div className="text-emerald-400 font-bold">最大HP +{selectedDetailCard.statsBonus.hp.toFixed(0)}</div> : null}
-                  {selectedDetailCard.statsBonus.attack ? <div className="text-red-400 font-bold">攻撃力 +{selectedDetailCard.statsBonus.attack.toFixed(0)}</div> : null}
-                  {selectedDetailCard.statsBonus.xpBonus ? <div className="text-blue-400 font-bold">獲得XP +{selectedDetailCard.statsBonus.xpBonus.toFixed(0)}%</div> : null}
-                  {selectedDetailCard.statsBonus.timerBonus ? <div className="text-yellow-400 font-bold">制限時間 +{selectedDetailCard.statsBonus.timerBonus.toFixed(0)}秒</div> : null}
+              {/* 統一されたバフ効果 */}
+              <div className="text-xs font-bold text-yellow-350 bg-slate-950 p-3.5 rounded-xl border border-slate-850/60 flex flex-col gap-2 font-mono">
+                <div className="flex justify-between items-center text-blue-300 border-b border-slate-900 pb-1.5 text-[11px]">
+                  <span className="font-sans font-bold">永続効果 (図記加算):</span>
+                  <span className="font-mono text-blue-400 font-extrabold">
+                    {selectedDetailCard.statsBonus.hp ? `HP +${(selectedDetailCard.statsBonus.hp * 0.5).toFixed(1)} ` : ''}
+                    {selectedDetailCard.statsBonus.attack ? `ATK +${(selectedDetailCard.statsBonus.attack * 0.5).toFixed(1)} ` : ''}
+                    {selectedDetailCard.statsBonus.xpBonus ? `XP +${(selectedDetailCard.statsBonus.xpBonus * 0.5).toFixed(1)}% ` : ''}
+                    {selectedDetailCard.statsBonus.timerBonus ? `Time +${(selectedDetailCard.statsBonus.timerBonus * 0.5).toFixed(1)}秒` : ''}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-emerald-300 text-[11px] font-black">
+                  <span className="font-sans font-bold">冒険中のみの効果:</span>
+                  <span className="font-mono text-emerald-400 font-bold">
+                    {selectedDetailCard.statsBonus.hp ? `HP +${(selectedDetailCard.statsBonus.hp * 15).toFixed(0)} ` : ''}
+                    {selectedDetailCard.statsBonus.attack ? `ATK +${(selectedDetailCard.statsBonus.attack * 15).toFixed(1)} ` : ''}
+                    {selectedDetailCard.statsBonus.xpBonus ? `XP +${(selectedDetailCard.statsBonus.xpBonus * 15).toFixed(0)}% ` : ''}
+                    {selectedDetailCard.statsBonus.timerBonus ? `Time +${(selectedDetailCard.statsBonus.timerBonus * 15).toFixed(0)}秒` : ''}
+                  </span>
                 </div>
               </div>
 
               <button 
-                className="mt-2 w-full py-3 bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-750 hover:to-slate-850 text-white font-bold rounded-xl border border-slate-700 transition-all text-xs tracking-wide cursor-pointer"
+                className="mt-2 w-full py-3 bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-755 hover:to-slate-855 text-white font-bold rounded-xl border border-slate-700 transition-all text-sm tracking-wider cursor-pointer text-center"
                 onClick={() => setSelectedDetailCard(null)}
               >
                 了解（とじる）

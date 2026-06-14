@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sparkles, Swords, Heart, Shield, Award, HelpCircle, ArrowRight, Library, RefreshCw, Star } from 'lucide-react';
 import { PlayerState, MapNode, TermCard } from '../types';
 import { CLUSTERS, TERM_CARDS } from '../data/problems';
@@ -29,6 +29,26 @@ export default function ExploreScreen({
   onGiveUp
 }: ExploreScreenProps) {
   const [showEquipped, setShowEquipped] = useState(false);
+  const [selectedCard, setSelectedCard] = useState<TermCard | null>(null);
+
+  // 撃破戻り時（画面 remount 時）のスクロール位置復旧と保存
+  useEffect(() => {
+    const savedY = sessionStorage.getItem('explore_scroll_y');
+    if (savedY) {
+      const timer = setTimeout(() => {
+        window.scrollTo(0, parseInt(savedY, 10));
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      sessionStorage.setItem('explore_scroll_y', window.scrollY.toString());
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // 次の進路を選択するために、該当ステップのノードを抽出
   // step は 0 〜 4 (4がボス)
@@ -239,21 +259,16 @@ export default function ExploreScreen({
                   </div>
 
                   <div className="flex flex-col gap-1.5 border-t border-slate-105 pt-2.5">
-                    {(() => {
-                      const cfg = getEnemyConfig(isBoss ? 'boss' : isHard ? 'battle_hard' : 'battle_easy', node.step);
-                      return (
-                        <div className="flex flex-col gap-0.5 text-[10px] font-bold text-slate-500">
-                          <div className="flex justify-between items-center text-slate-600">
-                            <span>てきの最大HP:</span>
-                            <span className="text-red-500 font-extrabold">{cfg.maxHp} HP</span>
-                          </div>
-                          <div className="flex justify-between items-center text-slate-600">
-                            <span>てきのこうげき力:</span>
-                            <span className="text-amber-500 font-extrabold">{cfg.damage} ATK</span>
-                          </div>
-                        </div>
-                      );
-                    })()}
+                    <div className="flex flex-col gap-0.5 text-[10px] font-bold text-slate-500">
+                      <div className="flex justify-between items-center text-slate-600">
+                        <span>てきの最大HP:</span>
+                        <span className="text-red-500 font-extrabold">{node.monsterMaxHp} HP</span>
+                      </div>
+                      <div className="flex justify-between items-center text-slate-600">
+                        <span>てきのこうげき力:</span>
+                        <span className="text-amber-500 font-extrabold">{node.monsterDamage} ATK</span>
+                      </div>
+                    </div>
 
                     <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 border-t border-slate-50 pt-1.5">
                       <span className="flex items-center gap-1 text-blue-800">
@@ -311,25 +326,27 @@ export default function ExploreScreen({
                   return (
                     <div
                       key={cid}
-                      className="p-3 bg-slate-850/90 border border-indigo-500/30 rounded-xl flex items-center gap-3 text-left shadow-sm"
+                      onClick={() => setSelectedCard(card)}
+                      className="p-3 bg-slate-850/90 hover:bg-slate-800 border-2 border-indigo-500/30 hover:border-indigo-400 rounded-xl flex items-center gap-3 text-left shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-0.5 group"
                     >
-                      <span className="text-3xl select-none shrink-0 p-2 bg-slate-800 border border-indigo-500/20 rounded-lg">{emoji}</span>
+                      <span className="text-3xl select-none shrink-0 p-2 bg-slate-800 border border-indigo-500/20 rounded-lg group-hover:scale-105 transition-transform">{emoji}</span>
                       <div className="flex flex-col min-w-0 flex-1">
                         <div className="flex justify-between items-center">
-                          <span className="text-sm font-black text-white truncate">{card.name}</span>
+                          <span className="text-sm font-black text-white truncate group-hover:text-yellow-300 transition-colors">{card.name}</span>
                           <span className="text-[10px] text-indigo-400 font-mono font-bold uppercase tracking-wider">
                             {card.rarity === 'C' ? 'Common' : card.rarity === 'UC' ? 'Uncommon' : card.rarity === 'SR' ? 'Rare' : card.rarity === 'UR' ? 'SuperRare' : 'Legendary'}
                           </span>
                         </div>
-                        <p className="text-[10px] text-slate-400 font-semibold line-clamp-2 leading-tight mt-0.5">
+                        <p className="text-[10px] text-slate-450 font-semibold line-clamp-1 leading-tight mt-0.5">
                           {card.definition}
                         </p>
-                        <div className="flex justify-between items-center text-[9px] font-extrabold text-indigo-300 font-mono border-t border-slate-800/60 pt-1.5 mt-1.5">
+                        <div className="flex justify-between items-center text-[9px] font-extrabold text-indigo-300 font-mono border-t border-slate-850 pt-1.5 mt-1.5">
                           <span>冒険中効果:</span>
-                          <span className="text-indigo-400 font-black">
-                            {card.statsBonus.hp ? `HP +${(card.statsBonus.hp * 0.5 * 10).toFixed(0)}  ` : ''}
-                            {card.statsBonus.attack ? `ATK +${(card.statsBonus.attack * 0.5 * 10).toFixed(1)}  ` : ''}
-                            {card.statsBonus.timerBonus ? `Time +${(card.statsBonus.timerBonus * 0.5 * 10).toFixed(0)}秒` : ''}
+                          <span className="text-yellow-400 font-black flex gap-1.5 flex-wrap">
+                            {card.statsBonus.hp ? `HP +${(card.statsBonus.hp * 15).toFixed(0)}` : ''}
+                            {card.statsBonus.attack ? `ATK +${(card.statsBonus.attack * 15).toFixed(1)}` : ''}
+                            {card.statsBonus.xpBonus ? `XP +${(card.statsBonus.xpBonus * 15).toFixed(0)}%` : ''}
+                            {card.statsBonus.timerBonus ? `時間 +${(card.statsBonus.timerBonus * 15).toFixed(0)}秒` : ''}
                           </span>
                         </div>
                       </div>
@@ -339,15 +356,114 @@ export default function ExploreScreen({
               )}
             </div>
 
-            <div className="border-t border-slate-800 pt-4">
+            <div className="border-t border-slate-850 pt-3 flex flex-col gap-1 text-[9px] text-slate-450 font-bold leading-relaxed">
+              <span>※ 装備カードを選択すると詳細を拡大表示できます</span>
               <button
                 onClick={() => setShowEquipped(false)}
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl shadow-md transition-all cursor-pointer text-xs tracking-wider uppercase"
+                className="w-full mt-1.5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl shadow-md transition-all cursor-pointer text-xs tracking-wider uppercase"
                 id="close-equipped-modal"
               >
                 [ 閉じる ]
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 選択したそうびカードの拡大モーダル */}
+      {selectedCard && (
+        <div 
+          className="fixed inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col justify-center items-center z-50 p-4 animate-fade-in cursor-pointer"
+          onClick={() => setSelectedCard(null)}
+        >
+          {/* レアリティに応じた美しい背景エフェクト */}
+          <div className={`absolute inset-0 pointer-events-none mix-blend-screen opacity-40 ${
+            selectedCard.rarity === 'LG' ? 'bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.5)_0%,transparent_75%)] animate-pulse' :
+            selectedCard.rarity === 'UR' ? 'bg-[radial-gradient(circle_at_center,rgba(234,179,8,0.5)_0%,transparent_75%)] animate-pulse' :
+            selectedCard.rarity === 'SR' ? 'bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.5)_0%,transparent_75%)] animate-pulse' :
+            selectedCard.rarity === 'UC' || selectedCard.rarity === 'R' ? 'bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.5)_0%,transparent_75%)] animate-pulse' :
+            ''
+          }`} />
+
+          <div 
+            className={`bg-slate-900 border-4 ${
+              selectedCard.rarity === 'LG' ? 'border-red-500 shadow-[0_0_50px_rgba(239,68,68,0.55)]' :
+              selectedCard.rarity === 'UR' ? 'border-amber-400 shadow-[0_0_50px_rgba(245,158,11,0.55)]' :
+              selectedCard.rarity === 'SR' ? 'border-purple-500 shadow-[0_0_50px_rgba(168,85,247,0.55)]' :
+              selectedCard.rarity === 'UC' || selectedCard.rarity === 'R' ? 'border-blue-500 shadow-[0_0_50px_rgba(59,130,246,0.45)]' :
+              'border-slate-500 shadow-2xl'
+            } p-6 md:p-8 rounded-3xl relative max-w-sm md:max-w-md w-full flex flex-col gap-4 animate-scale-up text-left text-slate-100 font-sans`}
+          >
+            <div className="flex justify-between items-center">
+              <span className={`text-xs font-black px-3 py-1 rounded-full border ${
+                selectedCard.rarity === 'LG' ? 'bg-red-955 border-red-500 text-red-200' :
+                selectedCard.rarity === 'UR' ? 'bg-yellow-955 border-amber-550 text-yellow-250 animate-pulse' :
+                selectedCard.rarity === 'SR' ? 'bg-purple-955 border-purple-500 text-purple-200' :
+                selectedCard.rarity === 'UC' || selectedCard.rarity === 'R' ? 'bg-blue-955 border-blue-500 text-blue-200' :
+                'bg-slate-800 border-slate-700 text-slate-300'
+              }`}>
+                {selectedCard.rarity === 'LG' ? 'LEGEND' :
+                 selectedCard.rarity === 'UR' ? 'ULTRA RARE' :
+                 selectedCard.rarity === 'SR' ? 'SUPER RARE' :
+                 selectedCard.rarity === 'R' ? 'RARE' :
+                 selectedCard.rarity === 'UC' ? 'UNCOMMON' : 'COMMON'}
+              </span>
+              <span className="text-[10px] text-yellow-350 font-mono uppercase tracking-widest font-extrabold animate-pulse">
+                EQUIPPED CARD DETAIL
+              </span>
+            </div>
+
+            <div className="border-b border-slate-800 pb-3 mt-1">
+              <h3 className="font-black text-2xl md:text-3xl text-yellow-300 tracking-wider flex items-center gap-3">
+                <span className="text-4xl md:text-5xl shrink-0 mr-1">{getTermEmoji(selectedCard.id)}</span>
+                <span className="truncate">{selectedCard.name}</span>
+              </h3>
+            </div>
+
+            <div>
+              <span className="text-[10px] text-yellow-400/80 font-bold block mb-1 uppercase tracking-wider">// IT 用語定義:</span>
+              <p className="text-sm md:text-base text-slate-100 leading-relaxed font-semibold">
+                {selectedCard.definition}
+              </p>
+            </div>
+
+            {selectedCard.flavorText && (
+              <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-850">
+                <span className="text-[9px] text-slate-455 font-bold block mb-1 uppercase tracking-wider">// 解説・豆知識:</span>
+                <p className="text-xs text-slate-300 leading-relaxed italic">
+                  {selectedCard.flavorText}
+                </p>
+              </div>
+            )}
+
+            {/* 一体化されたバフ効果 */}
+            <div className="text-xs font-bold text-yellow-350 bg-slate-950 p-3.5 rounded-xl border border-slate-850/60 flex flex-col gap-2 font-mono">
+              <div className="flex justify-between items-center text-blue-300 border-b border-slate-900 pb-1.5 text-[11px]">
+                <span className="font-sans font-bold">永続効果 (図鑑加算):</span>
+                <span className="font-mono text-blue-400 font-extrabold">
+                  {selectedCard.statsBonus.hp ? `HP +${(selectedCard.statsBonus.hp * 0.5).toFixed(1)} ` : ''}
+                  {selectedCard.statsBonus.attack ? `ATK +${(selectedCard.statsBonus.attack * 0.5).toFixed(1)} ` : ''}
+                  {selectedCard.statsBonus.xpBonus ? `XP +${(selectedCard.statsBonus.xpBonus * 0.5).toFixed(1)}% ` : ''}
+                  {selectedCard.statsBonus.timerBonus ? `Time +${(selectedCard.statsBonus.timerBonus * 0.5).toFixed(1)}秒` : ''}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-emerald-300 text-[11px] font-black">
+                <span className="font-sans font-bold">冒険中のみの効果:</span>
+                <span className="font-mono text-emerald-400 font-bold">
+                  {selectedCard.statsBonus.hp ? `HP +${(selectedCard.statsBonus.hp * 15).toFixed(0)} ` : ''}
+                  {selectedCard.statsBonus.attack ? `ATK +${(selectedCard.statsBonus.attack * 15).toFixed(1)} ` : ''}
+                  {selectedCard.statsBonus.xpBonus ? `XP +${(selectedCard.statsBonus.xpBonus * 15).toFixed(0)}% ` : ''}
+                  {selectedCard.statsBonus.timerBonus ? `Time +${(selectedCard.statsBonus.timerBonus * 15).toFixed(0)}秒` : ''}
+                </span>
+              </div>
+            </div>
+
+            <button 
+              className="mt-2 w-full py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold rounded-xl border border-indigo-500 transition-all text-sm tracking-wider cursor-pointer text-center"
+              onClick={() => setSelectedCard(null)}
+            >
+              閉じる
+            </button>
           </div>
         </div>
       )}

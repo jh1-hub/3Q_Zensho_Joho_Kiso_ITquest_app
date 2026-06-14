@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Timer, Zap, RotateCcw, Home, Award, AlertCircle, Sparkles, Swords, Heart, Shield, HelpCircle } from 'lucide-react';
+import { Timer, Zap, RotateCcw, Home, Award, AlertCircle, Sparkles, Swords, Heart, Shield, HelpCircle, ArrowRight } from 'lucide-react';
 import { RawProblem, ActiveProblem, GameStats, TermCard } from '../types';
 import { RAW_PROBLEMS, TERM_CARDS, CLUSTERS } from '../data/problems';
 import { generateActiveProblem, shuffleArray, drawCard, getTermEmoji } from '../utils/gameHelpers';
@@ -114,10 +114,10 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
     setMaxCombo(0);
     setTotalAnswered(0);
     setTimeRemaining(30);
-    setEnemyHp(500);
-    setEnemyMaxHp(500);
-    setPlayerHp(1000);
-    setPlayerMaxHp(1000);
+    setEnemyHp(50);
+    setEnemyMaxHp(50);
+    setPlayerHp(100);
+    setPlayerMaxHp(100);
     setDefeatedCount(0);
     setGainedCards([]);
     setGameState('intro');
@@ -309,47 +309,90 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
   // 各種レアリティバッジ/スタイルのヘルパー群
   const getRarityBadgeColor = (rarity: string) => {
     switch (rarity) {
-      case 'C': return 'text-slate-400 bg-slate-900 border border-slate-700 px-2 py-0.5 rounded font-mono text-[9px] uppercase tracking-wider font-extrabold';
-      case 'UC': return 'text-cyan-400 bg-cyan-950 border border-cyan-800 px-2 py-0.5 rounded font-mono text-[9px] uppercase tracking-wider font-extrabold';
-      case 'R': return 'text-blue-400 bg-blue-950 border border-blue-800 px-2 py-0.5 rounded font-mono text-[9px] uppercase tracking-wider font-extrabold';
-      case 'SR': return 'text-purple-400 bg-purple-950 border border-purple-800 px-2 py-0.5 rounded font-mono text-[9px] uppercase tracking-wider font-extrabold';
-      case 'UR': return 'text-amber-400 bg-amber-955 border border-amber-800 px-2 py-0.5 rounded font-mono text-[9px] uppercase tracking-wider font-extrabold';
-      case 'LG': return 'text-red-400 bg-red-955 border border-red-800 px-2 py-0.5 rounded font-mono text-[9px] uppercase tracking-wider font-extrabold font-black animate-pulse';
-      default: return 'text-slate-400 bg-slate-900 px-2 py-0.5 rounded font-mono text-[9px]';
+      case 'C': return 'text-slate-650 bg-slate-100 border border-slate-300 px-2 py-0.5 rounded shadow-sm font-mono text-[9px] uppercase tracking-wider font-extrabold';
+      case 'UC': return 'text-cyan-700 bg-cyan-50 border border-cyan-300 px-2 py-0.5 rounded shadow-sm font-mono text-[9px] uppercase tracking-wider font-extrabold';
+      case 'R': return 'text-blue-750 bg-blue-50 border border-blue-300 px-2 py-0.5 rounded shadow-sm font-mono text-[9px] uppercase tracking-wider font-extrabold';
+      case 'SR': return 'text-purple-700 bg-purple-55 border border-purple-300 px-2 py-0.5 rounded shadow-sm font-mono text-[9px] uppercase tracking-wider font-extrabold';
+      case 'UR': return 'text-amber-700 bg-amber-55 border border-amber-300 px-2 py-0.5 rounded shadow-sm font-mono text-[9px] uppercase tracking-wider font-extrabold';
+      case 'LG': return 'text-red-650 bg-red-55 border border-red-300 px-2 py-0.5 rounded shadow-sm font-mono text-[9px] uppercase tracking-wider font-extrabold font-black animate-pulse';
+      default: return 'text-slate-600 bg-slate-100 px-2 py-0.5 rounded font-mono text-[9px]';
     }
   };
 
   const getRarityName = (rarity: string) => {
     switch (rarity) {
-      case 'C': return '◆ Common ◆';
-      case 'UC': return '◆ Uncommon ◆';
-      case 'R': return '◆ Rare ◆';
-      case 'SR': return '◆ Super Rare ◆';
-      case 'UR': return '◆ Ultra Rare ◆';
-      case 'LG': return '◆ Legend ◆';
-      default: return '◆ CARD ◆';
+      case 'C': return '◆ C ◆';
+      case 'UC': return '◆ UC ◆';
+      case 'R': return '◆ R ◆';
+      case 'SR': return '◆ SR ◆';
+      case 'UR': return '◆ UR ◆';
+      case 'LG': return '◆ LG ◆';
+      default: return '◆ カード ◆';
     }
   };
 
   const getMysticalCardStyle = (rarity: string, isFaceDown: boolean) => {
-    if (isFaceDown) {
-      return 'bg-gradient-to-b from-slate-900 to-slate-950 border-3 border-dashed border-blue-500 hover:border-yellow-400/80 hover:shadow-[0_0_15px_rgba(234,179,8,0.25)] text-slate-300';
-    }
+    return getMysticalCardStyleForLoot(rarity);
+  };
+
+  const getMysticalCardStyleForLoot = (rarity: string) => {
     switch (rarity) {
       case 'C': 
-        return 'bg-gradient-to-b from-slate-900 to-slate-950 border-3 border-slate-700 text-slate-100 shadow-[0_4px_12px_rgba(255,255,255,0.05)]';
+        return 'bg-gradient-to-b from-slate-50 to-slate-100 border-2 border-slate-300 text-slate-955 shadow-[0_4px_12px_rgba(148,163,184,0.1)] hover:shadow-[0_12px_24px_rgba(148,163,184,0.25)]';
       case 'UC': 
-        return 'bg-gradient-to-b from-indigo-950/70 to-slate-950 border-3 border-cyan-500 text-slate-100 shadow-[0_4px_15px_rgba(6,182,212,0.25)]';
+        return 'bg-gradient-to-b from-cyan-50/60 to-cyan-100/30 border-2 border-cyan-300 text-slate-955 shadow-[0_4px_15px_rgba(6,182,212,0.15)] hover:shadow-[0_12px_28px_rgba(6,182,212,0.3)] hover:border-cyan-400';
       case 'R': 
-        return 'bg-gradient-to-b from-blue-950/70 to-slate-950 border-3 border-blue-500 text-slate-100 shadow-[0_5px_18px_rgba(59,130,246,0.3)]';
+        return 'bg-gradient-to-b from-blue-50/60 to-blue-100/30 border-2 border-blue-300 text-slate-955 shadow-[0_5px_18px_rgba(59,130,246,0.18)] hover:shadow-[0_15px_32px_rgba(59,130,246,0.35)] hover:border-blue-400';
       case 'SR': 
-        return 'bg-gradient-to-b from-purple-950/70 to-slate-950 border-3 border-purple-500 text-slate-100 shadow-[0_6px_22px_rgba(168,85,247,0.35)]';
+        return 'bg-gradient-to-b from-purple-50 via-white to-purple-100/35 border-3 border-purple-300 text-slate-955 shadow-[0_6px_22px_rgba(168,85,247,0.25)] hover:shadow-[0_18px_40px_rgba(168,85,247,0.5)] hover:border-purple-400';
       case 'UR': 
-        return 'bg-gradient-to-b from-amber-950/70 to-slate-950 border-3 border-amber-400 text-slate-100 shadow-[0_8px_25px_rgba(245,158,11,0.45)] animate-[pulse_4s_infinite]';
+        return 'bg-gradient-to-b from-amber-50 via-white to-amber-100/35 border-3 border-amber-400 text-slate-955 shadow-[0_8px_25px_rgba(245,158,11,0.35)] hover:shadow-[0_22px_50px_rgba(245,158,11,0.6)] hover:border-amber-500 animate-[pulse_4s_infinite]';
       case 'LG': 
-        return 'bg-gradient-to-b from-red-950/70 to-slate-950 border-3 border-rose-500 text-slate-100 shadow-[0_10px_30px_rgba(244,63,94,0.55)] animate-[pulse_2s_infinite]';
+        return 'bg-gradient-to-b from-rose-50 via-white to-rose-100/40 border-4 border-rose-500 text-slate-955 shadow-[0_10px_30px_rgba(244,63,94,0.45)] hover:shadow-[0_28px_60px_rgba(244,63,94,0.7)] hover:border-rose-600 animate-[pulse_2s_infinite]';
       default: 
-        return 'bg-slate-900 border-3 border-slate-700 text-slate-100';
+        return 'bg-white border-2 border-slate-300 text-slate-900 shadow-md';
+    }
+  };
+
+  const getRarityBackgroundEffect = (rarity: string) => {
+    switch (rarity) {
+      case 'C':
+        return null;
+      case 'UC':
+        return (
+          <div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden rounded-3xl">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.22)_0%,transparent_70%)] animate-pulse"></div>
+            <div className="absolute -top-[10%] -left-[10%] w-[120%] h-[120%] bg-[radial-gradient(circle,rgba(6,182,212,0.1)_0%,transparent_50%)] backdrop-blur-sm animate-[spin_12s_linear_infinite]"></div>
+          </div>
+        );
+      case 'R':
+        return (
+          <div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden rounded-3xl">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.22)_0%,transparent_70%)] animate-[pulse_3s_infinite]"></div>
+          </div>
+        );
+      case 'SR':
+        return (
+          <div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden rounded-3xl">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.25)_0%,transparent_70%)] animate-[pulse_3s_infinite]"></div>
+          </div>
+        );
+      case 'UR':
+        return (
+          <div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden rounded-3xl flex items-center justify-center">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.3)_0%,transparent_70%)] animate-[pulse_2.5s_infinite]"></div>
+            <div className="absolute w-[350px] h-[350px] border-4 border-amber-400/20 rounded-full animate-[ping_4s_linear_infinite] shrink-0"></div>
+          </div>
+        );
+      case 'LG':
+        return (
+          <div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden rounded-3xl flex items-center justify-center">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(244,63,94,0.35)_0%,transparent_75%)] animate-[pulse_1.8s_infinite]"></div>
+            <div className="absolute w-[420px] h-[420px] border-4 border-rose-500/35 rounded-full animate-[ping_3s_linear_infinite] shrink-0"></div>
+          </div>
+        );
+      default:
+        return null;
     }
   };
 
@@ -391,7 +434,7 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
       }
 
       const pointsGained = Math.round(100 * multiplier);
-      const enemyDmgAmount = Math.round(250 * multiplier);
+      const enemyDmgAmount = Math.round(25 * multiplier);
 
       setScore((prev) => prev + pointsGained);
       setScoreBonusState({ amount: pointsGained, comboBonus: multiplier, visible: true, key: Date.now() });
@@ -408,8 +451,8 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
         setDefeatedCount(nextDefeated);
         setGameMessage('おのれの幻影を完全に撃破した！ 新たな幻影が現れる！');
         
-        // 最初の500から、250ずつ敵最大HPが増加していく
-        const nextMax = enemyMaxHp + 250;
+        // 最初の50から、25ずつ敵最大HPが増加していく
+        const nextMax = enemyMaxHp + 25;
         setEnemyMaxHp(nextMax);
         setEnemyHp(nextMax);
       } else {
@@ -418,12 +461,12 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
       }
 
       // HP回復
-      setPlayerHp((prev) => Math.min(playerMaxHp, prev + 100));
+      setPlayerHp((prev) => Math.min(playerMaxHp, prev + 10));
 
       // タイム増（最大30sリミット）
       setTimeRemaining((prev) => {
         const nextTime = prev + 3; // 正解時ボーナスを3秒に増加
-        const boundedTime = nextTime > 30 ? 30 : nextTime;
+        const boundedTime = nextTime > 45 ? 45 : nextTime;
         const gained = boundedTime - prev;
         if (gained > 0) {
           setTimeBonusState({ amount: gained, visible: true, key: Date.now() });
@@ -450,7 +493,7 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
       setWrongCount((prev) => prev + 1);
 
       // 自爆ダメージ
-      const selfDmg = 150;
+      const selfDmg = 15;
       setDamagePopup({ amount: selfDmg, isCrit: false, isPlayer: true, visible: true });
       setTimeout(() => setDamagePopup(null), 850);
       
@@ -501,11 +544,7 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
   };
 
   return (
-    <div className={`min-h-screen bg-slate-950 text-white flex flex-col justify-between items-center relative select-none font-sans py-4 px-3 md:px-6 overflow-x-hidden ${
-      screenAttackShake ? 'animate-screen-attack-shake' : ''
-    } ${
-      screenDamageShake ? 'animate-screen-damage-shake' : ''
-    }`}>
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between items-center relative select-none font-sans py-4 px-3 md:px-6 overflow-x-hidden">
       
       {/* タイムアウト/被弾時の血湧きフラッシュ（赤） */}
       <div className={`absolute inset-0 bg-red-650/40 pointer-events-none transition-opacity duration-150 ${playerFlash ? 'opacity-100' : 'opacity-0'} z-50`} />
@@ -611,8 +650,14 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
         {/* ==============================================
             A2. プレイ試練進行中 (Side-by-Side 12-Column Grid Layout)
            ============================================== */}
-        {gameState === 'playing' && activeProblem && (
-          <div className="w-full max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-4 items-center flex-1">
+        {gameState === 'playing' && (
+          <div className={`w-full max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-4 items-center flex-1 min-h-[550px] ${
+            screenAttackShake ? 'animate-screen-attack-shake' : ''
+          } ${
+            screenDamageShake ? 'animate-screen-damage-shake' : ''
+          }`} id="timeattack-play-arena">
+            {activeProblem ? (
+              <>
             
             {/* 左4列: ドラクエ風ステータス・グラフィック窓 */}
             <div className="md:col-span-4 flex flex-col gap-3 w-full">
@@ -746,68 +791,53 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
             <div className="md:col-span-8 flex flex-col gap-3 w-full">
               
               {/* 1) えいしょう残り時間メーター */}
-              <div className="w-full bg-slate-900 border-4 border-cyan-500 rounded-xl p-3 shadow-[0_0_15px_rgba(6,182,212,0.3)] relative overflow-hidden flex flex-col gap-1.5 z-10">
+              <div className="w-full bg-slate-950 border-4 border-yellow-405 rounded-xl p-4 shadow-[0_0_22px_rgba(234,179,8,0.35)] relative overflow-hidden flex flex-col gap-1.5 z-10">
                 <div className="flex justify-between items-center px-1">
                   <div className="flex items-center gap-1.5">
-                    <Timer className={`w-4 h-4 ${timeRemaining <= 10 ? 'text-red-500 animate-pulse' : 'text-cyan-405'}`} />
-                    <span className="text-[10px] font-black text-cyan-200 tracking-wider mb-[-1px]">えいしょう残り時間</span>
+                    <Timer className={`w-5 h-5 ${timeRemaining <= 10 ? 'text-red-500 animate-pulse' : 'text-yellow-400'}`} />
+                    <span className="text-xs font-black text-yellow-300 tracking-wider mb-[-1px]">えいしょう残り時間（タイムリミット）</span>
                   </div>
-                  <div className={`text-lg font-black font-mono tracking-tight ${timeRemaining <= 10 ? 'text-red-500 animate-pulse' : 'text-cyan-400'}`}>
-                    {timeRemaining.toFixed(1)} <span className="text-xs text-slate-450">秒</span>
+                  <div className={`text-2xl font-black font-mono tracking-tight ${timeRemaining <= 10 ? 'text-red-500 animate-pulse' : 'text-yellow-400'}`}>
+                    {timeRemaining.toFixed(1)} <span className="text-xs text-slate-400">秒</span>
                   </div>
                 </div>
                 
-                <div className="w-full bg-black border-2 border-slate-700 h-8 rounded-lg overflow-hidden p-[2px] relative shadow-[inset_0_4px_6px_rgba(0,0,0,0.9)]">
+                <div className="w-full bg-black border-2 border-yellow-500/60 h-10 rounded-lg overflow-hidden p-[2px] relative shadow-[inset_0_4px_8px_rgba(0,0,0,0.9)]">
                   {/* スタイリッシュな5秒ごとのグリッド目盛り(視認性強化) */}
                   <div className="absolute inset-0 flex justify-between pointer-events-none z-20">
                     {[...Array(7)].map((_, idx) => (
                       <div 
                         key={idx} 
-                        className={`h-full w-0.5 ${idx === 0 || idx === 6 ? 'bg-transparent' : 'bg-slate-800/80 border-r border-slate-950/40'}`} 
+                        className={`h-full w-0.5 ${idx === 0 || idx === 6 ? 'bg-transparent' : 'bg-white/20 border-r border-slate-950/40'}`} 
                         style={{ left: `${(idx / 6) * 100}%` }}
                       />
                     ))}
                   </div>
 
                   <div 
-                    className={`h-full rounded-md transition-all duration-300 relative z-10 flex items-center justify-end ${
+                    className={`h-full rounded-md transition-all duration-300 relative z-10 flex items-center justify-end shadow-[0_0_15px_rgba(234,179,8,0.5)] ${
                       timeRemaining <= 10 
-                        ? 'bg-gradient-to-r from-red-600 via-rose-500 to-red-500 animate-pulse shadow-[0_0_12px_#ef4444]' 
-                        : timeRemaining <= 20
-                        ? 'bg-gradient-to-r from-amber-500 via-yellow-450 to-amber-500 shadow-[0_0_10px_#f59e0b]'
-                        : 'bg-gradient-to-r from-emerald-500 via-teal-450 to-cyan-550 shadow-[0_0_10px_#10b981]'
+                        ? 'bg-gradient-to-r from-red-600 via-orange-500 to-yellow-500 animate-pulse' 
+                        : 'bg-gradient-to-r from-emerald-500 via-green-400 to-yellow-300'
                     }`}
-                    style={{ width: `${Math.min(100, (timeRemaining / 30) * 100)}%` }}
+                    style={{ width: `${Math.max(0, Math.min(100, (timeRemaining / 30) * 100))}%` }}
                   >
-                    {/* 先端の白いフラッシュラインで視認性をさらに劇的アップ */}
-                    <div className="w-1.5 h-full bg-white opacity-85 blur-[1px] rounded-r-md shadow-[0_0_8px_#ffffff]" />
-                    
-                    {/* 斜線ストライプの光沢エフェクト */}
-                    <div className="absolute inset-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.1)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.1)_50%,rgba(255,255,255,0.1)_75%,transparent_75%,transparent)] bg-[size:16px_16px] opacity-40 pointer-events-none" />
+                    {/* 進捗バーの先端にある高輝度の発光体（視認性の大幅アップ） */}
+                    <div className="h-full w-3 bg-white rounded-r shadow-[0_0_12px_rgba(255,255,255,1),0_0_20px_rgba(234,179,8,1)]" />
                   </div>
                 </div>
 
-                {timeBonusState.visible && (
-                  <div key={timeBonusState.key + '_header'} className={`absolute right-3 top-1.5 text-[9.5px] font-black px-2 py-0.5 border rounded shadow-lg z-30 animate-scale-up ${
-                    timeBonusState.amount > 0 ? 'bg-emerald-950 text-emerald-300 border-emerald-400/50' : 'bg-red-955 text-red-301 border-red-500/40'
-                  }`}>
-                    {timeBonusState.amount > 0 ? `+${timeBonusState.amount}s!` : `${timeBonusState.amount}s!`}
-                  </div>
-                )}
               </div>
 
-              {/* 2) クイズ詠唱パネル */}
-              <div className={`w-full bg-slate-900 border-4 p-5 md:p-6 rounded-2xl flex flex-col justify-between relative shadow-lg transition-all duration-300 ${
-                isAnswered ? (isCorrect ? 'border-emerald-500 bg-emerald-950/25' : 'border-red-500 bg-red-950/25') : 'border-slate-800'
-              }`}>
-                <div className="absolute top-2 left-4 text-[8px] text-slate-500 font-black font-mono tracking-widest uppercase select-none">
-                  🛡️ 鏡 of 試練 // QUESTION STAGE #{currentPoolIndex + 1}
-                </div>
-
-                <div className="py-3 text-center">
-                  <h3 className="font-sans font-black text-slate-100 select-text text-base sm:text-lg md:text-xl leading-relaxed tracking-wider px-2 break-words">
-                    『 {activeProblem.raw.definition} 』
-                  </h3>
+              {/* 2) 詠唱中のコマンドカード */}
+              <div className="w-full bg-slate-100 border-2 border-slate-300 rounded-xl p-4 flex flex-col items-center justify-center gap-2 relative overflow-hidden shadow-sm">
+                <div className="w-full text-center">
+                  <span className="text-[10px] text-blue-800 font-mono font-black tracking-widest block uppercase mb-1">
+                    // 詠唱スペル:
+                  </span>
+                  <p className="text-base font-extrabold text-slate-800 leading-normal font-sans">
+                    {activeProblem.questionText}
+                  </p>
                 </div>
               </div>
 
@@ -817,7 +847,7 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
                   const isSelected = selectedAnswer === index;
                   const isThisChoiceCorrect = index === activeProblem.correctIndex;
                   
-                  let btnStyle = 'border-slate-750 bg-slate-900 text-slate-101 hover:border-yellow-400 hover:bg-slate-850 active:scale-[0.99] hover:shadow-md transition-all duration-150';
+                  let btnStyle = 'border-slate-750 bg-slate-900 text-slate-100 hover:border-yellow-400 hover:bg-slate-850 active:scale-[0.99] hover:shadow-md transition-all duration-150';
                   
                   if (isAnswered) {
                     if (isThisChoiceCorrect) {
@@ -869,6 +899,13 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
 
             </div>
 
+              </>
+            ) : (
+              <div className="col-span-12 flex flex-col items-center justify-center py-20 gap-3" id="timeattack-spell-shuffle">
+                <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+                <span className="text-cyan-405 font-mono text-xs font-black tracking-widest animate-pulse">// LOADING NEXT SPELL...</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -876,138 +913,99 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
             B. ほうしゅうお宝選択（Loot Phase）
            ============================================== */}
         {gameState === 'looting' && (
-          <div className="w-full max-w-3xl flex flex-col items-center gap-6 py-4 animate-fade-in z-50">
-            <div className="text-center space-y-2">
-              <div className="flex items-center justify-center gap-1.5 bg-yellow-400/15 border border-yellow-500/40 px-4 py-1.5 rounded-full text-xs text-yellow-300 font-extrabold uppercase tracking-wider shadow-md">
-                <Sparkles size={13} className="text-yellow-300 animate-bounce" />
+          <div className="w-full max-w-4xl bg-gradient-to-b from-sky-300 via-sky-50 to-emerald-100 text-slate-900 p-6 md:p-8 rounded-2xl flex flex-col items-center gap-6 shadow-2xl border-t-8 border-blue-600 relative overflow-hidden my-6 animate-fade-in z-50">
+            {/* 優しい王道ファンタジーを感じる陽光 */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.6)_0%,transparent_80%)] pointer-events-none"></div>
+
+            <div className="text-center space-y-1 z-10">
+              <div className="flex items-center justify-center gap-1.5 bg-blue-600 px-4 py-1.5 rounded-full text-xs text-white font-extrabold uppercase tracking-wider shadow-md w-fit mx-auto">
+                <Sparkles size={11} className="text-yellow-350 animate-bounce" />
                 <span>お宝報酬カードの選択 ({lootRound + 1} / {defeatedCount} 枚目)</span>
               </div>
-              <h2 className="text-xl md:text-2xl font-black text-white tracking-widest mt-1">
-                幻影の秘宝を ハックせよ！
+              <h2 className="text-xl md:text-2xl font-black text-blue-900 tracking-wider mt-2 font-sans">
+                【 獲得するカードの選択 】
               </h2>
-              <p className="text-xs text-slate-400 max-w-md mx-auto">
-                幻影を撃破した力で、3つのクリスタルカードから1つを実用カードとして持ち帰ることができます。
+              <p className="text-xs text-slate-605 max-w-sm mx-auto font-bold mt-1">
+                幻影を撃破した報酬として、実用カードを永続装備に加えることができます。
               </p>
             </div>
 
             {/* 3つの選択肢 */}
-            {!lootRevealed ? (
-              <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 px-4 md:px-8 justify-center items-stretch my-6">
-                {lootOptions.map((card, idx) => (
+            <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 px-4 md:px-8 justify-center items-stretch my-2 z-10">
+              {lootOptions.map((card, idx) => {
+                const isSelected = selectedLootIndex === idx;
+                return (
                   <div
                     key={card.id + '_' + idx}
-                    onClick={() => handleLootCardClick(idx)}
-                    className={`relative min-h-[280px] rounded-2xl cursor-pointer transition-all duration-350 transform-gpu hover:-translate-y-2 flex flex-col justify-center items-center ${getMysticalCardStyle(card.rarity, true)} p-5 shadow-lg group text-center space-y-4`}
+                    onClick={() => setSelectedLootIndex(idx)}
+                    className={`relative min-h-[340px] rounded-2xl cursor-pointer transition-all duration-300 flex flex-col justify-between p-5 bg-white shadow-md text-left font-sans ${
+                      isSelected 
+                        ? 'border-4 border-yellow-500 ring-4 ring-yellow-405/40 scale-102 shadow-2xl' 
+                        : 'border-2 border-slate-300/80 hover:-translate-y-1 hover:border-blue-400'
+                    }`}
                     id={`timeattack-loot-card-${idx}`}
                   >
-                    <div className="w-14 h-14 rounded-full bg-slate-950 border-2 border-dashed border-cyan-400 flex items-center justify-center text-cyan-400 text-2xl group-hover:text-yellow-405 group-hover:border-yellow-404 transition-all duration-300">
-                      ★
-                    </div>
-                    <div>
-                      <span className="text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-900 px-2 py-0.5 rounded font-mono font-bold tracking-widest block mb-1">
-                        CRYSTAL CARD
-                      </span>
-                      <span className="text-xs font-bold text-slate-400 group-hover:text-slate-250 transition-colors">
-                        クリックして解放
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              /* 開封後・詳細カードプレビュー */
-              <div className="max-w-md w-full flex flex-col items-center px-4 relative my-4 z-55">
-                <div className="w-full text-center text-[10px] sm:text-xs font-black text-yellow-400 mb-3 bg-yellow-950/50 px-3 py-1.5 border border-yellow-850 rounded-full animate-pulse tracking-widest uppercase">
-                  ★ 幻影のクリスタルが 実体化した！ ★
-                </div>
-
-                {selectedLootIndex !== null && (
-                  <div className={`w-full rounded-2xl text-slate-100 transition-all duration-300 font-sans flex flex-col justify-between ${getMysticalCardStyle(lootOptions[selectedLootIndex].rarity, false)} border-3 p-5 shadow-2xl relative overflow-hidden`}>
-                    
                     {/* カードヘッダー */}
-                    <div className="border-b border-slate-800 pb-2 flex justify-between items-center text-[10px] sm:text-xs">
-                      <span className={getRarityBadgeColor(lootOptions[selectedLootIndex].rarity)}>
-                        {getRarityName(lootOptions[selectedLootIndex].rarity)}
-                      </span>
-                      <span className="text-[9.5px] text-slate-400 font-mono font-bold tracking-wider truncate max-w-[150px]">
-                        {CLUSTERS.find(c => c.id === lootOptions[selectedLootIndex].clusterId)?.name || 'IT分野'}
+                    <div className="w-full border-b border-slate-205 pb-2 flex justify-between items-center text-[10px] font-bold text-slate-500 gap-2">
+                      <span className={getRarityBadgeColor(card.rarity) + " shrink-0"}>
+                        {getRarityName(card.rarity)}
                       </span>
                     </div>
 
-                    {/* メイン部分：絵文字枠と見出し */}
-                    <div className="flex items-center gap-4 mt-3">
-                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-3.5xl sm:text-4.5xl shrink-0 shadow-inner">
-                        {getTermEmoji(lootOptions[selectedLootIndex].id)}
-                      </div>
-                      <div className="flex flex-col min-w-0 text-left">
-                        <h3 className="text-base sm:text-lg font-black tracking-normal text-slate-100 leading-tight">
-                          {lootOptions[selectedLootIndex].name}
-                        </h3>
-                        {collectedCardIds.includes(lootOptions[selectedLootIndex].id) ? (
-                          <span className="text-[9px] sm:text-[10px] font-black tracking-wider mt-1 uppercase leading-none text-slate-400 bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded shadow-sm self-start">
-                            所持: {collectedCardIds.filter(id => id === lootOptions[selectedLootIndex].id).length}枚
+                    {/* メイン絵文字枠と見出し */}
+                    <div className="flex items-center gap-4 my-3 font-sans">
+                      <div className="flex flex-col text-left min-w-0 font-sans">
+                        <h4 className="text-base font-black text-slate-900 leading-tight truncate group-hover:text-blue-705 transition-colors font-sans">
+                          {card.name}
+                        </h4>
+                        {collectedCardIds.includes(card.id) ? (
+                          <span className="text-[10px] bg-slate-200/60 text-slate-705 border border-slate-300 font-extrabold px-1.5 py-0.5 rounded shadow-3xs uppercase tracking-wider font-sans mt-1 self-start">
+                            所持: {collectedCardIds.filter(id => id === card.id).length}枚
                           </span>
                         ) : (
-                          <span className="text-[9px] sm:text-[10px] bg-rose-950/60 text-rose-350 border border-rose-800 font-black px-1.5 py-0.5 rounded tracking-wider mt-1 animate-pulse uppercase leading-none self-start">
-                            ★ 新規カード解放 !
+                          <span className="text-[10px] bg-rose-250/20 text-red-650 border border-rose-350 font-extrabold px-1.5 py-0.5 rounded shadow-3xs uppercase tracking-wider animate-pulse font-sans mt-0.5 self-start">
+                            ★ 未所持
                           </span>
                         )}
                       </div>
                     </div>
 
-                    {/* カード解説 */}
-                    <div className="my-3 text-left flex flex-col gap-2">
-                      <div className="text-xs sm:text-sm font-extrabold text-slate-200 leading-relaxed bg-black/55 border border-slate-850 p-3 sm:p-4 rounded-xl">
-                        <span className="text-cyan-400 text-[10px] font-black block mb-1 tracking-wider">// 用語の定義:</span>
-                        {lootOptions[selectedLootIndex].definition}
-                      </div>
-                      {lootOptions[selectedLootIndex].flavorText && (
-                        <div className="text-xs text-slate-400 italic leading-relaxed pl-2 bg-slate-950 border-l-4 border-slate-705 rounded-r-xl py-1 px-2">
-                          {lootOptions[selectedLootIndex].flavorText}
-                        </div>
-                      )}
-                    </div>
+                    {/* 用語の定義 */}
+                    <p className="text-xs sm:text-sm font-bold text-slate-800 text-left bg-slate-50/50 border border-slate-200 p-3 rounded-xl line-clamp-4 leading-relaxed flex-1 flex items-center font-sans">
+                      {card.definition}
+                    </p>
 
                     {/* 効果バフ */}
-                    <div className="mt-1 border-t border-slate-850 pt-2 flex flex-col gap-1.5">
-                      <div className="flex flex-col gap-1.5 text-[10px] sm:text-xs bg-slate-950 border border-slate-850 px-3 py-2 rounded-lg font-bold">
-                        <div className="flex justify-between items-center text-slate-300 border-b border-slate-850 pb-1">
-                          <span>永続効果:</span>
-                          <span className="font-mono text-cyan-400 font-black">
-                            {lootOptions[selectedLootIndex].statsBonus.hp ? `HP +${(lootOptions[selectedLootIndex].statsBonus.hp * 0.1).toFixed(1)} ` : ''}
-                            {lootOptions[selectedLootIndex].statsBonus.attack ? `ATK +${(lootOptions[selectedLootIndex].statsBonus.attack * 0.1).toFixed(1)} ` : ''}
-                            {lootOptions[selectedLootIndex].statsBonus.xpBonus ? `XP +${(lootOptions[selectedLootIndex].statsBonus.xpBonus * 0.1).toFixed(1)}% ` : ''}
-                            {lootOptions[selectedLootIndex].statsBonus.timerBonus ? `Time +${(lootOptions[selectedLootIndex].statsBonus.timerBonus * 0.1).toFixed(1)}秒` : ''}
-                          </span>
-                        </div>
-                      </div>
+                    <div className="mt-4 pt-2 border-t border-slate-200 text-[10px] sm:text-xs font-bold flex justify-between items-center text-slate-600 bg-slate-100 px-2.5 py-1.5 rounded shadow-3xs font-sans">
+                      <span>永続効果:</span>
+                      <span className="text-blue-950 font-mono text-[10px] font-extrabold">
+                        {card.statsBonus.hp ? `HP +${(card.statsBonus.hp * 0.5).toFixed(1)} ` : ''}
+                        {card.statsBonus.attack ? `ATK +${(card.statsBonus.attack * 0.5).toFixed(1)} ` : ''}
+                        {card.statsBonus.xpBonus ? `XP +${(card.statsBonus.xpBonus * 0.5).toFixed(1)}% ` : ''}
+                        {card.statsBonus.timerBonus ? `Time +${(card.statsBonus.timerBonus * 0.5).toFixed(1)}秒` : ''}
+                      </span>
                     </div>
-
                   </div>
-                )}
+                );
+              })}
+            </div>
 
-                {/* 決定ボタン */}
-                <div className="flex gap-3 w-full mt-4 justify-center">
-                  <button
-                    onClick={() => {
-                      setLootRevealed(false);
-                      setSelectedLootIndex(null);
-                    }}
-                    className="px-5 py-3.5 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 font-black rounded-xl active:scale-95 transition-all cursor-pointer text-xs sm:text-sm"
-                    id="loot-cancel-btn"
-                  >
-                    [ 別のクリスタルを選ぶ ]
-                  </button>
-                  <button
-                    onClick={handleLootConfirm}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-6 py-3.5 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-450 hover:to-amber-450 text-slate-950 font-black rounded-xl border border-yellow-405 shadow-lg active:scale-95 transition-all cursor-pointer text-xs sm:text-sm tracking-wider"
-                    id="loot-confirm-btn"
-                  >
-                    <span>[ このお宝を受け取る ]</span>
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* 直接配置された決定ボタンエリア */}
+            <div className="flex gap-4 w-full max-w-sm mt-4 justify-center z-10 font-sans">
+              <button
+                onClick={handleLootConfirm}
+                disabled={selectedLootIndex === null}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-6 py-4 text-slate-950 font-black rounded-xl border transition-all text-sm tracking-wider shadow-lg ${
+                  selectedLootIndex === null
+                    ? 'bg-slate-300 border-slate-400 text-slate-500 cursor-not-allowed opacity-50'
+                    : 'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-450 hover:to-amber-450 border-yellow-300 hover:scale-102 active:scale-95 cursor-pointer shadow-lg'
+                }`}
+                id="loot-confirm-btn"
+              >
+                <span>[ そうびする ]</span>
+                <ArrowRight size={15} className="stroke-[3px]" />
+              </button>
+            </div>
           </div>
         )}
 

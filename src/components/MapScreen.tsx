@@ -110,7 +110,7 @@ export default function MapScreen({
           {node.label}
         </span>
         <span className="text-[8px] text-stone-500 font-mono tracking-wider mt-0.5 uppercase">
-          {node.type === 'battle_hard' ? 'Hard • ATK 20' : 'Easy • ATK 15'}
+          {node.type === 'battle_hard' ? `Hard • HP ${node.monsterMaxHp} ATK ${node.monsterDamage}` : `Easy • HP ${node.monsterMaxHp} ATK ${node.monsterDamage}`}
         </span>
       </div>
     );
@@ -264,7 +264,7 @@ export default function MapScreen({
                         {bossNode.label}
                       </span>
                       <span className="text-[10px] text-rose-450 font-mono tracking-widest mt-1 font-bold">
-                        BOSS • HP 50 ATK 25
+                        BOSS • HP {bossNode.monsterMaxHp} ATK {bossNode.monsterDamage}
                       </span>
                     </div>
                   );

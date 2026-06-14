@@ -72,8 +72,8 @@ export default function App() {
   const [overrideCardsPool, setOverrideCardsPool] = useState<TermCard[] | undefined>(undefined);
   const [forceFullyRandom, setForceFullyRandom] = useState<boolean>(false);
   const [player, setPlayer] = useState<PlayerState>({
-    hp: 1000,
-    maxHp: 1000,
+    hp: 100,
+    maxHp: 100,
     attack: 100,
     level: 1,
     xp: 0,
@@ -87,7 +87,7 @@ export default function App() {
 
   // プレイヤーの最大HP（ベース ＋ カードボーナス）を安全に計算する
   const getPlayerMaxHp = (lvl: number, collected: string[], activeRun: string[]) => {
-    const base = 1000 + (lvl - 1) * 150;
+    const base = 100 + (lvl - 1) * 15;
     const bonus = calculatePlayerBonus(collected, activeRun);
     return base + bonus.hp;
   };
@@ -191,8 +191,17 @@ export default function App() {
 
   // 画面遷移時にスクロール位置を最上部にリセット
   useEffect(() => {
-    window.scrollTo({ top: 0 });
-    document.documentElement.scrollTo({ top: 0 });
+    if (screen === 'battle' || screen === 'map' || screen === 'loot') {
+      return;
+    }
+    const scrollToTop = () => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    };
+    scrollToTop();
+    const timer = setTimeout(scrollToTop, 30);
+    return () => clearTimeout(timer);
   }, [screen]);
 
   // ----------------------------------------------------
@@ -280,10 +289,10 @@ export default function App() {
         ? '小修行のプチスライム'
         : '鍛錬のごうがんゴーレム';
     const monsterMaxHp = mode === 'category' 
-      ? 50 
-      : mode === 'subcategory'
-        ? 45 
-        : 55;
+      ? 500 
+      : mode === 'subcategory' 
+        ? 450 
+        : 550;
 
     const subcategoryObj = quizCategories.flatMap(c => c.subcategories).find(s => s.id === clusterId);
     const subTitle = subcategoryObj ? subcategoryObj.title : '';
@@ -304,7 +313,7 @@ export default function App() {
       route: 'easy',
       monsterName,
       monsterMaxHp,
-      monsterDamage: (mode === 'category' || mode === 'subcategory') ? 4 : 8,
+      monsterDamage: (mode === 'category' || mode === 'subcategory') ? 120 : 160,
       monsterQuestions,
       monsterImagePath: (mode === 'category' || mode === 'subcategory')
         ? "./img/monsters/training_slime_battle.jpg" 
@@ -424,9 +433,9 @@ export default function App() {
       const templates = isBoss ? pool.hard : (type === 'battle_easy' ? pool.easy : pool.hard);
       const template = templates[Math.floor(Math.random() * templates.length)];
       
-      const scaleFactor = 1.0 + step * 0.15;
-      const hp = Math.floor((Math.floor(Math.random() * (template.maxHp - template.minHp + 1)) + template.minHp) * scaleFactor);
-      const dmg = Math.floor((Math.floor(Math.random() * (template.maxDamage - template.minDamage + 1)) + template.minDamage) * scaleFactor);
+      const baseConfig = getEnemyConfig(type, step);
+      const hp = Math.floor(baseConfig.maxHp * (0.95 + Math.random() * 0.1));
+      const dmg = Math.floor(baseConfig.damage * (0.95 + Math.random() * 0.1));
       
       return {
         id,
@@ -500,7 +509,18 @@ export default function App() {
     const enemyQuestions = node.monsterQuestions || enemyConfig.questions;
 
     const choiceCount = getChoiceCountForStep(node.type === 'boss' ? 'boss' : currentStep);
+    
+    // 戦闘開始前にプレイヤーのHPを「動的に計算した最新の最大HPバフ込み」の全回復に同期させます
+    const currentMaxHp = getPlayerMaxHp(player.level, player.collectedCards, player.activeRunCardIds);
+    const currentAttack = getPlayerAttack(player.level, player.collectedCards, player.activeRunCardIds);
     const bonus = calculatePlayerBonus(player.collectedCards, player.activeRunCardIds);
+
+    setPlayer(prev => ({
+      ...prev,
+      hp: currentMaxHp,
+      maxHp: currentMaxHp,
+      attack: currentAttack
+    }));
 
     // バトルに出題する問題群をインテリジェントにフィルタリング
     // 1. ボス戦：過去の間間違えた問題、または同一クラスタ問題を優先的に8問集める
@@ -581,7 +601,7 @@ export default function App() {
       totalQuestionsInBattle: enemyQuestions,
       currentQuestionIndex: 0,
       activeProblem: activeProg,
-      playerHp: player.hp,
+      playerHp: currentMaxHp,
       enemyHp: enemyMaxHp,
       enemyMaxHp: enemyMaxHp,
       enemyName: enemyName,
@@ -825,14 +845,16 @@ export default function App() {
       saveToStorage(updatedCollected, newBest, [...new Set([...wrongTerms])], 1, 0, nextStats);
 
       const freshBonus = calculatePlayerBonus(updatedCollected, []);
+      const mhp = 100 + freshBonus.hp;
+      const atk = 100 + freshBonus.attack;
       setPlayer(prev => ({
         ...prev,
         level: 1,
         xp: 0,
         xpToNextLevel: getXpToNextLevel(1),
-        maxHp: 1000,
-        hp: 1000 + freshBonus.hp,
-        attack: 100 + freshBonus.attack,
+        maxHp: mhp,
+        hp: mhp,
+        attack: atk,
         collectedCards: updatedCollected,
         activeRunCardIds: [], // Reset run cards
         totalTimeSeconds: runSeconds
@@ -884,7 +906,7 @@ export default function App() {
       xp: nextXp,
       xpToNextLevel: required,
       maxHp: mhp,
-      hp: levelUpFlag ? Math.min(prev.hp + (mhp - prev.maxHp), mhp) : Math.min(prev.hp, mhp), // レベルアップ時、基礎上限上昇分回復
+      hp: mhp, // 新たな補正カード装着時、全回復・同期します
       attack: atk,
       collectedCards: updatedCollected,
       activeRunCardIds: updatedRunCards
@@ -945,14 +967,16 @@ export default function App() {
     
     // 敗北後もレベル1、XP 0に常にリセット、冒険中カードは空に
     const bonus = calculatePlayerBonus(player.collectedCards, []);
+    const mhp = 100 + bonus.hp;
+    const atk = 100 + bonus.attack;
     setPlayer(prev => ({
       ...prev,
       level: 1,
       xp: 0,
       xpToNextLevel: getXpToNextLevel(1),
-      maxHp: 1000,
-      hp: 1000 + bonus.hp,
-      attack: 100 + bonus.attack,
+      maxHp: mhp,
+      hp: mhp,
+      attack: atk,
       activeRunCardIds: [], // Clear run cards!
       totalTimeSeconds: runSeconds
     }));
@@ -970,8 +994,8 @@ export default function App() {
   const handleResetAllData = () => {
     localStorage.removeItem('it-rogue-save-data');
     setPlayer({
-      hp: 1000,
-      maxHp: 1000,
+      hp: 100,
+      maxHp: 100,
       attack: 100,
       level: 1,
       xp: 0,
@@ -1061,7 +1085,7 @@ export default function App() {
           battleState={battleState}
           allProblems={RAW_PROBLEMS}
           playerAttack={player.attack}
-          playerMaxHp={100 + calculatePlayerBonus(player.collectedCards, player.activeRunCardIds).hp}
+          playerMaxHp={getPlayerMaxHp(player.level, player.collectedCards, player.activeRunCardIds)}
           timerBonus={calculatePlayerBonus(player.collectedCards, player.activeRunCardIds).timerBonus}
           onAnswer={handleAnswer}
           onNextQuestion={handleNextQuestion}
