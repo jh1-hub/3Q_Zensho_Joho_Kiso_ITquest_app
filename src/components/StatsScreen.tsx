@@ -275,6 +275,66 @@ export default function StatsScreen({
       comment = '基本知識が定着しています。さらにカードを揃えて実力をつけよう！';
     }
 
+    // --- コレクターレベルの計算 (画像出力に反映させる)
+    const collectedCount = collectedIds.length;
+    const totalPossible = totalCardsCount * 3;
+    const levelRequirements: number[] = [0];
+    for (let lvl = 1; lvl <= 99; lvl++) {
+      if (lvl === 1) {
+        levelRequirements.push(0);
+        continue;
+      }
+      if (lvl === 99) {
+        levelRequirements.push(totalPossible);
+        continue;
+      }
+      const norm = (lvl - 1) / 98;
+      const curveValue = totalPossible * Math.pow(norm, 2.8);
+      const linearValue = lvl - 1;
+      const blended = linearValue * (1 - norm) + curveValue * norm;
+      
+      let req = Math.round(blended);
+      const prevReq = levelRequirements[lvl - 1];
+      if (req <= prevReq) {
+        req = prevReq + 1;
+      }
+      const remainingLevels = 99 - lvl;
+      if (req > totalPossible - remainingLevels) {
+        req = totalPossible - remainingLevels;
+      }
+      levelRequirements.push(req);
+    }
+
+    let collectorLevel = 1;
+    for (let lvl = 1; lvl <= 99; lvl++) {
+      if (collectedCount >= levelRequirements[lvl]) {
+        collectorLevel = lvl;
+      } else {
+        break;
+      }
+    }
+
+    // コレクターレベルのバッジを氏名欄の右側に描画
+    ctx.save();
+    ctx.fillStyle = '#1e3a8a';
+    ctx.beginPath();
+    // 丸角矩形 (非対応ブラウザ安全対策)
+    if (ctx.roundRect) {
+      ctx.roundRect(645, infoY + 8, 80, 44, 6);
+    } else {
+      ctx.rect(645, infoY + 8, 80, 44);
+    }
+    ctx.fill();
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 9px "Hiragino Kaku Gothic ProN", sans-serif';
+    ctx.fillText('コレクターLv', 685, infoY + 23);
+    ctx.font = '900 16px "Inter", sans-serif';
+    ctx.fillStyle = '#f59e0b'; // ゴールド
+    ctx.fillText(`${collectorLevel}`, 685, infoY + 41);
+    ctx.restore();
+
     // --- 総合実績ダッシュボードボックス
     ctx.fillStyle = '#1e3a8a';
     ctx.fillRect(60, 250, w - 120, 32);
@@ -300,23 +360,52 @@ export default function StatsScreen({
     ctx.fillText('最後の強敵討伐(クリア)数:', 100, boxY + 70);
     ctx.fillText('最速クリア自己記録:', 100, boxY + 110);
 
-    // 2列目
-    ctx.fillText('総合解答問題数:', 430, boxY + 35);
-    ctx.fillText('総合正答率 (正解割合):', 430, boxY + 70);
-    ctx.fillText('図鑑カード収集率:', 430, boxY + 110);
+    // 2列目 (レベルシール/切手との干渉回避のため少し左へシフト)
+    ctx.fillText('総合解答問題数:', 400, boxY + 35);
+    ctx.fillText('総合正答率 (正解割合):', 400, boxY + 70);
+    ctx.fillText('図鑑カード収集率:', 400, boxY + 110);
 
     // 実績の値
     ctx.fillStyle = '#0f172a';
     ctx.font = '900 15px "Inter", sans-serif';
-    ctx.fillText(`${totalAttempts} 回`, 280, boxY + 35);
-    ctx.fillText(`${totalWins} 回`, 280, boxY + 70);
-    ctx.fillText(bestTime ? `${formatTime(bestTime)}` : '未クリア', 280, boxY + 110);
+    ctx.fillText(`${totalAttempts} 回`, 285, boxY + 35);
+    ctx.fillText(`${totalWins} 回`, 285, boxY + 70);
+    ctx.fillText(bestTime ? `${formatTime(bestTime)}` : '未クリア', 285, boxY + 110);
 
-    ctx.fillText(`${totalQuizAttempts} 問`, 590, boxY + 35);
+    ctx.fillText(`${totalQuizAttempts} 問`, 560, boxY + 35);
     ctx.fillStyle = overallAccuracy >= 80 ? '#10b981' : '#3b82f6';
-    ctx.fillText(`${overallAccuracy} % (${totalQuizCorrects}問正解)`, 590, boxY + 70);
+    ctx.fillText(`${overallAccuracy} % (${totalQuizCorrects}問正解)`, 560, boxY + 70);
     ctx.fillStyle = '#0f172a';
-    ctx.fillText(`${collectionRate} % (${uniqueCollected} / ${totalCardsCount} 種)`, 590, boxY + 110);
+    ctx.fillText(`${collectionRate} % (${uniqueCollected} / ${totalCardsCount} 種)`, 560, boxY + 110);
+
+    // 絢爛たる総合評価・極太２重印（Wax Seal）を右側にドロップ配置！
+    ctx.save();
+    const sealX = 690;
+    const sealY = boxY + 72;
+    
+    // 円形スタンプ
+    ctx.strokeStyle = gradeColor;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(sealX, sealY, 36, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(sealX, sealY, 32, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    ctx.font = 'bold 9px "Hiragino Kaku Gothic ProN", sans-serif';
+    ctx.fillStyle = gradeColor;
+    ctx.textAlign = 'center';
+    ctx.fillText('学修評価', sealX, sealY - 14);
+    
+    ctx.font = '900 32px "Inter", sans-serif';
+    ctx.fillText(grade, sealX, sealY + 12);
+    
+    ctx.font = 'bold 7.5px "Hiragino Kaku Gothic ProN", sans-serif';
+    ctx.fillText('IT QUEST', sealX, sealY + 23);
+    ctx.restore();
 
 
     // --- 大カテゴリ別の詳細マスタリー評価

@@ -48,51 +48,57 @@ export default function TitleScreen({
   const totalPossible = TERM_CARDS.length * 3;
   const collectedCount = collectedCardIds.length;
 
-  // Exponential collector rank table: rising easily at first, progressively steeper later
-  const totalRanks = ['Z', 'Y', 'X', 'W', 'V', 'U', 'T', 'S', 'R', 'Q', 'P', 'O', 'N', 'M', 'L', 'K', 'J', 'I', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A'];
-  
-  const getThresholdForIndex = (index: number, total: number): number => {
-    if (index <= 0) return 0;
-    if (index >= 26) return total;
-    const p = 1.8; // Exponent for curved progression (easy at start, demanding at end)
-    return Math.max(index, Math.round(total * Math.pow(index / 25, p)));
-  };
+  // コレクターレベル (1〜99) の動的経験値テーブル計算
+  // 序盤はレベルアップしやすく、後半に行くにつれて必要カード総数が急増する曲線
+  const levelRequirements: number[] = [0]; // インデックスがそのまま必要な累積獲得カード数に対応
+  for (let lvl = 1; lvl <= 99; lvl++) {
+    if (lvl === 1) {
+      levelRequirements.push(0);
+      continue;
+    }
+    if (lvl === 99) {
+      levelRequirements.push(totalPossible);
+      continue;
+    }
+    const norm = (lvl - 1) / 98; // 1〜99の進捗割合 (0.0〜1.0)
+    const curveValue = totalPossible * Math.pow(norm, 2.8); // 累乗によって後半が非常に厳しくなる曲線
+    const linearValue = lvl - 1; // 序盤は1レベル1枚ペース
+    const blended = linearValue * (1 - norm) + curveValue * norm; // 2つの曲線のブレンド
+    
+    let req = Math.round(blended);
+    const prevReq = levelRequirements[lvl - 1];
+    
+    // 確実な単調増加性の担保 (毎レベル最低1枚は増加)
+    if (req <= prevReq) {
+      req = prevReq + 1;
+    }
+    
+    // レベル99に向けての残余レベル数による上限確保
+    const remainingLevels = 99 - lvl;
+    if (req > totalPossible - remainingLevels) {
+      req = totalPossible - remainingLevels;
+    }
+    
+    levelRequirements.push(req);
+  }
 
-  let currentRankIndex = 0;
-  for (let i = 0; i < totalRanks.length; i++) {
-    if (collectedCount >= getThresholdForIndex(i, totalPossible)) {
-      currentRankIndex = i;
+  let currentLevel = 1;
+  for (let lvl = 1; lvl <= 99; lvl++) {
+    if (collectedCount >= levelRequirements[lvl]) {
+      currentLevel = lvl;
     } else {
       break;
     }
   }
 
-  const currentRank = (collectedCount >= totalPossible) ? 'SS' : totalRanks[currentRankIndex];
+  const nextLevel = Math.min(99, currentLevel + 1);
+  const currentLevelThreshold = levelRequirements[currentLevel];
+  const nextLevelThreshold = levelRequirements[nextLevel];
 
-  // Progress to next rank
-  let nextRankName = '';
-  let currentRankThreshold = 0;
-  let nextRankThreshold = 0;
-
-  if (currentRank === 'SS') {
-    nextRankName = 'MAX';
-    currentRankThreshold = totalPossible;
-    nextRankThreshold = totalPossible;
-  } else {
-    currentRankThreshold = getThresholdForIndex(currentRankIndex, totalPossible);
-    if (currentRankIndex === totalRanks.length - 1) { // Current is 'A', next is 'SS'
-      nextRankName = 'SS';
-      nextRankThreshold = totalPossible;
-    } else {
-      nextRankName = totalRanks[currentRankIndex + 1];
-      nextRankThreshold = getThresholdForIndex(currentRankIndex + 1, totalPossible);
-    }
-  }
-
-  const progressInCurrentRank = collectedCount - currentRankThreshold;
-  const widthInCurrentRank = nextRankThreshold - currentRankThreshold;
-  const rankUpRatio = widthInCurrentRank > 0 ? Math.min(100, Math.max(0, (progressInCurrentRank / widthInCurrentRank) * 100)) : 100;
-  const cardsNeededForNext = nextRankThreshold - collectedCount;
+  const progressInCurrentLevel = collectedCount - currentLevelThreshold;
+  const widthInCurrentLevel = nextLevelThreshold - currentLevelThreshold;
+  const levelUpRatio = widthInCurrentLevel > 0 ? Math.min(100, Math.max(0, (progressInCurrentLevel / widthInCurrentLevel) * 100)) : 100;
+  const cardsNeededForNextLevel = nextLevelThreshold - collectedCount;
 
   // Rarity Breakdown: Separating unique count from 2nd/3rd card unlocked count
   const raritiesToShow = ['C', 'R', 'SR', 'UR'];
@@ -120,15 +126,18 @@ export default function TitleScreen({
     };
   });
 
-  const getRankBadgeStyle = (rank: string) => {
-    if (rank === 'SS') {
+  const getLevelBadgeStyle = (lvl: number) => {
+    if (lvl === 99) {
       return 'bg-gradient-to-r from-red-500 via-amber-500 to-rose-650 text-white border-2 border-yellow-300 shadow-[0_0_15px_rgba(245,158,11,0.6)] animate-pulse font-black text-2xl px-5 py-2 rounded-2xl';
     }
-    if (['A', 'B', 'C', 'S'].includes(rank)) {
+    if (lvl >= 80) {
       return 'bg-gradient-to-r from-amber-200 to-yellow-300 text-amber-900 border-2 border-amber-400 font-extrabold text-xl px-4 py-1.5 rounded-xl shadow-sm';
     }
-    if (['D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'].includes(rank)) {
+    if (lvl >= 45) {
       return 'bg-gradient-to-r from-purple-200 to-fuchsia-200 text-purple-900 border-2 border-purple-300 font-extrabold text-xl px-4 py-1.5 rounded-xl shadow-sm';
+    }
+    if (lvl >= 15) {
+      return 'bg-gradient-to-r from-blue-200 to-cyan-200 text-blue-900 border-2 border-blue-300 font-extrabold text-xl px-4 py-1.5 rounded-xl shadow-sm';
     }
     return 'bg-slate-100 text-slate-700 border-2 border-slate-300 font-extrabold text-xl px-4 py-1.5 rounded-xl shadow-sm';
   };
@@ -146,35 +155,26 @@ export default function TitleScreen({
   };
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-b from-sky-300 via-sky-100 to-emerald-100 text-slate-800 flex flex-col items-center justify-start p-4 sm:p-6 pb-16 relative font-sans select-none border-t-8 border-blue-600 overflow-y-auto">
+    <div className="w-full min-h-screen bg-gradient-to-b from-sky-305 via-sky-100 to-emerald-100 text-slate-800 flex flex-col items-center justify-start p-4 sm:p-6 pb-16 relative font-sans select-none border-t-8 border-blue-600 overflow-y-auto overflow-x-hidden">
       
-      {/* 優しい王道ファンタジーを感じる陽光 */}
+      {/* 優しい陽光 */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.6)_0%,transparent_80%)] pointer-events-none"></div>
       <div className="absolute -top-12 -right-12 w-64 h-64 bg-yellow-200/50 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute -bottom-12 -left-12 w-64 h-64 bg-emerald-200/50 rounded-full blur-3xl pointer-events-none"></div>
 
       {/* トップレール */}
-      <div className="max-w-4xl w-full mx-auto flex justify-between items-center z-10 border-b border-blue-200 pb-3 mb-4">
-        <div className="flex items-center gap-1.5 bg-blue-600 px-3 py-1.5 rounded-full text-xs text-white font-bold tracking-wide shadow-md">
-          <Zap size={13} className="animate-bounce text-yellow-300" />
-          <span>IT QUEST // 冒険の準備完了</span>
+      {installPrompt && onInstallApp ? (
+        <div className="max-w-4xl w-full mx-auto flex justify-end items-center z-10 border-b border-blue-100 pb-2.5 mb-4">
+          <button
+            onClick={onInstallApp}
+            className="flex items-center gap-1 bg-gradient-to-r from-yellow-500 to-amber-500 text-yellow-950 font-black text-[11px] px-2.5 py-1 rounded-lg border border-yellow-300 shadow-md hover:scale-[1.03] active:scale-95 transition-all cursor-pointer select-none"
+            id="pwa-install-header-btn"
+          >
+            <Download size={11} className="animate-bounce" />
+            <span>アプリをインストール</span>
+          </button>
         </div>
-        <div className="flex items-center gap-3">
-          {installPrompt && onInstallApp && (
-            <button
-              onClick={onInstallApp}
-              className="flex items-center gap-1 bg-gradient-to-r from-yellow-500 to-amber-500 text-yellow-950 font-black text-[11px] px-2.5 py-1 rounded-lg border border-yellow-300 shadow-md hover:scale-[1.03] active:scale-95 transition-all cursor-pointer select-none"
-              id="pwa-install-header-btn"
-            >
-              <Download size={11} className="animate-bounce" />
-              <span>アプリをインストール</span>
-            </button>
-          )}
-          <div className="text-xs text-blue-800 font-bold tracking-wider">
-            ★ 王道IT用語ファンタジーRPG ★
-          </div>
-        </div>
-      </div>
+      ) : null}
 
       {/* メインヒーロー領域 */}
       <div className="max-w-4xl w-full mx-auto flex flex-col items-center text-center my-auto py-8 z-10 gap-6">
@@ -233,27 +233,30 @@ export default function TitleScreen({
               </span>
             </div>
 
-            {/* ランク */}
+            {/* コレクターレベル */}
             <div className="flex flex-col items-center py-2 sm:py-0 sm:px-4">
-              <span className="text-blue-600 text-[10.5px] uppercase tracking-wider font-extrabold mb-1.5 select-none">コレクターランク</span>
+              <span className="text-blue-600 text-[10.5px] uppercase tracking-wider font-extrabold mb-1.5 select-none">コレクターレベル</span>
               <div className="flex flex-col items-center gap-1.5 w-full min-w-[125px]">
-                <div className={getRankBadgeStyle(currentRank)}>
-                  {currentRank}
+                <div className={getLevelBadgeStyle(currentLevel)}>
+                  Lv. {currentLevel}
                 </div>
-                {/* ランクアップバー */}
-                {currentRank !== 'SS' && (
+                {/* レベルアップバー */}
+                {currentLevel !== 99 && (
                   <div className="w-full flex flex-col items-center mt-1">
-                    <div className="w-24 bg-slate-200 h-1.5 rounded-full overflow-hidden border border-slate-300">
+                    <div className="w-24 bg-slate-200 h-1.5 rounded-full overflow-hidden border border-slate-300 relative">
                       <div 
                         className="bg-indigo-500 h-full rounded-full transition-all duration-300"
-                        style={{ width: `${Math.min(100, rankUpRatio)}%` }}
+                        style={{ width: `${Math.min(100, levelUpRatio)}%` }}
                       ></div>
                     </div>
+                    <span className="text-[8px] font-bold text-slate-500 mt-1">
+                      次まであと {cardsNeededForNextLevel} 枚
+                    </span>
                   </div>
                 )}
-                {currentRank === 'SS' && (
+                {currentLevel === 99 && (
                   <span className="text-[8.5px] font-black text-amber-600 animate-pulse mt-0.5 leading-none">
-                     極限伝説コレクター 
+                     ★ 極限レジェンドコレクター ★
                   </span>
                 )}
               </div>
