@@ -67,7 +67,8 @@ export default function App() {
   // ゲームのメインステート
   // ----------------------------------------------------
   const [screen, setScreen] = useState<'title' | 'battle' | 'result' | 'collection' | 'loot' | 'stats' | 'training-hub' | 'time-attack'>('title');
-  const [activeTrainingMode, setActiveTrainingMode] = useState<'category' | 'subcategory' | 'drill' | null>(null);
+  const [activeTrainingMode, setActiveTrainingMode] = useState<'category' | 'subcategory' | 'drill' | 'daily_challenge' | null>(null);
+  const [dailyChallengeLootCount, setDailyChallengeLootCount] = useState<number>(1);
   const [trainingClusterId, setTrainingClusterId] = useState<string | null>(null);
   const [overrideCardsPool, setOverrideCardsPool] = useState<TermCard[] | undefined>(undefined);
   const [forceFullyRandom, setForceFullyRandom] = useState<boolean>(false);
@@ -125,7 +126,9 @@ export default function App() {
       drillAttempts: 0,
       drillCorrects: 0,
       drillWins: 0
-    }
+    },
+    dailyChallengeAttempts: 0,
+    dailyChallengeWins: 0
   });
 
   // バトルの進行中ステート
@@ -395,6 +398,133 @@ export default function App() {
     setForceFullyRandom(isFullyRandom);
 
     setBattleState(initialBattle);
+    setScreen('battle');
+  };
+
+  // 決定性のあるシードベースのシャッフル関数
+  const shuffleArrayWithSeed = <T,>(array: T[], seed: number): T[] => {
+    const arr = [...array];
+    let m = arr.length, t, i;
+    let s = seed;
+    while (m) {
+      s = (s * 9301 + 49297) % 233280;
+      i = Math.floor((s / 233280) * m--);
+      t = arr[m];
+      arr[m] = arr[i];
+      arr[i] = t;
+    }
+    return arr;
+  };
+
+  const getDailySeed = () => {
+    const d = new Date();
+    return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  };
+
+  const startDailyChallenge = () => {
+    const seed = getDailySeed();
+
+    // 全階層（Floor 4を除く）から魔物を抽出
+    const availableMonsters: any[] = [];
+    [0, 1, 2, 3].forEach(floor => {
+      const p = MONSTER_POOLS[floor];
+      if (p) {
+        if (p.easy) availableMonsters.push(...p.easy);
+        if (p.hard) availableMonsters.push(...p.hard);
+      }
+    });
+
+    // 日付シードで対戦相手を固定
+    const monsterTemplate = availableMonsters[seed % availableMonsters.length];
+
+    // 小カテゴリを固定
+    const allSubcategories = quizCategories.flatMap(c => c.subcategories);
+    const subcategoryObj = allSubcategories[seed % allSubcategories.length];
+    const subId = subcategoryObj.id;
+
+    // その小カテゴリの問題から3問を日付シードに固定して抽出
+    const matchingProblems = RAW_PROBLEMS.filter(p => p.clusterId === subId);
+    let candidateProblems = [...matchingProblems];
+    if (candidateProblems.length < 3) {
+      const parentCatId = subId.split('-')[0];
+      const siblingSubIds = quizCategories.find(c => c.id === parentCatId)?.subcategories.map(s => s.id) || [];
+      const fallbackProblems = RAW_PROBLEMS.filter(p => siblingSubIds.includes(p.clusterId) && p.clusterId !== subId);
+      candidateProblems = [...candidateProblems, ...fallbackProblems];
+    }
+
+    const shuffledBySeed = shuffleArrayWithSeed(candidateProblems, seed);
+    const battleProblems = shuffledBySeed.slice(0, 3);
+
+    const monsterName = `幻影の${monsterTemplate.name}`;
+    const monsterMaxHp = 300;
+    const monsterDamage = 25;
+    const monsterQuestions = 3;
+
+    const mockNode: MapNode = {
+      id: `daily_${subId}`,
+      type: 'battle_easy',
+      label: `【ときのかいろう】日替わりの幻魔（${subcategoryObj.title}）`,
+      completed: false,
+      accessible: true,
+      step: 0,
+      route: 'easy',
+      monsterName,
+      monsterMaxHp,
+      monsterDamage,
+      monsterQuestions,
+      monsterImagePath: monsterTemplate.imagePath,
+      monsterThumbnailPath: monsterTemplate.thumbnailPath,
+    };
+
+    const poolItems = battleProblems.map(p => ({
+      isPractical: false,
+      raw: p
+    }));
+
+    const firstRaw = poolItems[0].raw;
+    const typeDecision = (seed % 2 === 0) ? 'term_to_def' : 'def_to_term';
+    const activeProg = generateActiveProblem(firstRaw, typeDecision, 4, RAW_PROBLEMS);
+
+    const mhp = 105;
+
+    const initialBattle: BattleState = {
+      currentNode: mockNode,
+      questionsLeft: monsterQuestions,
+      totalQuestionsInBattle: monsterQuestions,
+      currentQuestionIndex: 0,
+      activeProblem: activeProg,
+      playerHp: mhp,
+      enemyHp: monsterMaxHp,
+      enemyMaxHp: monsterMaxHp,
+      enemyName: monsterName,
+      timer: 45,
+      maxTimer: 45,
+      isAnswered: false,
+      selectedAnswer: null,
+      isCorrect: null,
+      damageEffect: { target: null, amount: 0 },
+      battleLog: '時の狭間より、幻影の魔物が現れた！'
+    };
+
+    (initialBattle as any)._problemPool = poolItems;
+
+    const rewardsPool = TERM_CARDS.filter(c => c.clusterId === subId);
+    setOverrideCardsPool(rewardsPool.length > 0 ? rewardsPool : TERM_CARDS);
+    setForceFullyRandom(false);
+
+    setActiveTrainingMode('daily_challenge');
+    setTrainingClusterId(subId);
+    setBattleState(initialBattle);
+
+    // プレイヤーのステータスをオーバーライドして開始
+    setPlayer(prev => ({
+      ...prev,
+      hp: mhp,
+      maxHp: mhp,
+      attack: 100,
+      activeRunCardIds: []
+    }));
+
     setScreen('battle');
   };
 
@@ -831,6 +961,25 @@ export default function App() {
   const handleFinishBattle = (dropped: TermCard | null, gainedXp: number) => {
     if (!battleState) return;
 
+    if (activeTrainingMode === 'daily_challenge') {
+      // デイリーチャレンジ勝利！
+      const todayStr = new Date().toISOString().split('T')[0];
+      localStorage.setItem('it-rogue-last-daily-date', todayStr);
+
+      const nextStats = {
+        ...gameStats,
+        dailyChallengeAttempts: (gameStats.dailyChallengeAttempts || 0) + 1,
+        dailyChallengeWins: (gameStats.dailyChallengeWins || 0) + 1
+      };
+      setGameStats(nextStats);
+
+      // 勝利時はカード2枚選択可能
+      setPendingXp(30); // 参加＆勝利ボーナス 30 XP
+      setDailyChallengeLootCount(2); // 勝利時は2枚！
+      setScreen('loot');
+      return;
+    }
+
     const isBoss = battleState.currentNode.type === 'boss';
 
     if (isBoss) {
@@ -851,6 +1000,40 @@ export default function App() {
     if (!battleState) return;
 
     if (activeTrainingMode) {
+      if (activeTrainingMode === 'daily_challenge') {
+        let updatedCollected = [...player.collectedCards];
+        const count = updatedCollected.filter(id => id === selectedCard.id).length;
+        if (count < 3) {
+          updatedCollected.push(selectedCard.id);
+        }
+        setDroppedCard(selectedCard);
+
+        setPlayer(prev => ({
+          ...prev,
+          collectedCards: updatedCollected,
+          activeRunCardIds: []
+        }));
+
+        const nextLootCount = dailyChallengeLootCount - 1;
+        setDailyChallengeLootCount(nextLootCount);
+
+        saveToStorage(updatedCollected, bestTime, wrongTerms, player.level, player.xp, gameStats);
+
+        if (nextLootCount > 0) {
+          // まだ選択回数が残っている場合はLoot画面に残る
+          return;
+        }
+
+        // デイリーチャレンジ完了、タイトルへ戻る
+        setScreen('title');
+        setActiveTrainingMode(null);
+        setTrainingClusterId(null);
+        setOverrideCardsPool(undefined);
+        setForceFullyRandom(false);
+        setBattleState(null);
+        return;
+      }
+
       // 完了した修行カテゴリID
       let trainingCatKey = 'drill';
       if (activeTrainingMode === 'category' && trainingClusterId) {
@@ -1068,6 +1251,23 @@ export default function App() {
    */
   const handleGameOver = () => {
     if (activeTrainingMode) {
+      if (activeTrainingMode === 'daily_challenge') {
+        // デイリーチャレンジ敗北：カード1枚選択のLootへ移行！
+        const todayStr = new Date().toISOString().split('T')[0];
+        localStorage.setItem('it-rogue-last-daily-date', todayStr);
+
+        const nextStats = {
+          ...gameStats,
+          dailyChallengeAttempts: (gameStats.dailyChallengeAttempts || 0) + 1
+        };
+        setGameStats(nextStats);
+
+        setPendingXp(10); // 敗北でも参加賞 10 XP
+        setDailyChallengeLootCount(1); // 敗北時は1枚！
+        setScreen('loot');
+        return;
+      }
+
       setScreen('training-hub');
       setActiveTrainingMode(null);
       setTrainingClusterId(null);
@@ -1173,6 +1373,7 @@ export default function App() {
           onOpenStats={() => setScreen('stats')}
           onOpenTraining={() => setScreen('training-hub')}
           onOpenTimeAttack={() => setScreen('time-attack')}
+          onStartDailyChallenge={startDailyChallenge}
           installPrompt={deferredPrompt}
           onInstallApp={handleInstallApp}
         />
@@ -1201,6 +1402,7 @@ export default function App() {
 
       {screen === 'loot' && (
         <LootScreen
+          key={`loot_${dailyChallengeLootCount}`}
           collectedCardIds={player.collectedCards}
           gainedXp={pendingXp}
           onSelectCard={handleCompleteLoot}

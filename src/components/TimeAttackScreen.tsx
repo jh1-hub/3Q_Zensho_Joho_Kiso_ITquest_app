@@ -494,7 +494,7 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
       setCombo(0);
       setWrongCount((prev) => prev + 1);
 
-      // 自爆ダメージ (ときのかいろうでは敵からのダメージを1に固定し、タイムアップのみで実質敗北するように変更)
+      // 自爆ダメージ (しれんのほこらでは敵からのダメージを1に固定し、タイムアップのみで実質敗北するように変更)
       const selfDmg = 1;
       setDamagePopup({ amount: selfDmg, isCrit: false, isPlayer: true, visible: true });
       setTimeout(() => setDamagePopup(null), 850);
@@ -600,7 +600,7 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
                 </div>
                 
                 <div className="space-y-2">
-                  <h2 className="text-xl font-bold tracking-widest text-yellow-300">鏡の試練『ときのかいろう』</h2>
+                  <h2 className="text-xl font-bold tracking-widest text-yellow-300">鏡の試練『しれんのほこら』</h2>
                   <p className="text-xs text-slate-300 leading-relaxed max-w-md mx-auto">
                     己自身の「心の迷い」が生み出した幻影との最速対決。<br />
                     制限時間は30秒。ミスなくIT用語ハックを詠唱し、己を超えよ。
@@ -1023,7 +1023,7 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
                 TIME'S UP
               </span>
               <h2 className="text-xl md:text-2xl font-bold text-yellow-300 tracking-wider">
-                ときのかいろう 試練終了
+                しれんのほこら 試練終了
               </h2>
             </div>
 

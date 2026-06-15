@@ -146,5 +146,7 @@ export interface GameStats {
   timeAttackHighScore?: number;
   timeAttackMaxCombo?: number;
   trainingStats?: TrainingStats;
+  dailyChallengeAttempts?: number;
+  dailyChallengeWins?: number;
 }
 

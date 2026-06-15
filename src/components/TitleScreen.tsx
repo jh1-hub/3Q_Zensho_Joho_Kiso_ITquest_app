@@ -15,6 +15,7 @@ interface TitleScreenProps {
   onOpenCollection: () => void;
   onOpenStats: () => void;
   onOpenTimeAttack: () => void;
+  onStartDailyChallenge: () => void;
   installPrompt?: any;
   onInstallApp?: () => void;
 }
@@ -27,6 +28,7 @@ export default function TitleScreen({
   onOpenCollection,
   onOpenStats,
   onOpenTimeAttack,
+  onStartDailyChallenge,
   installPrompt,
   onInstallApp
 }: TitleScreenProps) {
@@ -37,6 +39,15 @@ export default function TitleScreen({
   };
 
   const [showDetails, setShowDetails] = React.useState(false);
+  const [isDailyDone, setIsDailyDone] = React.useState(false);
+
+  React.useEffect(() => {
+    const lastDate = localStorage.getItem('it-rogue-last-daily-date');
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (lastDate === todayStr) {
+      setIsDailyDone(true);
+    }
+  }, []);
 
   const toggleDetails = () => {
     setShowDetails(prev => !prev);
@@ -329,13 +340,30 @@ export default function TitleScreen({
 
         {/* メインアクションボタン */}
         <div className="relative z-20 flex flex-col gap-4 w-full justify-center max-w-2xl mt-4 text-xs font-bold font-sans">
+          
+          {/* ときのかいろう（1日1回限定 デイリーチャレンジ） */}
+          <button
+            onClick={isDailyDone ? undefined : onStartDailyChallenge}
+            disabled={isDailyDone}
+            className={`w-full py-4 px-4 bg-gradient-to-r ${
+              isDailyDone 
+                ? 'from-slate-400 to-slate-500 border-slate-400 text-slate-200 cursor-not-allowed opacity-75' 
+                : 'from-cyan-600 via-teal-600 to-emerald-600 border-cyan-400 hover:brightness-110 hover:shadow-xl text-white cursor-pointer'
+            } font-extrabold rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 border-2 uppercase tracking-wider text-sm`}
+            id="open-daily-challenge-btn"
+          >
+            <Swords size={16} className={isDailyDone ? "text-slate-350" : "animate-bounce text-cyan-200"} />
+            <span>【１日１回】ときのかいろう {isDailyDone ? '（調査完了）' : '（幻霊の試練）'}</span>
+          </button>
+
+          {/* しれんのほこら（タイムアタック） */}
           <button
             onClick={onOpenTimeAttack}
             className="w-full py-4 px-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-extrabold rounded-xl shadow-lg hover:shadow-xl hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 border-2 border-indigo-400 uppercase tracking-wider text-sm"
             id="open-timeattack-btn"
           >
             <Timer size={16} className="animate-[spin_4s_linear_infinite] text-cyan-300" />
-            <span>ときのかいろう</span>
+            <span>しれんのほこら</span>
           </button>
 
           <button

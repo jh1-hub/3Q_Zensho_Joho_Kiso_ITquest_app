@@ -770,12 +770,12 @@ export default function StatsScreen({
             <div className="absolute top-2 right-2 p-1.5 bg-orange-50 text-orange-600 rounded-full">
               <Flame size={18} className="animate-pulse text-orange-500" />
             </div>
-            <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider block font-bold">回廊最大連撃</span>
+            <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider block font-bold">ほこら最大連撃</span>
             <div className="mt-2 flex items-baseline gap-1.5 font-mono">
               <span className="text-2xl font-black text-orange-950">{gameStats.timeAttackMaxCombo || 0}</span>
               <span className="text-xs text-slate-550 font-bold font-sans">連撃</span>
             </div>
-            <p className="text-[9px] text-slate-400 mt-2 font-semibold font-sans">ときのかいろうでの最多連続正解数</p>
+            <p className="text-[9px] text-slate-400 mt-2 font-semibold font-sans">しれんのほこらでの最多連続正解数</p>
           </div>
 
         </div>
