@@ -403,8 +403,14 @@ export default function BattleScreen({
 
   if (!activeProblem) return null;
 
+  const isDaily = currentNode.id?.startsWith('daily_');
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-200 via-sky-50 to-emerald-50 text-slate-800 p-4 md:p-6 flex flex-col justify-between font-sans relative overflow-hidden border-t-8 border-blue-500 select-none transition-all duration-300">
+    <div className={`min-h-screen p-4 md:p-6 flex flex-col justify-between font-sans relative overflow-hidden select-none transition-all duration-300 ${
+      isDaily 
+        ? 'bg-gradient-to-b from-indigo-950 via-slate-900 to-purple-950 text-slate-100 border-t-8 border-purple-500' 
+        : 'bg-gradient-to-b from-sky-200 via-sky-50 to-emerald-50 text-slate-800 border-t-8 border-blue-500'
+    }`}>
       
       {/* タイムアウト/被弾時の血湧きフラッシュ（赤） */}
       <div className={`absolute inset-0 bg-red-600/35 pointer-events-none transition-opacity duration-150 ${playerFlash ? 'opacity-100' : 'opacity-0'} z-50`}></div>
@@ -412,9 +418,11 @@ export default function BattleScreen({
       <div className={`absolute inset-0 bg-yellow-400/45 pointer-events-none transition-opacity duration-150 ${enemyFlash ? 'opacity-100' : 'opacity-0'} z-50 mix-blend-screen`}></div>
 
       {/* トップ戦闘情報 */}
-      <div className="max-w-4xl w-full mx-auto flex items-center justify-between mb-4 z-10 border-b border-blue-200 pb-3 text-xs font-bold text-blue-900 flex-wrap gap-2">
+      <div className={`max-w-4xl w-full mx-auto flex items-center justify-between mb-4 z-10 border-b pb-3 text-xs font-bold flex-wrap gap-2 ${
+        isDaily ? 'border-purple-800 text-purple-300' : 'border-blue-200 text-blue-900'
+      }`}>
         <div className="flex items-center gap-1.5">
-          <HelpCircle size={14} className="text-blue-600 animate-bounce" />
+          <HelpCircle size={14} className={isDaily ? 'text-purple-400 animate-bounce' : 'text-blue-600 animate-bounce'} />
           <span>エンカウント: {currentNode.label.includes('・') ? currentNode.label.split('・')[0] : currentNode.label}</span>
         </div>
         
@@ -422,13 +430,17 @@ export default function BattleScreen({
           {/* あきらめるボタン (出題中や戦闘中でも即座に撤退可能) */}
           <button
             onClick={() => setShowGiveUpConfirm(true)}
-            className="px-2.5 py-1 bg-red-50 hover:bg-red-100 border border-red-300 rounded text-red-650 flex items-center gap-1 cursor-pointer transition-colors font-extrabold text-[10px]"
+            className={`px-2.5 py-1 rounded flex items-center gap-1 cursor-pointer transition-colors font-extrabold text-[10px] ${
+              isDaily ? 'bg-purple-950/60 hover:bg-purple-900 border border-purple-800 text-purple-200' : 'bg-red-50 hover:bg-red-100 border border-red-300 text-red-650'
+            }`}
             id="battle-giveup-btn"
           >
             <span>あきらめる</span>
           </button>
 
-          <div className="text-white tracking-wider bg-blue-700 px-3 py-1 rounded-full border border-blue-405 shadow text-[10px]">
+          <div className={`tracking-wider px-3 py-1 rounded-full border shadow text-[10px] ${
+            isDaily ? 'bg-purple-800 text-purple-100 border-purple-650' : 'bg-blue-700 text-white border-blue-405'
+          }`}>
             たたかいの段階: <span className="text-yellow-300 font-extrabold">{battleState.currentQuestionIndex + 1}</span>
           </div>
         </div>
@@ -440,11 +452,15 @@ export default function BattleScreen({
         <div className="md:col-span-4 flex flex-col gap-4">
           
           {/* 魔物のステータス窓 */}
-          <div className={`p-4 bg-blue-900 border-4 border-double border-white rounded-2xl flex flex-col items-center gap-3 relative shadow-lg text-white transition-all duration-300 ${
+          <div className={`p-4 border-4 border-double rounded-2xl flex flex-col items-center gap-3 relative shadow-lg text-white transition-all duration-300 ${
+            isDaily ? 'bg-indigo-950/90 border-purple-500/80 shadow-[0_0_20px_rgba(168,85,247,0.35)]' : 'bg-blue-900 border-white'
+          } ${
             enemyHp <= 0 ? 'opacity-50 scale-95' : ''
           }`}>
             
-            <div className="text-yellow-300 font-bold text-[10px] tracking-widest border-b border-blue-800 w-full text-center pb-1.5">
+            <div className={`font-bold text-[10px] tracking-widest border-b w-full text-center pb-1.5 ${
+              isDaily ? 'text-purple-300 border-indigo-900' : 'text-yellow-300 border-blue-800'
+            }`}>
               ◆ MONSTER STATS (てきのじょうたい) ◆
             </div>
 
@@ -484,10 +500,14 @@ export default function BattleScreen({
           </div>
 
           {/* 勇者のステータス窓 */}
-          <div className={`p-4 bg-blue-950 border-4 border-double border-white rounded-2xl flex flex-col items-center gap-3 relative shadow-lg text-white transition-all duration-300 ${
+          <div className={`p-4 border-4 border-double rounded-2xl flex flex-col items-center gap-3 relative shadow-lg text-white transition-all duration-300 ${
+            isDaily ? 'bg-purple-950/95 border-fuchsia-500/80 shadow-[0_0_20px_rgba(217,70,239,0.25)]' : 'bg-blue-950 border-white'
+          } ${
             shakePlayer ? 'animate-hit-shake animate-flash-red' : ''
           }`}>
-            <div className="text-yellow-300 font-bold text-[10px] tracking-widest border-b border-blue-900 w-full text-center pb-2">
+            <div className={`font-bold text-[10px] tracking-widest border-b w-full text-center pb-2 ${
+              isDaily ? 'text-fuchsia-300 border-purple-900' : 'text-yellow-300 border-blue-900'
+            }`}>
               ◆ PARTY MEMBER (あなたのじょうたい) ◆
             </div>
 
@@ -519,8 +539,10 @@ export default function BattleScreen({
             </div>
 
             {/* プレイヤー攻撃力情報 */}
-            <div className="flex justify-end items-center text-xs font-bold text-white mt-1 w-full border-t border-blue-900 pt-2 px-1">
-              <span className="flex items-center gap-1 text-yellow-300">
+            <div className={`flex justify-end items-center text-xs font-bold text-white mt-1 w-full border-t pt-2 px-1 ${
+              isDaily ? 'border-purple-900' : 'border-blue-900'
+            }`}>
+              <span className={`flex items-center gap-1 ${isDaily ? 'text-fuchsia-300' : 'text-yellow-300'}`}>
                 <Swords size={12} />
                 <span>ATK: {playerAttack.toFixed(1)}</span>
               </span>
@@ -533,14 +555,18 @@ export default function BattleScreen({
         <div className="md:col-span-8 flex flex-col gap-4">
           
           {/* 魔導書の問題フレーム（問題文の表示） */}
-          <div className="bg-amber-50 border-4 border-amber-900 rounded-3xl p-5 md:p-6 shadow-md relative flex flex-col gap-4 text-slate-900">
+          <div className={`border-4 rounded-3xl p-5 md:p-6 shadow-md relative flex flex-col gap-4 transition-all duration-300 ${
+            isDaily ? 'bg-slate-900/95 border-purple-800 text-purple-100 shadow-[0_0_25px_rgba(168,85,247,0.15)]' : 'bg-amber-50 border-amber-900 text-slate-900'
+          }`}>
             {/* 装飾コーナー */}
-            <div className="absolute top-3 left-3 text-amber-800/20 text-xs select-none">◆</div>
-            <div className="absolute top-3 right-3 text-amber-800/20 text-xs select-none">◆</div>
-            <div className="absolute bottom-3 left-3 text-amber-800/20 text-xs select-none">◆</div>
-            <div className="absolute bottom-3 right-3 text-amber-800/20 text-xs select-none">◆</div>
+            <div className={`absolute top-3 left-3 text-xs select-none ${isDaily ? 'text-purple-500/30' : 'text-amber-800/20'}`}>◆</div>
+            <div className={`absolute top-3 right-3 text-xs select-none ${isDaily ? 'text-purple-500/30' : 'text-amber-800/20'}`}>◆</div>
+            <div className={`absolute bottom-3 left-3 text-xs select-none ${isDaily ? 'text-purple-500/30' : 'text-amber-800/20'}`}>◆</div>
+            <div className={`absolute bottom-3 right-3 text-xs select-none ${isDaily ? 'text-purple-500/30' : 'text-amber-800/20'}`}>◆</div>
 
-            <div className="flex justify-between items-center border-b border-amber-900/10 pb-2 mb-1 w-full text-xs font-black text-amber-800/90 tracking-widest leading-none select-none">
+            <div className={`flex justify-between items-center border-b pb-2 mb-1 w-full text-xs font-black tracking-widest leading-none select-none ${
+              isDaily ? 'border-purple-800 text-purple-300' : 'border-amber-900/10 text-amber-800/90'
+            }`}>
               <span>✦ IT QUEST 詠唱試練 ✦</span>
               <span>{activeProblem.type === 'term_to_def' ? '用語の意味を詠唱せよ！' : '正しいIT用語を詠唱せよ！'}</span>
             </div>
@@ -553,15 +579,19 @@ export default function BattleScreen({
             {/* 詠唱タイムゲージプログレスバー */}
             <div className="w-full mt-2">
               <div className="flex justify-between items-center text-[10px] font-extrabold mb-1">
-                <span className="text-amber-800 flex items-center gap-1">
+                <span className={`flex items-center gap-1 ${isDaily ? 'text-purple-200' : 'text-amber-800'}`}>
                   <Timer size={11} className="animate-spin text-red-500" />
                   <span>詠唱の制限時間 (残り {timeLeft.toFixed(1)}秒)</span>
                 </span>
-                <span className={`font-mono font-black ${timeLeft <= 8 ? 'text-red-150 animate-pulse text-xs text-red-650' : 'text-slate-600'}`}>
+                <span className={`font-mono font-black ${
+                  timeLeft <= 8 ? 'text-red-150 animate-pulse text-xs text-red-650' : isDaily ? 'text-purple-300' : 'text-slate-600'
+                }`}>
                   {timeLeft.toFixed(1)}/{maxTimer.toFixed(1)}s
                 </span>
               </div>
-              <div className="bg-amber-900/10 h-2.5 rounded-full border border-amber-900/30 overflow-hidden p-[1px]">
+              <div className={`h-2.5 rounded-full border overflow-hidden p-[1px] ${
+                isDaily ? 'bg-purple-950/50 border-purple-800/60' : 'bg-amber-900/10 border-amber-900/30'
+              }`}>
                 <div 
                   className={`h-full rounded-full transition-all duration-300 ${
                     timeLeft <= 8 ? 'bg-gradient-to-r from-red-600 to-red-500 animate-pulse' :
@@ -584,7 +614,9 @@ export default function BattleScreen({
               const matchesSelected = selectedAnswer === index;
               const matchesCorrect = activeProblem.correctIndex === index;
               
-              let choiceStyle = 'bg-white hover:bg-blue-50 border-blue-200 text-blue-950 hover:border-blue-400 active:scale-98 cursor-pointer shadow-md';
+              let choiceStyle = isDaily
+                ? 'bg-slate-900 border-purple-900 text-purple-250 hover:bg-purple-950/40 hover:border-purple-500 active:scale-98 cursor-pointer shadow-md'
+                : 'bg-white hover:bg-blue-50 border-blue-200 text-blue-950 hover:border-blue-400 active:scale-98 cursor-pointer shadow-md';
 
               if (isAnswered) {
                 if (matchesCorrect) {

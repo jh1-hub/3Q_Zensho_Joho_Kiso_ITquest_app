@@ -10,6 +10,7 @@ import { TERM_CARDS, CLUSTERS } from '../data/problems';
 import { shuffleArray, getTermEmoji } from '../utils/gameHelpers';
 
 interface LootScreenProps {
+  key?: string;
   collectedCardIds: string[];
   gainedXp: number;
   onSelectCard: (selectedCard: TermCard) => void;
