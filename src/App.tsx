@@ -456,8 +456,9 @@ export default function App() {
     const battleProblems = shuffledBySeed.slice(0, 3);
 
     const monsterName = `幻影の${monsterTemplate.name}`;
-    const monsterMaxHp = 300;
-    const monsterDamage = 25;
+    const baseConfig = getEnemyConfig('battle_easy', 0);
+    const monsterMaxHp = baseConfig.maxHp;
+    const monsterDamage = baseConfig.damage;
     const monsterQuestions = 3;
 
     const mockNode: MapNode = {
@@ -485,7 +486,8 @@ export default function App() {
     const typeDecision = (seed % 2 === 0) ? 'term_to_def' : 'def_to_term';
     const activeProg = generateActiveProblem(firstRaw, typeDecision, 4, RAW_PROBLEMS);
 
-    const mhp = 105;
+    const mhp = getPlayerMaxHp(player.level, player.collectedCards, player.activeRunCardIds);
+    const atk = getPlayerAttack(player.level, player.collectedCards, player.activeRunCardIds);
 
     const initialBattle: BattleState = {
       currentNode: mockNode,
@@ -521,7 +523,7 @@ export default function App() {
       ...prev,
       hp: mhp,
       maxHp: mhp,
-      attack: 100,
+      attack: atk,
       activeRunCardIds: []
     }));
 
@@ -974,7 +976,7 @@ export default function App() {
       setGameStats(nextStats);
 
       // 勝利時はカード2枚選択可能
-      setPendingXp(30); // 参加＆勝利ボーナス 30 XP
+      setPendingXp(0); // 参加＆勝利ボーナス 0 XP
       setDailyChallengeLootCount(2); // 勝利時は2枚！
       setScreen('loot');
       return;
@@ -1262,7 +1264,7 @@ export default function App() {
         };
         setGameStats(nextStats);
 
-        setPendingXp(10); // 敗北でも参加賞 10 XP
+        setPendingXp(0); // 敗北でも参加賞 0 XP
         setDailyChallengeLootCount(1); // 敗北時は1枚！
         setScreen('loot');
         return;

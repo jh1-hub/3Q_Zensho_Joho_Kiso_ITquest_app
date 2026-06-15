@@ -336,7 +336,9 @@ export default function BattleScreen({
             }
           }}
           alt={enemyName} 
-          className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500"
+          className={`absolute inset-0 w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500 ${
+            currentNode.id?.startsWith('daily_') ? 'invert hue-rotate-180 brightness-110 opacity-80' : ''
+          }`}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-blue-950/40 via-transparent to-transparent"></div>
         <div className="absolute inset-0 flex items-center justify-center opacity-15">
