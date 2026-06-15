@@ -1212,12 +1212,14 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
             <div className="space-y-4 font-sans text-xs sm:text-sm leading-relaxed z-10 flex-1 overflow-y-auto max-h-60 pr-1 select-text custom-scrollbar font-sans border-b border-slate-800 pb-4">
               <div className="font-bold text-slate-200">
                 <span className="text-cyan-400 font-bold mr-1 bg-cyan-950/30 px-1.5 py-0.5 rounded text-[11px] font-sans">定義</span>
-                {selectedDetailCard.definition}
+                {(selectedDetailCard.descriptions && selectedDetailCard.descriptions[0]) || selectedDetailCard.definition}
               </div>
               
               <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-850 text-slate-300 text-[11px] sm:text-xs leading-normal">
-                <span className="block text-purple-400 font-extrabold text-[10px] uppercase tracking-widest mb-1.5 font-sans">ハック解説 (試験対策知識)</span>
-                <p className="whitespace-pre-line leading-relaxed font-sans font-semibold">{selectedDetailCard.explanation}</p>
+                <span className="block text-purple-400 font-extrabold text-[10px] uppercase tracking-widest mb-1.5 font-sans">試験対策知識 (解説フレーバー)</span>
+                <p className="whitespace-pre-line leading-relaxed font-sans font-semibold">
+                  {(selectedDetailCard.flavorTexts && selectedDetailCard.flavorTexts[0]) || selectedDetailCard.flavorText}
+                </p>
               </div>
             </div>
 

@@ -118,7 +118,13 @@ export default function App() {
     trainingStats: {
       categoryAttempts: { '1': 0, '2': 0, '3': 0 },
       categoryCorrects: { '1': 0, '2': 0, '3': 0 },
-      categoryWins: { '1': 0, '2': 0, '3': 0, 'drill': 0 }
+      categoryWins: { '1': 0, '2': 0, '3': 0, 'drill': 0 },
+      subcategoryAttempts: {},
+      subcategoryCorrects: {},
+      subcategoryWins: {},
+      drillAttempts: 0,
+      drillCorrects: 0,
+      drillWins: 0
     }
   });
 
@@ -720,10 +726,24 @@ export default function App() {
       let updatedTrainingStats = prev.trainingStats || {
         categoryAttempts: { '1': 0, '2': 0, '3': 0 },
         categoryCorrects: { '1': 0, '2': 0, '3': 0 },
-        categoryWins: { '1': 0, '2': 0, '3': 0, 'drill': 0 }
+        categoryWins: { '1': 0, '2': 0, '3': 0, 'drill': 0 },
+        subcategoryAttempts: {},
+        subcategoryCorrects: {},
+        subcategoryWins: {},
+        drillAttempts: 0,
+        drillCorrects: 0,
+        drillWins: 0
       };
 
       if (activeTrainingMode) {
+        if (activeTrainingMode === 'drill') {
+          updatedTrainingStats = {
+            ...updatedTrainingStats,
+            drillAttempts: (updatedTrainingStats.drillAttempts || 0) + 1,
+            drillCorrects: (updatedTrainingStats.drillCorrects || 0) + (isCorrect ? 1 : 0)
+          };
+        }
+
         const catId = activeRaw.clusterId ? activeRaw.clusterId.split('-')[0] : '';
         if (['1', '2', '3'].includes(catId)) {
           const catAttempts = { ...updatedTrainingStats.categoryAttempts };
@@ -734,10 +754,23 @@ export default function App() {
             catCorrects[catId] = (catCorrects[catId] || 0) + 1;
           }
 
+          const subId = activeRaw.clusterId || '';
+          const subAttempts = { ...(updatedTrainingStats.subcategoryAttempts || {}) };
+          const subCorrects = { ...(updatedTrainingStats.subcategoryCorrects || {}) };
+          
+          if (subId) {
+            subAttempts[subId] = (subAttempts[subId] || 0) + 1;
+            if (isCorrect) {
+              subCorrects[subId] = (subCorrects[subId] || 0) + 1;
+            }
+          }
+
           updatedTrainingStats = {
             ...updatedTrainingStats,
             categoryAttempts: catAttempts,
-            categoryCorrects: catCorrects
+            categoryCorrects: catCorrects,
+            subcategoryAttempts: subAttempts,
+            subcategoryCorrects: subCorrects
           };
         }
       }
@@ -830,7 +863,13 @@ export default function App() {
       const currentTrainingStats = gameStats.trainingStats || {
         categoryAttempts: { '1': 0, '2': 0, '3': 0 },
         categoryCorrects: { '1': 0, '2': 0, '3': 0 },
-        categoryWins: { '1': 0, '2': 0, '3': 0, 'drill': 0 }
+        categoryWins: { '1': 0, '2': 0, '3': 0, 'drill': 0 },
+        subcategoryAttempts: {},
+        subcategoryCorrects: {},
+        subcategoryWins: {},
+        drillAttempts: 0,
+        drillCorrects: 0,
+        drillWins: 0
       };
 
       const nextCategoryWins = {
@@ -838,9 +877,21 @@ export default function App() {
         [trainingCatKey]: (currentTrainingStats.categoryWins[trainingCatKey] || 0) + 1
       };
 
+      const nextSubcategoryWins = { ...(currentTrainingStats.subcategoryWins || {}) };
+      if (activeTrainingMode === 'subcategory' && trainingClusterId) {
+        nextSubcategoryWins[trainingClusterId] = (nextSubcategoryWins[trainingClusterId] || 0) + 1;
+      }
+
+      let nextDrillWins = currentTrainingStats.drillWins || 0;
+      if (activeTrainingMode === 'drill') {
+        nextDrillWins += 1;
+      }
+
       const nextTrainingStats = {
         ...currentTrainingStats,
-        categoryWins: nextCategoryWins
+        categoryWins: nextCategoryWins,
+        subcategoryWins: nextSubcategoryWins,
+        drillWins: nextDrillWins
       };
 
       const nextStats = {
@@ -1083,7 +1134,13 @@ export default function App() {
       trainingStats: {
         categoryAttempts: { '1': 0, '2': 0, '3': 0 },
         categoryCorrects: { '1': 0, '2': 0, '3': 0 },
-        categoryWins: { '1': 0, '2': 0, '3': 0, 'drill': 0 }
+        categoryWins: { '1': 0, '2': 0, '3': 0, 'drill': 0 },
+        subcategoryAttempts: {},
+        subcategoryCorrects: {},
+        subcategoryWins: {},
+        drillAttempts: 0,
+        drillCorrects: 0,
+        drillWins: 0
       }
     });
     setScreen('title');

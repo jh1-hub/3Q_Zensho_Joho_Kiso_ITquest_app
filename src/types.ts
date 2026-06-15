@@ -131,6 +131,12 @@ export interface TrainingStats {
   categoryAttempts: Record<string, number>;
   categoryCorrects: Record<string, number>;
   categoryWins: Record<string, number>;
+  subcategoryAttempts?: Record<string, number>;
+  subcategoryCorrects?: Record<string, number>;
+  subcategoryWins?: Record<string, number>;
+  drillAttempts?: number;
+  drillCorrects?: number;
+  drillWins?: number;
 }
 
 export interface GameStats {

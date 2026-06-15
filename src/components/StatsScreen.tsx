@@ -495,29 +495,110 @@ export default function StatsScreen({
     });
 
 
-    // --- 教師コメント＆判定ギルドスタンプ
-    const guildY = 795;
-    ctx.fillStyle = '#fef3c7'; // 淡黄
-    ctx.fillRect(60, guildY, w - 260, 100);
-    ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(60, guildY, w - 260, 100);
+    // --- しゅぎょう・たんれんの修練成果の詳細
+    const detailY = 795;
+    ctx.fillStyle = '#0f766e'; // 深エメラルドグリーン
+    ctx.fillRect(60, detailY, w - 120, 30);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 13px "Hiragino Kaku Gothic ProN", sans-serif';
+    ctx.fillText('▼ しゅぎょう ＆ たんれん（自己特訓）の修練データ', 80, detailY + 20);
 
-    ctx.fillStyle = '#b45309';
-    ctx.font = '900 12px "Hiragino Kaku Gothic ProN", sans-serif';
-    ctx.fillText('【 ギルド／授業者総合評定＆アドバイス 】', 80, guildY + 28);
-    
+    const boxContentY = detailY + 30;
+    const boxContentH = 115;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(60, boxContentY, w - 120, boxContentH);
+    ctx.strokeStyle = '#0f766e';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(60, boxContentY, w - 120, boxContentH);
+
+    // 左側カラム：たんれん（苦手克服ルーム）
+    const trStats = gameStats.trainingStats || {
+      categoryAttempts: { '1': 0, '2': 0, '3': 0 },
+      categoryCorrects: { '1': 0, '2': 0, '3': 0 },
+      categoryWins: { '1': 0, '2': 0, '3': 0, 'drill': 0 },
+      subcategoryAttempts: {},
+      subcategoryCorrects: {},
+      subcategoryWins: {},
+      drillAttempts: 0,
+      drillCorrects: 0,
+      drillWins: 0
+    };
+    const dAttempts = trStats.drillAttempts || 0;
+    const dCorrects = trStats.drillCorrects || 0;
+    const dWins = trStats.drillWins || 0;
+    const dAccuracy = dAttempts > 0 ? Math.round((dCorrects / dAttempts) * 100) : 0;
+
     ctx.fillStyle = '#1e293b';
-    ctx.font = 'bold 12px "Hiragino Kaku Gothic ProN", sans-serif';
-    // 複数行テキストの折り返し
-    ctx.fillText(comment, 80, guildY + 54);
-    ctx.font = '500 10px "Hiragino Kaku Gothic ProN", sans-serif';
-    ctx.fillText('※IT用語は単なる暗記ではなく、概念のつながりを意識すると実務や試験でさらに活きます。', 80, guildY + 78);
+    ctx.font = 'bold 11px "Hiragino Kaku Gothic ProN", sans-serif';
+    ctx.fillText('【「たんれん（弱点克服）」の修練成果 】', 80, boxContentY + 22);
+
+    ctx.font = 'bold 10px "Hiragino Kaku Gothic ProN", sans-serif';
+    ctx.fillStyle = '#475569';
+    ctx.fillText(`・総解答数 :   ${dAttempts} 問`, 90, boxContentY + 44);
+    ctx.fillText(`・正答割合 :   ${dAccuracy}% (正解 ${dCorrects}問)`, 90, boxContentY + 68);
+    ctx.fillText(`・特訓完了 :   ${dWins} 回`, 90, boxContentY + 92);
+
+    // 仕切り線
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.beginPath();
+    ctx.moveTo(330, boxContentY + 12);
+    ctx.lineTo(330, boxContentY + boxContentH - 12);
+    ctx.stroke();
+
+    // 右側カラム：やったことのある小カテゴリ
+    const allSubcategoriesList = quizCategories.flatMap(cat => 
+      cat.subcategories.map(sub => {
+        const attempts = (trStats.subcategoryAttempts && trStats.subcategoryAttempts[sub.id]) || 0;
+        const corrects = (trStats.subcategoryCorrects && trStats.subcategoryCorrects[sub.id]) || 0;
+        const wins = (trStats.subcategoryWins && trStats.subcategoryWins[sub.id]) || 0;
+        const accuracy = attempts > 0 ? Math.round((corrects / attempts) * 100) : 0;
+        return {
+          id: sub.id,
+          title: sub.title.replace(/^[0-9]\.\s*/, ''),
+          attempts,
+          corrects,
+          wins,
+          accuracy
+        };
+      })
+    ).filter(sub => sub.attempts > 0)
+     .sort((a, b) => b.attempts - a.attempts);
+
+    ctx.fillStyle = '#1e293b';
+    ctx.font = 'bold 11px "Hiragino Kaku Gothic ProN", sans-serif';
+    ctx.fillText('【 自主「しゅぎょう」小カテゴリ特訓状況 】', 350, boxContentY + 22);
+
+    if (allSubcategoriesList.length === 0) {
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 10px "Hiragino Kaku Gothic ProN", sans-serif';
+      ctx.fillText('※小カテゴリでの修行データはまだありません。', 360, boxContentY + 55);
+      ctx.fillText('  しゅぎょう場で細かい分野を特訓してみましょう！', 360, boxContentY + 75);
+    } else {
+      const showCount = Math.min(4, allSubcategoriesList.length);
+      for (let i = 0; i < showCount; i++) {
+        const sub = allSubcategoriesList[i];
+        const y = boxContentY + 44 + (i * 16);
+
+        ctx.fillStyle = '#334155';
+        ctx.font = 'bold 10px "Hiragino Kaku Gothic ProN", sans-serif';
+        ctx.fillText(`${sub.title}`, 350, y);
+
+        ctx.fillStyle = '#0f766e';
+        ctx.font = 'bold 10px "Inter", sans-serif';
+        ctx.fillText(`解: ${sub.attempts}問`, 520, y);
+
+        ctx.fillStyle = sub.accuracy >= 80 ? '#10b981' : '#0f766e';
+        ctx.fillText(`正 : ${sub.accuracy}%`, 580, y);
+
+        ctx.fillStyle = '#64748b';
+        ctx.fillText(`完: ${sub.wins}回`, 650, y);
+      }
+    }
 
 
     // --- 絢爛たる成績印鑑（Guild / School Stamp）の描画
     const stampX = 660;
-    const stampY = 845;
+    const stampY = 940;
     
     // 赤いスタンプサークルを描く
     ctx.save();
