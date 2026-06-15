@@ -169,7 +169,7 @@ export default function TrainingScreen({
 
         {/* 注意事項 */}
         <div className="text-[10px] text-slate-550 border-t border-slate-150 pt-4 font-bold text-center shrink-0">
-          ※ 修行や鍛錬は敗北しても、クリアタイム記録や戦績には影響しません。安心して練習してください。
+          ※ ここでIT用語の基本概念を繰り返し特訓し、基礎力を高めましょう。
         </div>
       </div>
 

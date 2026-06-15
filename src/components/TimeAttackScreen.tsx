@@ -494,8 +494,8 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
       setCombo(0);
       setWrongCount((prev) => prev + 1);
 
-      // 自爆ダメージ (初期 150 から進行状況に応じてスケール)
-      const selfDmg = Math.round(150 * (1.0 + defeatedCount * 0.15));
+      // 自爆ダメージ (ときのかいろうでは敵からのダメージを1に固定し、タイムアップのみで実質敗北するように変更)
+      const selfDmg = 1;
       setDamagePopup({ amount: selfDmg, isCrit: false, isPlayer: true, visible: true });
       setTimeout(() => setDamagePopup(null), 850);
       

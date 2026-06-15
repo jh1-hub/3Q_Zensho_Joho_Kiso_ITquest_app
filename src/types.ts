@@ -127,11 +127,18 @@ export interface TermStat {
   attemptCount: number;
 }
 
+export interface TrainingStats {
+  categoryAttempts: Record<string, number>;
+  categoryCorrects: Record<string, number>;
+  categoryWins: Record<string, number>;
+}
+
 export interface GameStats {
   attempts: number;
   wins: number;
   termStats: Record<string, TermStat>;
   timeAttackHighScore?: number;
   timeAttackMaxCombo?: number;
+  trainingStats?: TrainingStats;
 }
 

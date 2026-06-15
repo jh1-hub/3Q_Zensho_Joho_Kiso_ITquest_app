@@ -155,7 +155,7 @@ export default function TitleScreen({
   };
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-b from-sky-305 via-sky-100 to-emerald-100 text-slate-800 flex flex-col items-center justify-start p-4 sm:p-6 pb-16 relative font-sans select-none border-t-8 border-blue-600 overflow-y-auto overflow-x-hidden">
+    <div className="w-full min-h-screen bg-gradient-to-b from-sky-300 via-sky-100 to-emerald-100 text-slate-800 flex flex-col items-center justify-start p-4 sm:p-6 pb-16 relative font-sans select-none border-t-8 border-blue-600 overflow-y-auto overflow-x-hidden">
       
       {/* 優しい陽光 */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.6)_0%,transparent_80%)] pointer-events-none"></div>
@@ -215,7 +215,7 @@ export default function TitleScreen({
             </div>
             <div className="flex items-start gap-2 text-blue-105">
               <span className="text-yellow-350 font-bold shrink-0">▶ おたから:</span>
-              <span>勝利すると、ステータスが永続アップする『IT用語カード』を3枚の伏せカードから1枚選んでゲットできます。</span>
+              <span>勝利すると、ステータスが永続アップする『IT用語カード』を提示された3枚から1枚選んでゲットできます。</span>
             </div>
           </div>
         </div>
@@ -289,7 +289,7 @@ export default function TitleScreen({
                     
                     {/* 基本（1枚目）の開放数 */}
                     <div className="flex justify-between items-center text-[10px] font-black text-slate-800 leading-none">
-                      <span>開放状況</span>
+                      <span></span>
                       <span className="font-mono font-black text-slate-905">{item.firstCount}<span className="text-[7.5px] font-normal text-slate-400">/{item.total}</span></span>
                     </div>
                     {item.total > 0 && (
@@ -305,11 +305,11 @@ export default function TitleScreen({
                     {showDetails && (
                       <div className="grid grid-cols-2 gap-1 pt-1.5 mt-1 bg-black/5 rounded p-1 text-[9px] font-bold text-slate-700 animate-fade-in">
                         <div className="text-center">
-                          <span className="block text-[7.5px] text-slate-400 font-sans leading-none mb-0.5">2枚目</span>
+                          <span className="block text-[7.5px] text-slate-400 font-sans leading-none mb-0.5">2nd</span>
                           <span className="font-mono font-black text-slate-800">{item.secondCount}<span className="text-[7px] font-normal text-slate-400">/{item.total}</span></span>
                         </div>
                         <div className="text-center border-l border-current/20">
-                          <span className="block text-[7.5px] text-slate-400 font-sans leading-none mb-0.5">3枚目</span>
+                          <span className="block text-[7.5px] text-slate-400 font-sans leading-none mb-0.5">3rd</span>
                           <span className="font-mono font-black text-slate-800">{item.thirdCount}<span className="text-[7px] font-normal text-slate-400">/{item.total}</span></span>
                         </div>
                       </div>

@@ -417,35 +417,80 @@ export default function StatsScreen({
 
     const catStartY = 515;
     categoriesList.forEach((cat, index) => {
-      const y = catStartY + (index * 82);
+      const y = catStartY + (index * 94); // 高さに合わせ間隔を 82 -> 94 に
+      const itemHeight = 84; // 高さを 72 -> 84 に
       ctx.fillStyle = '#f8fafc';
-      ctx.fillRect(60, y, w - 120, 72);
+      ctx.fillRect(60, y, w - 120, itemHeight);
       ctx.strokeStyle = '#e2e8f0';
       ctx.lineWidth = 1;
-      ctx.strokeRect(60, y, w - 120, 72);
+      ctx.strokeRect(60, y, w - 120, itemHeight);
 
       // カテゴリ見出し
       ctx.fillStyle = '#1e293b';
       ctx.font = '900 13px "Hiragino Kaku Gothic ProN", sans-serif';
-      ctx.fillText(cat.title, 80, y + 26);
+      ctx.fillText(cat.title, 80, y + 23);
 
-      // 解答進捗バー
+      // 【冒険（通常戦闘）】進捗バーとラベル
+      ctx.fillStyle = '#475569';
+      ctx.font = 'bold 10px "Hiragino Kaku Gothic ProN", sans-serif';
+      ctx.fillText('冒険正答:', 80, y + 42);
+      
+      // バー背景
       ctx.fillStyle = '#e2e8f0';
-      ctx.fillRect(80, y + 42, 350, 10);
+      ctx.fillRect(140, y + 33, 240, 10);
       if (cat.attempts > 0) {
         ctx.fillStyle = '#3b82f6';
-        ctx.fillRect(80, y + 42, Math.min(350, (cat.corrects / cat.attempts) * 350), 10);
+        ctx.fillRect(140, y + 33, Math.min(240, (cat.corrects / cat.attempts) * 240), 10);
       }
+      
+      // 冒険の解答数と正解数
+      ctx.fillStyle = '#64748b';
+      ctx.font = 'bold 10px "Inter", sans-serif';
+      ctx.fillText(`解答: ${cat.attempts}問 / 正解: ${cat.corrects}問`, 395, y + 42);
 
-      // 正答率数値
+      // 総合正答率（大きく右側に描画）
       ctx.textAlign = 'right';
-      ctx.fillStyle = '#334155';
-      ctx.font = 'bold 11px "Inter", "Hiragino Kaku Gothic ProN", sans-serif';
-      ctx.fillText(`解答数: ${cat.attempts}問   正解数: ${cat.corrects}問`, w - 240, y + 36);
-
       ctx.fillStyle = cat.accuracy >= 80 ? '#10b981' : cat.accuracy >= 50 ? '#3b82f6' : '#94a3b8';
       ctx.font = '900 20px "Inter", sans-serif';
-      ctx.fillText(cat.attempts > 0 ? `${cat.accuracy}%` : '未挑戦', w - 90, y + 46);
+      ctx.fillText(cat.attempts > 0 ? `${cat.accuracy}%` : '未挑戦', w - 90, y + 36);
+      ctx.textAlign = 'left';
+
+      // 【しゅぎょう（修行）】進捗情報とラベル
+      const tr = gameStats.trainingStats || {
+        categoryAttempts: { '1': 0, '2': 0, '3': 0 },
+        categoryCorrects: { '1': 0, '2': 0, '3': 0 },
+        categoryWins: { '1': 0, '2': 0, '3': 0, 'drill': 0 }
+      };
+      const trAttempts = tr.categoryAttempts[cat.id] || 0;
+      const trCorrects = tr.categoryCorrects[cat.id] || 0;
+      const trWins = tr.categoryWins[cat.id] || 0;
+      const trAccuracy = trAttempts > 0 ? Math.round((trCorrects / trAttempts) * 100) : 0;
+
+      // ラベル
+      ctx.fillStyle = '#0f766e'; // 深エメラルド
+      ctx.font = 'bold 10px "Hiragino Kaku Gothic ProN", sans-serif';
+      ctx.fillText('修行特訓:', 80, y + 66);
+
+      // バー背景
+      ctx.fillStyle = '#f0fdf4'; // 薄緑
+      ctx.fillRect(140, y + 57, 240, 10);
+      ctx.strokeStyle = '#ccfbf1';
+      ctx.strokeRect(140, y + 57, 240, 10);
+      if (trAttempts > 0) {
+        ctx.fillStyle = '#10b981'; // グリーン
+        ctx.fillRect(140, y + 57, Math.min(240, (trCorrects / trAttempts) * 240), 10);
+      }
+
+      // 修行の特訓解答数と完了数
+      ctx.fillStyle = '#0f766e';
+      ctx.font = 'bold 10px "Inter", sans-serif';
+      ctx.fillText(`特訓解答: ${trAttempts}問 / 修行完了: ${trWins}回`, 395, y + 66);
+
+      // 修行正答率（大きく右側に描画）
+      ctx.textAlign = 'right';
+      ctx.fillStyle = trAttempts > 0 && trAccuracy >= 80 ? '#10b981' : trAttempts > 0 ? '#0f766e' : '#94a3b8';
+      ctx.font = '900 16px "Inter", sans-serif';
+      ctx.fillText(trAttempts > 0 ? `特訓 ${trAccuracy}%` : '未修練', w - 90, y + 66);
       ctx.textAlign = 'left';
     });
 

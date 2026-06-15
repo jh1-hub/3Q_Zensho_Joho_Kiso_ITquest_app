@@ -114,7 +114,12 @@ export default function App() {
   const [gameStats, setGameStats] = useState<GameStats>({
     attempts: 0,
     wins: 0,
-    termStats: {}
+    termStats: {},
+    trainingStats: {
+      categoryAttempts: { '1': 0, '2': 0, '3': 0 },
+      categoryCorrects: { '1': 0, '2': 0, '3': 0 },
+      categoryWins: { '1': 0, '2': 0, '3': 0, 'drill': 0 }
+    }
   });
 
   // バトルの進行中ステート
@@ -710,7 +715,38 @@ export default function App() {
           correctCount: termStat.correctCount + (isCorrect ? 1 : 0)
         }
       };
-      const nextStats = { ...prev, termStats: nextTermStats };
+
+      // 修行用の統計情報も更新！
+      let updatedTrainingStats = prev.trainingStats || {
+        categoryAttempts: { '1': 0, '2': 0, '3': 0 },
+        categoryCorrects: { '1': 0, '2': 0, '3': 0 },
+        categoryWins: { '1': 0, '2': 0, '3': 0, 'drill': 0 }
+      };
+
+      if (activeTrainingMode) {
+        const catId = activeRaw.clusterId ? activeRaw.clusterId.split('-')[0] : '';
+        if (['1', '2', '3'].includes(catId)) {
+          const catAttempts = { ...updatedTrainingStats.categoryAttempts };
+          const catCorrects = { ...updatedTrainingStats.categoryCorrects };
+          
+          catAttempts[catId] = (catAttempts[catId] || 0) + 1;
+          if (isCorrect) {
+            catCorrects[catId] = (catCorrects[catId] || 0) + 1;
+          }
+
+          updatedTrainingStats = {
+            ...updatedTrainingStats,
+            categoryAttempts: catAttempts,
+            categoryCorrects: catCorrects
+          };
+        }
+      }
+
+      const nextStats = { 
+        ...prev, 
+        termStats: nextTermStats,
+        trainingStats: updatedTrainingStats
+      };
       saveToStorage(player.collectedCards, bestTime, wrongTerms, player.level, player.xp, nextStats);
       return nextStats;
     });
@@ -782,6 +818,38 @@ export default function App() {
     if (!battleState) return;
 
     if (activeTrainingMode) {
+      // 完了した修行カテゴリID
+      let trainingCatKey = 'drill';
+      if (activeTrainingMode === 'category' && trainingClusterId) {
+        trainingCatKey = trainingClusterId; // '1', '2', '3'
+      } else if (activeTrainingMode === 'subcategory' && trainingClusterId) {
+        trainingCatKey = trainingClusterId.split('-')[0]; // '1-a' -> '1'
+      }
+
+      // 修行カテゴリーの勝利(Wins)数をインクリメント
+      const currentTrainingStats = gameStats.trainingStats || {
+        categoryAttempts: { '1': 0, '2': 0, '3': 0 },
+        categoryCorrects: { '1': 0, '2': 0, '3': 0 },
+        categoryWins: { '1': 0, '2': 0, '3': 0, 'drill': 0 }
+      };
+
+      const nextCategoryWins = {
+        ...currentTrainingStats.categoryWins,
+        [trainingCatKey]: (currentTrainingStats.categoryWins[trainingCatKey] || 0) + 1
+      };
+
+      const nextTrainingStats = {
+        ...currentTrainingStats,
+        categoryWins: nextCategoryWins
+      };
+
+      const nextStats = {
+        ...gameStats,
+        trainingStats: nextTrainingStats
+      };
+
+      setGameStats(nextStats);
+
       let updatedCollected = [...player.collectedCards];
       const count = updatedCollected.filter(id => id === selectedCard.id).length;
       if (count < 3) {
@@ -795,7 +863,7 @@ export default function App() {
         activeRunCardIds: []
       }));
 
-      saveToStorage(updatedCollected, bestTime, wrongTerms);
+      saveToStorage(updatedCollected, bestTime, wrongTerms, player.level, player.xp, nextStats);
 
       setScreen('training-hub');
       setActiveTrainingMode(null);
@@ -1011,7 +1079,12 @@ export default function App() {
     setGameStats({
       attempts: 0,
       wins: 0,
-      termStats: {}
+      termStats: {},
+      trainingStats: {
+        categoryAttempts: { '1': 0, '2': 0, '3': 0 },
+        categoryCorrects: { '1': 0, '2': 0, '3': 0 },
+        categoryWins: { '1': 0, '2': 0, '3': 0, 'drill': 0 }
+      }
     });
     setScreen('title');
   };
