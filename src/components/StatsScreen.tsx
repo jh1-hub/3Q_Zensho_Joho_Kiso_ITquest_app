@@ -8,6 +8,7 @@ import { ArrowLeft, Award, Trophy, TrendingUp, CheckCircle, HelpCircle, Swords, 
 import { GameStats, TermCard } from '../types';
 import { TERM_CARDS, quizCategories, CLUSTERS } from '../data/problems';
 import { getTermEmoji } from '../utils/gameHelpers';
+import { secureStorage } from '../utils/secureStorage';
 
 interface StatsScreenProps {
   gameStats: GameStats;
@@ -47,7 +48,7 @@ export default function StatsScreen({
   // 初回起動時に入力情報をローカルストレージから復元
   useEffect(() => {
     try {
-      const savedInfo = localStorage.getItem('it-rogue-student-info');
+      const savedInfo = secureStorage.getItem('it-rogue-student-info');
       if (savedInfo) {
         const parsed = JSON.parse(savedInfo);
         setStudentYear(parsed.year || '');
@@ -777,7 +778,7 @@ export default function StatsScreen({
         no: studentNo,
         name: studentName
       };
-      localStorage.setItem('it-rogue-student-info', JSON.stringify(info));
+      secureStorage.setItem('it-rogue-student-info', JSON.stringify(info));
     } catch (e) {
       console.error(e);
     }
