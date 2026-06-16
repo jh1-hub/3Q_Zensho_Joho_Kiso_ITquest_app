@@ -349,8 +349,8 @@ export default function TitleScreen({
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-300 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-400"></span>
               </span>
-              <span>DIARY</span>
-              <span className="text-[8px] bg-red-700/50 px-1 rounded text-yellow-100 font-medium">日替わり試練！</span>
+              <span>DAILY</span>
+              <span className="text-[8px] bg-red-700/50 px-1.5 py-0.5 rounded text-yellow-200 font-black">QUEST</span>
             </div>
 
             <button
