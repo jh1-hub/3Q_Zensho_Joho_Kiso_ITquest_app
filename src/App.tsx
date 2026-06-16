@@ -13,6 +13,7 @@ import LootScreen from './components/LootScreen';
 import StatsScreen from './components/StatsScreen';
 import TrainingScreen from './components/TrainingScreen';
 import TimeAttackScreen from './components/TimeAttackScreen';
+import { secureStorage } from './utils/secureStorage';
 
 import { PlayerState, BattleState, MapNode, NodeType, RawProblem, TermCard, ActiveProblem, GameStats } from './types';
 import { quizCategories, RAW_PROBLEMS, TERM_CARDS } from './data/problems';
@@ -143,12 +144,25 @@ export default function App() {
   // タイムアタック用計測用インスタントタイマー
   const [playStartTime, setPlayStartTime] = useState<number | null>(null);
 
+  // デイリーチャレンジ・タイムアタック（ときのかいろう）開放状態
+  const [isDailyChallengeCompleted, setIsDailyChallengeCompleted] = useState<boolean>(false);
+  const [isTimeAttackUnlocked, setIsTimeAttackUnlocked] = useState<boolean>(false);
+
+  const rollTimeAttackUnlock = () => {
+    if (isTimeAttackUnlocked) return;
+    // 約33.3%の確率（3回に1回）で出現
+    if (Math.random() < 0.334) {
+      setIsTimeAttackUnlocked(true);
+      secureStorage.setItem('it-rogue-time-attack-unlocked', 'true');
+    }
+  };
+
   // ----------------------------------------------------
   // ローカルストレージバインド
   // ----------------------------------------------------
   const loadSaveData = () => {
     try {
-      const dataStr = localStorage.getItem('it-rogue-save-data');
+      const dataStr = secureStorage.getItem('it-rogue-save-data');
       if (dataStr) {
         const parsed = JSON.parse(dataStr) as SaveData;
         const collected = parsed.collectedCards || [];
@@ -171,6 +185,14 @@ export default function App() {
           setGameStats(parsed.stats);
         }
       }
+
+      // デイリーチャレンジ・タイムアタック開放状態の復元
+      const lastDate = secureStorage.getItem('it-rogue-last-daily-date');
+      const todayStr = new Date().toISOString().split('T')[0];
+      setIsDailyChallengeCompleted(lastDate === todayStr);
+
+      const taUnlocked = secureStorage.getItem('it-rogue-time-attack-unlocked') === 'true';
+      setIsTimeAttackUnlocked(taUnlocked);
     } catch (e) {
       console.error('Error loading save data:', e);
     }
@@ -193,7 +215,7 @@ export default function App() {
         wrongTerms: updatedWrong,
         stats: statsOverride ?? gameStats
       };
-      localStorage.setItem('it-rogue-save-data', JSON.stringify(dataToSave));
+      secureStorage.setItem('it-rogue-save-data', JSON.stringify(dataToSave));
     } catch (e) {
       console.error('Error saving data:', e);
     }
@@ -967,7 +989,8 @@ export default function App() {
     if (activeTrainingMode === 'daily_challenge') {
       // デイリーチャレンジ勝利！
       const todayStr = new Date().toISOString().split('T')[0];
-      localStorage.setItem('it-rogue-last-daily-date', todayStr);
+      secureStorage.setItem('it-rogue-last-daily-date', todayStr);
+      setIsDailyChallengeCompleted(true);
 
       const nextStats = {
         ...gameStats,
@@ -1101,6 +1124,7 @@ export default function App() {
       }));
 
       saveToStorage(updatedCollected, bestTime, wrongTerms, player.level, player.xp, nextStats);
+      rollTimeAttackUnlock();
 
       setScreen('training-hub');
       setActiveTrainingMode(null);
@@ -1148,6 +1172,7 @@ export default function App() {
 
       // ボス撃破後はレベル1、XP 0に初期化してセーブ、冒険中カードはリセット
       saveToStorage(updatedCollected, newBest, [...new Set([...wrongTerms])], 1, 0, nextStats);
+      rollTimeAttackUnlock();
 
       const freshBonus = calculatePlayerBonus(updatedCollected, []);
       const mhp = 100 + freshBonus.hp;
@@ -1219,6 +1244,7 @@ export default function App() {
 
     // 保存
     saveToStorage(updatedCollected, bestTime, [...new Set([...wrongTerms])], nextLvl, nextXp);
+    rollTimeAttackUnlock();
 
     // 通常の次のステップへ
     const nextStepIdx = currentStep + 1;
@@ -1257,7 +1283,8 @@ export default function App() {
       if (activeTrainingMode === 'daily_challenge') {
         // デイリーチャレンジ敗北：カード1枚選択のLootへ移行！
         const todayStr = new Date().toISOString().split('T')[0];
-        localStorage.setItem('it-rogue-last-daily-date', todayStr);
+        secureStorage.setItem('it-rogue-last-daily-date', todayStr);
+        setIsDailyChallengeCompleted(true);
 
         const nextStats = {
           ...gameStats,
@@ -1323,7 +1350,12 @@ export default function App() {
    * 全部のセーブデータリセット
    */
   const handleResetAllData = () => {
-    localStorage.removeItem('it-rogue-save-data');
+    secureStorage.removeItem('it-rogue-save-data');
+    secureStorage.removeItem('it-rogue-last-daily-date');
+    secureStorage.removeItem('it-rogue-time-attack-unlocked');
+    setIsDailyChallengeCompleted(false);
+    setIsTimeAttackUnlocked(false);
+    
     setPlayer({
       hp: 100,
       maxHp: 100,
@@ -1358,19 +1390,6 @@ export default function App() {
     setScreen('title');
   };
 
-  /**
-   * 全実績の開放 (全カードの取得) [デバッグ用・本番前に要削除]
-   */
-  const handleUnlockAllAchievements = () => {
-    const allCardIds = TERM_CARDS.map(card => card.id);
-    setPlayer(prev => ({
-      ...prev,
-      collectedCards: allCardIds
-    }));
-    saveToStorage(allCardIds, bestTime, wrongTerms, player.level, player.xp, gameStats);
-    console.log('【デバッグ】すべての図鑑カードを開放し、保存しました。');
-  };
-
   // ----------------------------------------------------
   // レンダリング処理
   // ----------------------------------------------------
@@ -1384,10 +1403,16 @@ export default function App() {
           onOpenCollection={() => setScreen('collection')}
           onOpenStats={() => setScreen('stats')}
           onOpenTraining={() => setScreen('training-hub')}
-          onOpenTimeAttack={() => setScreen('time-attack')}
+          onOpenTimeAttack={() => {
+            setScreen('time-attack');
+            setIsTimeAttackUnlocked(false);
+            secureStorage.setItem('it-rogue-time-attack-unlocked', 'false');
+          }}
           onStartDailyChallenge={startDailyChallenge}
           installPrompt={deferredPrompt}
           onInstallApp={handleInstallApp}
+          isDailyDone={isDailyChallengeCompleted}
+          isTimeAttackUnlocked={isTimeAttackUnlocked}
         />
       )}
 
@@ -1473,7 +1498,6 @@ export default function App() {
           collectedIds={player.collectedCards}
           onBack={() => setScreen('title')}
           onResetData={handleResetAllData}
-          onUnlockAllAchievements={handleUnlockAllAchievements}
         />
       )}
 

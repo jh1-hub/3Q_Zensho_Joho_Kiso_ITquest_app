@@ -163,22 +163,31 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
     }
   }, [gameState, problemPool, currentPoolIndex, activeProblem]);
 
-  // 時間カウント監視 (非ネスト構成で安定した時間毎の秒数減少処理)
+  // 時間カウント監視 (シームレス＆高密度な減少処理)
   useEffect(() => {
     if (gameState === 'playing') {
+      const intervalMs = 50; // 50ms ごと
+      const step = intervalMs / 1000; // 0.05秒
+      
       const timerInterval = setInterval(() => {
         setTimeRemaining((prev) => {
-          const nextVal = prev - 1;
+          const nextVal = prev - step;
           if (nextVal <= 0) {
             clearInterval(timerInterval);
             return 0;
           }
+          
+          // 残り6秒以下で、1秒の境界を越えた瞬間にtick音を鳴らす
           if (nextVal <= 6) {
-            playSound('tick');
+            const prevFloor = Math.floor(prev);
+            const nextFloor = Math.floor(nextVal);
+            if (nextFloor < prevFloor) {
+              playSound('tick');
+            }
           }
           return nextVal;
         });
-      }, 1000);
+      }, intervalMs);
       return () => clearInterval(timerInterval);
     }
   }, [gameState]);
@@ -820,7 +829,7 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
                   </div>
 
                   <div 
-                    className={`h-full rounded-md transition-all duration-300 relative z-10 flex items-center justify-end shadow-[0_0_15px_rgba(234,179,8,0.5)] ${
+                    className={`h-full rounded-md transition-all duration-75 ease-linear relative z-10 flex items-center justify-end shadow-[0_0_15px_rgba(234,179,8,0.5)] ${
                       timeRemaining <= 10 
                         ? 'bg-gradient-to-r from-red-600 via-orange-500 to-yellow-500 animate-pulse' 
                         : 'bg-gradient-to-r from-emerald-500 via-green-400 to-yellow-300'

@@ -15,7 +15,6 @@ interface StatsScreenProps {
   collectedIds: string[];
   onBack: () => void;
   onResetData?: () => void;
-  onUnlockAllAchievements?: () => void;
 }
 
 export default function StatsScreen({
@@ -23,8 +22,7 @@ export default function StatsScreen({
   bestTime,
   collectedIds,
   onBack,
-  onResetData,
-  onUnlockAllAchievements
+  onResetData
 }: StatsScreenProps) {
   // 大カテゴリ選択タブ (すべて, 1, 2, 3)
   const [activeTab, setActiveTab] = useState<string>('all');
@@ -1163,14 +1161,6 @@ export default function StatsScreen({
           <div className="flex justify-end items-center gap-3 z-10">
             {confirmStep === 0 && (
               <>
-                {onUnlockAllAchievements && (
-                  <button
-                    onClick={onUnlockAllAchievements}
-                    className="text-[10px] text-emerald-600 hover:text-emerald-750 font-bold p-1 bg-white/50 hover:bg-emerald-55 border border-emerald-200 rounded-lg transition-colors cursor-pointer"
-                  >
-                    【デバッグ：全実績の開放】
-                  </button>
-                )}
                 <button
                   onClick={triggerStep1}
                   className="text-[10px] text-red-600 hover:text-red-750 font-bold p-1 bg-white/50 hover:bg-red-50 border border-red-200 rounded-lg transition-colors cursor-pointer"
