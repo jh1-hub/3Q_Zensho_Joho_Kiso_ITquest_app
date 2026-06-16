@@ -18,7 +18,7 @@ interface BattleScreenProps {
   onAnswer: (isCorrect: boolean, isTimeout: boolean, elapsedSeconds: number, clickedIndex: number) => void;
   onNextQuestion: () => void;
   onFinishBattle: (droppedCard: TermCard | null, gainedXp: number) => void;
-  onGameOver: () => void;
+  onGameOver: (isGiveUp?: boolean) => void;
 }
 
 export default function BattleScreen({
@@ -763,7 +763,7 @@ export default function BattleScreen({
               <button
                 onClick={() => {
                   setShowGiveUpConfirm(false);
-                  onGameOver();
+                  onGameOver(true);
                 }}
                 className="py-2.5 bg-red-600 hover:bg-red-700 hover:-translate-y-0.5 text-white font-extrabold rounded-xl border border-red-400 cursor-pointer shadow-md active:scale-95 transition-all text-xs"
                 id="giveup-confirm-yes"

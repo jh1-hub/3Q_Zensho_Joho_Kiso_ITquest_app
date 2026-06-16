@@ -422,7 +422,8 @@ export default function App() {
   };
 
   const startDailyChallenge = () => {
-    const seed = getDailySeed();
+    // 毎回異なるジャンル・モンスターに巡り会えるよう、日付にランダムなシードオフセットを掛け合わせる
+    const seed = getDailySeed() + Math.floor(Math.random() * 100000);
 
     // 全階層（Floor 4を除く）から魔物を抽出
     const availableMonsters: any[] = [];
@@ -434,15 +435,15 @@ export default function App() {
       }
     });
 
-    // 日付シードで対戦相手を固定
+    // 対戦相手を決定
     const monsterTemplate = availableMonsters[seed % availableMonsters.length];
 
-    // 小カテゴリを固定
+    // 小カテゴリを選択
     const allSubcategories = quizCategories.flatMap(c => c.subcategories);
     const subcategoryObj = allSubcategories[seed % allSubcategories.length];
     const subId = subcategoryObj.id;
 
-    // その小カテゴリの問題から3問を日付シードに固定して抽出
+    // その小カテゴリの問題から3問を抽出
     const matchingProblems = RAW_PROBLEMS.filter(p => p.clusterId === subId);
     let candidateProblems = [...matchingProblems];
     if (candidateProblems.length < 3) {
@@ -464,7 +465,7 @@ export default function App() {
     const mockNode: MapNode = {
       id: `daily_${subId}`,
       type: 'battle_easy',
-      label: `【ときのかいろう】日替わりの幻魔（${subcategoryObj.title}）`,
+      label: `【しれんのほこら】日替わりの幻魔（${subcategoryObj.title}）`,
       completed: false,
       accessible: true,
       step: 0,
@@ -1251,7 +1252,7 @@ export default function App() {
   /**
    * ゲームオーバー（HP が 0 になったとき）
    */
-  const handleGameOver = () => {
+  const handleGameOver = (isGiveUp?: boolean) => {
     if (activeTrainingMode) {
       if (activeTrainingMode === 'daily_challenge') {
         // デイリーチャレンジ敗北：カード1枚選択のLootへ移行！
@@ -1263,6 +1264,15 @@ export default function App() {
           dailyChallengeAttempts: (gameStats.dailyChallengeAttempts || 0) + 1
         };
         setGameStats(nextStats);
+
+        if (isGiveUp) {
+          // あきらめるで終了した場合はカードは引けない（LootScreenをスキップしてタイトルへ戻る）
+          setScreen('title');
+          setActiveTrainingMode(null);
+          setTrainingClusterId(null);
+          setBattleState(null);
+          return;
+        }
 
         setPendingXp(0); // 敗北でも参加賞 0 XP
         setDailyChallengeLootCount(1); // 敗北時は1枚！

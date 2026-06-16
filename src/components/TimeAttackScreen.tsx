@@ -546,7 +546,10 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between items-center relative select-none font-sans py-4 px-3 md:px-6 overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-indigo-950 to-purple-950 text-white flex flex-col justify-between items-center relative select-none font-sans py-4 px-3 md:px-6 overflow-x-hidden border-t-8 border-indigo-500">
+      
+      {/* 幻想的な神聖さを醸し出すグラデーション光 */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-cyan-550/5 via-transparent to-purple-550/10 pointer-events-none z-0" />
       
       {/* タイムアウト/被弾時の血湧きフラッシュ（赤） */}
       <div className={`absolute inset-0 bg-red-650/40 pointer-events-none transition-opacity duration-150 ${playerFlash ? 'opacity-100' : 'opacity-0'} z-50`} />
@@ -600,7 +603,7 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
                 </div>
                 
                 <div className="space-y-2">
-                  <h2 className="text-xl font-bold tracking-widest text-yellow-300">鏡の試練『しれんのほこら』</h2>
+                  <h2 className="text-xl font-bold tracking-widest text-yellow-300">鏡の試練『ときのかいろう』</h2>
                   <p className="text-xs text-slate-300 leading-relaxed max-w-md mx-auto">
                     己自身の「心の迷い」が生み出した幻影との最速対決。<br />
                     制限時間は30秒。ミスなくIT用語ハックを詠唱し、己を超えよ。
@@ -1023,7 +1026,7 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
                 TIME'S UP
               </span>
               <h2 className="text-xl md:text-2xl font-bold text-yellow-300 tracking-wider">
-                しれんのほこら 試練終了
+                ときのかいろう 試練終了
               </h2>
             </div>
 

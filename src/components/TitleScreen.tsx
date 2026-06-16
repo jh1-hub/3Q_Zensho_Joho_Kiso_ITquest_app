@@ -341,24 +341,36 @@ export default function TitleScreen({
         {/* メインアクションボタン */}
         <div className="relative z-20 flex flex-col gap-4 w-full justify-center max-w-2xl mt-4 text-xs font-bold font-sans">
           
-          {/* ときのかいろう */}
-          <button
-            onClick={onStartDailyChallenge}
-            className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 border-cyan-400 hover:brightness-110 hover:shadow-xl text-white cursor-pointer font-extrabold rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 border-2 uppercase tracking-wider text-sm"
-            id="open-daily-challenge-btn"
-          >
-            <Swords size={16} className="animate-bounce text-cyan-200" />
-            <span>ときのかいろう</span>
-          </button>
+          {/* しれんのほこら（デイリーチャレンジ） */}
+          <div className="relative w-full">
+            {/* ちょっと動く感じのアピールポップアップバッジ */}
+            <div className="absolute -top-3.5 left-2 z-35 pointer-events-none select-none flex items-center gap-1.5 bg-gradient-to-r from-red-500 to-orange-500 text-[10px] text-white px-2.5 py-0.5 rounded-full border border-red-300 font-extrabold shadow-md animate-[bounce_1.5s_infinite] tracking-wider">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-300 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-400"></span>
+              </span>
+              <span>DIARY</span>
+              <span className="text-[8px] bg-red-700/50 px-1 rounded text-yellow-100 font-medium">日替わり試練！</span>
+            </div>
 
-          {/* しれんのほこら（タイムアタック） */}
+            <button
+              onClick={onStartDailyChallenge}
+              className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 border-cyan-400 hover:brightness-110 hover:shadow-xl text-white cursor-pointer font-extrabold rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 border-2 uppercase tracking-wider text-sm"
+              id="open-daily-challenge-btn"
+            >
+              <Swords size={16} className="animate-bounce text-cyan-200" />
+              <span>しれんのほこら</span>
+            </button>
+          </div>
+
+          {/* ときのかいろう（タイムアタック） */}
           <button
             onClick={onOpenTimeAttack}
             className="w-full py-4 px-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-extrabold rounded-xl shadow-lg hover:shadow-xl hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 border-2 border-indigo-400 uppercase tracking-wider text-sm"
             id="open-timeattack-btn"
           >
             <Timer size={16} className="animate-[spin_4s_linear_infinite] text-cyan-300" />
-            <span>しれんのほこら</span>
+            <span>ときのかいろう</span>
           </button>
 
           <button

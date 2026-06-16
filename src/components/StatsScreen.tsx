@@ -173,9 +173,9 @@ export default function StatsScreen({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // 高精度の論理サイズでセット (縦 1100, 横 800)
+    // 高精度の論理サイズでセット (縦 1450, 横 800)
     const w = 800;
-    const h = 1100;
+    const h = 1450;
     canvas.width = w;
     canvas.height = h;
 
@@ -595,9 +595,126 @@ export default function StatsScreen({
       }
     }
 
+    // --- 【追加項目】実戦力試し ＆ デイリー試練修練データ
+    const challengeY = 945;
+    ctx.fillStyle = '#1e3b8a'; // ロイヤルブルー
+    ctx.fillRect(60, challengeY, w - 120, 30);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 13px "Hiragino Kaku Gothic ProN", sans-serif';
+    ctx.fillText('▼ 実戦力試し ＆ デイリー試練修練状況', 80, challengeY + 20);
+
+    const challengeBoxY = challengeY + 30;
+    const challengeBoxH = 100;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(60, challengeBoxY, w - 120, challengeBoxH);
+    ctx.strokeStyle = '#1e3b8a';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(60, challengeBoxY, w - 120, challengeBoxH);
+
+    // 左カラム：しれんのほこら（デイリー幻影戦）
+    const dailyAttempts = gameStats.dailyChallengeAttempts || 0;
+    const dailyWins = gameStats.dailyChallengeWins || 0;
+    const dailyRate = dailyAttempts > 0 ? Math.round((dailyWins / dailyAttempts) * 100) : 0;
+
+    ctx.fillStyle = '#1e293b';
+    ctx.font = 'bold 11px "Hiragino Kaku Gothic ProN", sans-serif';
+    ctx.fillText('【「しれんのほこら（デイリー幻影試練）」】', 80, challengeBoxY + 22);
+
+    ctx.font = 'bold 10px "Hiragino Kaku Gothic ProN", sans-serif';
+    ctx.fillStyle = '#475569';
+    ctx.fillText(`・幻魔挑戦数 :   ${dailyAttempts} 回`, 90, challengeBoxY + 44);
+    ctx.fillText(`・幻影討伐数 :   ${dailyWins} 回 (勝率 ${dailyRate}%)`, 90, challengeBoxY + 68);
+
+    // 仕切り線
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.beginPath();
+    ctx.moveTo(330, challengeBoxY + 12);
+    ctx.lineTo(330, challengeBoxY + challengeBoxH - 12);
+    ctx.stroke();
+
+    // 右カラム：ときのかいろう ＆ 冒険クリア回数
+    const taMaxCombo = gameStats.timeAttackMaxCombo || 0;
+    const totalWinsCount = gameStats.wins || 0;
+
+    ctx.fillStyle = '#1e293b';
+    ctx.font = 'bold 11px "Hiragino Kaku Gothic ProN", sans-serif';
+    ctx.fillText('【 力試し ＆ ボス討伐実績 】', 350, challengeBoxY + 22);
+
+    ctx.font = 'bold 10px "Hiragino Kaku Gothic ProN", sans-serif';
+    ctx.fillStyle = '#475569';
+    ctx.fillText(`・ときのかいろう最大連撃 :   ${taMaxCombo} 連撃`, 360, challengeBoxY + 44);
+    ctx.fillText(`・ぼうけん（ダンジョン）クリア回数  :   ${totalWinsCount} 回 (ボス討伐)`, 360, challengeBoxY + 68);
+
+
+    // --- 【追加項目】ギルド／評価者 総合学修評定＆アドバイス
+    const adviceY = 1090;
+    ctx.fillStyle = '#b45309'; // 金茶
+    ctx.fillRect(60, adviceY, w - 120, 30);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 13px "Hiragino Kaku Gothic ProN", sans-serif';
+    ctx.fillText('▼ ギルド統括局／評価者 総合学修評定＆アドバイス', 80, adviceY + 20);
+
+    const adviceBoxY = adviceY + 30;
+    const adviceBoxH = 110;
+    ctx.fillStyle = '#fffdfa'; // わずかにウォームカラー
+    ctx.fillRect(60, adviceBoxY, w - 120, adviceBoxH);
+    ctx.strokeStyle = '#b45309';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(60, adviceBoxY, w - 120, adviceBoxH);
+
+    // 統計的アドバイステキスト決定
+    const tStatsBox = gameStats.trainingStats || { categoryAttempts: {}, drillAttempts: 0 };
+    let trAttemptsTotal = 0;
+    const catAttemptsVals = Object.values(tStatsBox.categoryAttempts || {});
+    catAttemptsVals.forEach((v) => {
+      trAttemptsTotal += Number(v) || 0;
+    });
+    trAttemptsTotal += Number(tStatsBox.drillAttempts) || 0;
+    const adventureAttemptsTotal = categoriesList.reduce((acc, c) => acc + c.attempts, 0);
+
+    let guildComment = '';
+    let guildClassStr = '【バランス型】魔導ハッカー';
+    
+    if (trAttemptsTotal > 15 && adventureAttemptsTotal <= 5) {
+      guildClassStr = '【知識獲得偏重型】理論派ハッカー';
+      guildComment = '基礎修行や弱点克服（インプット）に非常に熱心に取り組んでおられ、知識が大変豊かです。この強力な知識ベースを実力試しに活かすため、次はぜひ「ぼうけん」や「しれんのほこら」に挑戦し、魔物たちにハックを打ちこんでみましょう！';
+    } else if (totalWinsCount >= 3 && trAttemptsTotal < 10) {
+      guildClassStr = '【実戦即応型】武闘派ハッカー';
+      guildComment = '「ぼうけん」でのボス討伐成績が見事で、実戦での判断力や対応力に秀でています。今後、さらに高度なIT国家試験レベルへの適応力を完全なものにするため、並行して「しゅぎょう（カテゴリ特訓）」で細かい理論知識を深めてください。';
+    } else if (trAttemptsTotal >= 10 && adventureAttemptsTotal >= 10) {
+      guildClassStr = '【修練調和両立型】優良魔導師';
+      guildComment = '「しゅぎょう・たんれん」による理論知識の獲得と、「ぼうけん・ときのかいろう」での実戦力試しが完璧なバランスを保っています。日々の継続的なハック訓練が素晴らしい学習姿勢を証明しており、評価者から見て極めて頼もしい限りです。';
+    } else {
+      guildClassStr = '【発展可能性型】見習いハッカー';
+      guildComment = 'ハッカーギルドでの学修はまだ緒に就いたばかりです。まずは「しゅぎょう」を通じて自分の知らないIT用語を着実にインプットし、自信がついたら毎日「しれんのほこら」や「ぼうけん」にステップを広げてハック練度を高めましょう。';
+    }
+
+    ctx.fillStyle = '#78350f';
+    ctx.font = 'bold 11px "Hiragino Kaku Gothic ProN", sans-serif';
+    ctx.fillText(`学修タイプ認定 :   ${guildClassStr}`, 80, adviceBoxY + 22);
+
+    ctx.font = 'bold 10px "Hiragino Kaku Gothic ProN", sans-serif';
+    ctx.fillStyle = '#451a03';
+    
+    // 折り返し描画関数（41文字ずつ）
+    const drawParagraph = (text: string, x: number, startY: number, lineH: number, maxC = 41) => {
+      let currentLine = '';
+      let yy = startY;
+      for (let i = 0; i < text.length; i++) {
+        currentLine += text[i];
+        if (currentLine.length >= maxC || i === text.length - 1) {
+          ctx.fillText(currentLine, x, yy);
+          currentLine = '';
+          yy += lineH;
+        }
+      }
+    };
+    drawParagraph(guildComment, 80, adviceBoxY + 44, 16);
+
+
     // --- 絢爛たる成績印鑑（Guild / School Stamp）の描画
     const stampX = 660;
-    const stampY = 940;
+    const stampY = 1240;
     
     // 赤いスタンプサークルを描く
     ctx.save();
@@ -769,12 +886,12 @@ export default function StatsScreen({
             <div className="absolute top-2 right-2 p-1.5 bg-orange-50 text-orange-600 rounded-full">
               <Flame size={18} className="animate-pulse text-orange-500" />
             </div>
-            <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider block font-bold">ほこら最大連撃</span>
+            <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider block font-bold">かいろう最大連撃</span>
             <div className="mt-2 flex items-baseline gap-1.5 font-mono">
               <span className="text-2xl font-black text-orange-950">{gameStats.timeAttackMaxCombo || 0}</span>
               <span className="text-xs text-slate-550 font-bold font-sans">連撃</span>
             </div>
-            <p className="text-[9px] text-slate-400 mt-2 font-semibold font-sans">しれんのほこらでの最多連続正解数</p>
+            <p className="text-[9px] text-slate-400 mt-2 font-semibold font-sans">ときのかいろうでの最多連続正解数</p>
           </div>
 
         </div>
@@ -1260,12 +1377,12 @@ export default function StatsScreen({
 
               <div className="flex items-center justify-between text-slate-250 mb-3 shrink-0">
                 <span className="text-[11px] font-black tracking-widest uppercase text-white/80">◆ 提出レポートプレビュー ◆</span>
-                <span className="text-[9px] text-slate-400 font-bold hidden sm:inline">解像度: 800 x 1100 (印刷推奨レイアウト)</span>
+                <span className="text-[9px] text-slate-400 font-bold hidden sm:inline">解像度: 800 x 1450 (印刷推奨レイアウト)</span>
               </div>
 
               {/* スクロール可能なCanvasコンテナ */}
               <div className="flex-1 overflow-auto bg-slate-850 p-3 rounded-2xl flex justify-center items-start shadow-inner border border-slate-700 max-h-[60vh] lg:max-h-[70vh]">
-                <div className="min-w-[400px] max-w-[550px] w-full aspect-[8/11] bg-white rounded-lg shadow-xl overflow-hidden scale-95 origin-top">
+                <div className="min-w-[400px] max-w-[550px] w-full bg-white rounded-lg shadow-xl overflow-hidden scale-95 origin-top" style={{ aspectRatio: '800/1450' }}>
                   <canvas
                     ref={canvasRef}
                     className="w-full h-auto block select-text bg-white"
