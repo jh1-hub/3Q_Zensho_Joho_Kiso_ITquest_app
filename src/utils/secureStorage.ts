@@ -1,24 +1,59 @@
 /**
- * Simple Obfuscation Secure Storage Wrapper
+ * Simple Obfuscation Secure Storage Wrapper with V2 Robust UTF-8 Encoding
  */
 
 function encode(str: string): string {
-  const chars = str.split('').map(c => {
-    const code = c.charCodeAt(0);
-    return String.fromCharCode(code ^ 83); // XOR with 83
-  }).join('');
-  return btoa(unescape(encodeURIComponent(chars)));
+  try {
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(str);
+    // XOR obfuscate with key 83
+    for (let i = 0; i < bytes.length; i++) {
+      bytes[i] ^= 83;
+    }
+    // Convert to hex
+    const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    return 'v2:' + hex;
+  } catch (e) {
+    console.error('secureStorage encode error:', e);
+    return str; // Fallback to raw if anything fails
+  }
 }
 
 function decode(obfuscated: string): string {
+  if (!obfuscated) return '';
+
+  // If it's the new format
+  if (obfuscated.startsWith('v2:')) {
+    try {
+      const hex = obfuscated.substring(3);
+      if (hex.length % 2 !== 0) return '';
+      const bytes = new Uint8Array(hex.length / 2);
+      for (let i = 0; i < hex.length; i += 2) {
+        bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+      }
+      // XOR de-obfuscate
+      for (let i = 0; i < bytes.length; i++) {
+        bytes[i] ^= 83;
+      }
+      const decoder = new TextDecoder();
+      return decoder.decode(bytes);
+    } catch (e) {
+      console.error('secureStorage decode v2 error:', e);
+      return '';
+    }
+  }
+
+  // Fallback to decode the legacy format
   try {
     const rawB64 = atob(obfuscated);
     const chars = decodeURIComponent(escape(rawB64));
-    return chars.split('').map(c => {
+    const decoded = chars.split('').map(c => {
       const code = c.charCodeAt(0);
       return String.fromCharCode(code ^ 83);
     }).join('');
+    return decoded;
   } catch (e) {
+    // If it's not base64 or failed to decode, returning empty will trigger fallback to raw string
     return '';
   }
 }
@@ -40,7 +75,6 @@ export const secureStorage = {
       if (!val) return null;
       const decrypted = decode(val);
       if (decrypted) {
-        // Double check if decryption looks plausible (e.g., if we stored json, it should match, or if it is simple string)
         return decrypted;
       }
       return val; // Fallback to plain text if decryption fails

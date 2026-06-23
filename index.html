@@ -14,11 +14,30 @@
     
     <script>
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('Service Worker registered successfully!', reg.scope))
-            .catch(err => console.log('Service Worker registration failed:', err));
-        });
+        const isDev = window.location.hostname === 'localhost' || 
+                      window.location.hostname === '127.0.0.1' || 
+                      window.location.hostname.includes('ais-dev') || 
+                      window.location.hostname.includes('run.app');
+                      
+        if (!isDev) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+              .then(reg => console.log('Service Worker registered successfully!', reg.scope))
+              .catch(err => console.log('Service Worker registration failed:', err));
+          });
+        } else {
+          // Unregister any existing service worker in dev/preview to clear stales
+          navigator.serviceWorker.getRegistrations().then(registrations => {
+            for (const registration of registrations) {
+              registration.unregister().then(unregistered => {
+                if (unregistered) {
+                  console.log('Unregistered stale development service worker.');
+                  window.location.reload();
+                }
+              });
+            }
+          });
+        }
       }
     </script>
   </head>
