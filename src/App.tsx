@@ -1342,6 +1342,8 @@ export default function App() {
     // 保存 (レベル1、XP0として保存)
     saveToStorage(player.collectedCards, bestTime, [...new Set([...wrongTerms])], 1, 0);
 
+    setSelectedRoute(null);
+    setCurrentStep(0);
     setScreen('result');
     setBattleState(null);
   };
