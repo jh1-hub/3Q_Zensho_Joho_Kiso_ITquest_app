@@ -152,10 +152,10 @@ export default function ResultScreen({
       {/* 優しいファンタジー感の演出 */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(56,189,248,0.12)_0%,transparent_85%)] pointer-events-none"></div>
 
-      <div className={`max-w-xl w-full ${
+      <div className={`w-full ${
         isWin 
-          ? 'bg-black/95 border-4 border-yellow-400 ring-8 ring-yellow-400/10 shadow-[0_0_60px_rgba(234,179,8,0.45)]' 
-          : 'bg-slate-900/90 border-4 border-red-900 shadow-2xl'
+          ? 'max-w-3xl bg-black/95 border-4 border-yellow-400 ring-8 ring-yellow-400/10 shadow-[0_0_60px_rgba(234,179,8,0.45)]' 
+          : 'max-w-xl bg-slate-900/90 border-4 border-red-900 shadow-2xl'
         } p-6 md:p-8 rounded-3xl relative text-center flex flex-col gap-6 z-10 transition-all`}
       >
         
@@ -187,16 +187,16 @@ export default function ResultScreen({
 
         {isWin && (
           <div className="flex flex-col gap-4">
-            <div className="bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-500/15 border border-yellow-500/20 text-yellow-100 p-4 rounded-2xl text-xs leading-relaxed font-bold shadow-3xs max-w-md mx-auto">
+            <div className="bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-500/15 border border-yellow-500/20 text-yellow-100 p-4 rounded-2xl text-xs leading-relaxed font-bold shadow-3xs max-w-2xl mx-auto w-full">
               🛡️ あなたの詠唱したIT用語の言葉の力が、魔界の魔王封印に成功し、IT魔導界に太陽と輝かしい平穏を取り戻しました。すべての知識が力となって脈動しています！
             </div>
             
             {/* 討伐記念クリアグラフィック画像 */}
-            <div className="w-full overflow-hidden rounded-2xl border border-slate-850 bg-black flex justify-center items-center p-1.5 max-w-md mx-auto shadow-[0_8px_30px_rgba(0,0,0,0.95)]">
+            <div className="w-full overflow-hidden rounded-2xl border border-slate-850 bg-black flex justify-center items-center p-1.5 max-w-2xl mx-auto shadow-[0_8px_30px_rgba(0,0,0,0.95)]">
               <img 
                 src="./img/player/end1-1.jpg" 
                 alt="魔王討伐記念" 
-                className="w-full h-auto rounded-xl object-contain max-h-[220px] md:max-h-[280px] transition-transform duration-500 hover:scale-[1.03]"
+                className="w-full h-auto rounded-xl object-contain max-h-[320px] md:max-h-[500px] transition-transform duration-500 hover:scale-[1.02]"
                 referrerPolicy="no-referrer"
               />
             </div>
