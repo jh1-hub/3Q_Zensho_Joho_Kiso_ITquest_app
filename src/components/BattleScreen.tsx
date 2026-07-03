@@ -43,7 +43,7 @@ export default function BattleScreen({
     isCorrect
   } = battleState;
 
-  // 制限時間は45秒。カード効果補正を追加。
+  // 制限時間は45秒。カード効果補正を追加している。
   const maxTimer = 45 + timerBonus;
   const [timeLeft, setTimeLeft] = useState(maxTimer);
   const [elapsedTime, setElapsedTime] = useState(0);
