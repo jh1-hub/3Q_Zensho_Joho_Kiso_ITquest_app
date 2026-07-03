@@ -194,7 +194,7 @@ export default function ResultScreen({
             {/* 討伐記念クリアグラフィック画像 */}
             <div className="w-full overflow-hidden rounded-2xl border border-slate-850 bg-black flex justify-center items-center p-1.5 max-w-md mx-auto shadow-[0_8px_30px_rgba(0,0,0,0.95)]">
               <img 
-                src="/img/player/end1-1.jpg" 
+                src="./img/player/end1-1.jpg" 
                 alt="魔王討伐記念" 
                 className="w-full h-auto rounded-xl object-contain max-h-[220px] md:max-h-[280px] transition-transform duration-500 hover:scale-[1.03]"
                 referrerPolicy="no-referrer"
