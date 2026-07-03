@@ -1392,6 +1392,33 @@ export default function App() {
     setScreen('title');
   };
 
+  /**
+   * デバッグ用クリア画面遷移
+   */
+  const handleDebugGoToResult = (
+    isWin: boolean,
+    totalTimeSeconds: number,
+    penaltySeconds: number,
+    finalQuestions: number,
+    correctAnswers: number,
+    card: any,
+    runCards: string[],
+    wrongs: string[]
+  ) => {
+    setIsGameClear(isWin);
+    setFinalQuestionsCount(finalQuestions);
+    setCorrectAnswersCount(correctAnswers);
+    setDroppedCard(card);
+    setRunCardIdsForResults(runCards);
+    setWrongTerms(wrongs);
+    setPlayer(prev => ({
+      ...prev,
+      totalTimeSeconds,
+      penaltySeconds
+    }));
+    setScreen('result');
+  };
+
   // ----------------------------------------------------
   // レンダリング処理
   // ----------------------------------------------------
@@ -1500,6 +1527,7 @@ export default function App() {
           collectedIds={player.collectedCards}
           onBack={() => setScreen('title')}
           onResetData={handleResetAllData}
+          onDebugGoToResult={handleDebugGoToResult}
         />
       )}
 

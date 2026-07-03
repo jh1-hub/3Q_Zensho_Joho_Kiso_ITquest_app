@@ -16,6 +16,16 @@ interface StatsScreenProps {
   collectedIds: string[];
   onBack: () => void;
   onResetData?: () => void;
+  onDebugGoToResult?: (
+    isWin: boolean,
+    totalTimeSeconds: number,
+    penaltySeconds: number,
+    finalQuestionsCount: number,
+    correctAnswersCount: number,
+    droppedCard: any,
+    runCardIds: string[],
+    wrongTerms: string[]
+  ) => void;
 }
 
 export default function StatsScreen({
@@ -23,7 +33,8 @@ export default function StatsScreen({
   bestTime,
   collectedIds,
   onBack,
-  onResetData
+  onResetData,
+  onDebugGoToResult
 }: StatsScreenProps) {
   // 大カテゴリ選択タブ (すべて, 1, 2, 3)
   const [activeTab, setActiveTab] = useState<string>('all');
@@ -44,6 +55,44 @@ export default function StatsScreen({
   const [studentName, setStudentName] = useState<string>('');
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const handleDebugClearClick = () => {
+    if (!onDebugGoToResult) return;
+    
+    // Generate realistic random clear stats
+    const totalTimeSeconds = Math.floor(Math.random() * 361) + 240; // 4 to 10 minutes (240 to 600s)
+    const penaltySeconds = Math.floor(Math.random() * 7) * 10; // 0 to 60s
+    const finalQuestionsCount = Math.floor(Math.random() * 11) + 15; // 15 to 25 questions
+    const accuracyRate = 0.85 + Math.random() * 0.15; // 85% to 100%
+    const correctAnswersCount = Math.min(finalQuestionsCount, Math.round(finalQuestionsCount * accuracyRate));
+    
+    // Choose a random fancy UR/LG/SR card as dropped reward
+    const rareCards = TERM_CARDS.filter(c => c.rarity === 'UR' || c.rarity === 'LG' || c.rarity === 'SR');
+    const droppedCard = rareCards.length > 0 
+      ? rareCards[Math.floor(Math.random() * rareCards.length)] 
+      : TERM_CARDS[Math.floor(Math.random() * TERM_CARDS.length)];
+      
+    // Random run cards
+    const shuffled = [...TERM_CARDS].sort(() => 0.5 - Math.random());
+    const runCardIds = shuffled.slice(0, Math.floor(Math.random() * 3) + 2).map(c => c.id);
+    if (!runCardIds.includes(droppedCard.id)) {
+      runCardIds.push(droppedCard.id);
+    }
+    
+    // Random wrong terms
+    const wrongTerms = shuffled.slice(5, 5 + Math.floor(Math.random() * 2) + 1).map(c => c.id);
+
+    onDebugGoToResult(
+      true, // isWin
+      totalTimeSeconds,
+      penaltySeconds,
+      finalQuestionsCount,
+      correctAnswersCount,
+      droppedCard,
+      runCardIds,
+      wrongTerms
+    );
+  };
 
   // 初回起動時に入力情報をローカルストレージから復元
   useEffect(() => {
@@ -1159,9 +1208,15 @@ export default function StatsScreen({
 
         {/* 最下部：データ削除・管理ブロック (オプション) */}
         {onResetData && (
-          <div className="flex justify-end items-center gap-3 z-10">
+          <div className="flex justify-between items-center gap-3 z-10 w-full mt-4 border-t border-slate-200/50 pt-4">
             {confirmStep === 0 && (
               <>
+                <button
+                  onClick={handleDebugClearClick}
+                  className="text-[10px] text-teal-600 hover:text-teal-750 font-bold px-2 py-1 bg-white/50 hover:bg-teal-50 border border-teal-200 rounded-lg transition-colors cursor-pointer mr-auto"
+                >
+                  ⚙️ デバッグ: クリア画面を表示 (ランダム戦績)
+                </button>
                 <button
                   onClick={triggerStep1}
                   className="text-[10px] text-red-600 hover:text-red-750 font-bold p-1 bg-white/50 hover:bg-red-50 border border-red-200 rounded-lg transition-colors cursor-pointer"

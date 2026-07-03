@@ -97,7 +97,7 @@ export default function ResultScreen({
   return (
     <div className={`min-h-screen w-full ${
       isWin 
-        ? 'bg-slate-950 bg-gradient-to-br from-slate-950 via-indigo-950/65 to-purple-950/50' 
+        ? 'bg-black bg-gradient-to-b from-black via-slate-950 to-black' 
         : 'bg-slate-900 bg-gradient-to-b from-slate-900 to-slate-950'
       } text-slate-100 p-4 md:p-8 flex flex-col justify-center items-center relative font-sans overflow-hidden select-none border-t-8 ${
         isWin ? 'border-yellow-400' : 'border-red-650'
@@ -154,7 +154,7 @@ export default function ResultScreen({
 
       <div className={`max-w-xl w-full ${
         isWin 
-          ? 'bg-slate-900/95 border-4 border-yellow-400 ring-8 ring-yellow-400/10 shadow-[0_0_60px_rgba(234,179,8,0.45)]' 
+          ? 'bg-black/95 border-4 border-yellow-400 ring-8 ring-yellow-400/10 shadow-[0_0_60px_rgba(234,179,8,0.45)]' 
           : 'bg-slate-900/90 border-4 border-red-900 shadow-2xl'
         } p-6 md:p-8 rounded-3xl relative text-center flex flex-col gap-6 z-10 transition-all`}
       >
@@ -186,8 +186,20 @@ export default function ResultScreen({
         </div>
 
         {isWin && (
-          <div className="bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-500/15 border border-yellow-500/20 text-yellow-100 p-4 rounded-2xl text-xs leading-relaxed font-bold shadow-3xs max-w-md mx-auto">
-            🛡️ あなたの詠唱したIT用語の言葉の力が、魔界の魔王封印に成功し、IT魔導界に太陽と輝かしい平穏を取り戻しました。すべての知識が力となって脈動しています！
+          <div className="flex flex-col gap-4">
+            <div className="bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-500/15 border border-yellow-500/20 text-yellow-100 p-4 rounded-2xl text-xs leading-relaxed font-bold shadow-3xs max-w-md mx-auto">
+              🛡️ あなたの詠唱したIT用語の言葉の力が、魔界の魔王封印に成功し、IT魔導界に太陽と輝かしい平穏を取り戻しました。すべての知識が力となって脈動しています！
+            </div>
+            
+            {/* 討伐記念クリアグラフィック画像 */}
+            <div className="w-full overflow-hidden rounded-2xl border border-slate-850 bg-black flex justify-center items-center p-1.5 max-w-md mx-auto shadow-[0_8px_30px_rgba(0,0,0,0.95)]">
+              <img 
+                src="/img/player/end1-1.jpg" 
+                alt="魔王討伐記念" 
+                className="w-full h-auto rounded-xl object-contain max-h-[220px] md:max-h-[280px] transition-transform duration-500 hover:scale-[1.03]"
+                referrerPolicy="no-referrer"
+              />
+            </div>
           </div>
         )}
 
