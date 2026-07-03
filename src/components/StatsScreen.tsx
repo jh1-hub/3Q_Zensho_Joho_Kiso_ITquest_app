@@ -1211,15 +1211,16 @@ export default function StatsScreen({
           <div className="flex justify-between items-center gap-3 z-10 w-full mt-4 border-t border-slate-200/50 pt-4">
             {confirmStep === 0 && (
               <>
-                <button
+                {/* ⚙️ デバッグボタン：必要に応じて以下をコメント解除してください */}
+                {/* <button
                   onClick={handleDebugClearClick}
                   className="text-[10px] text-teal-600 hover:text-teal-750 font-bold px-2 py-1 bg-white/50 hover:bg-teal-50 border border-teal-200 rounded-lg transition-colors cursor-pointer mr-auto"
                 >
                   ⚙️ デバッグ: クリア画面を表示 (ランダム戦績)
-                </button>
+                </button> */}
                 <button
                   onClick={triggerStep1}
-                  className="text-[10px] text-red-600 hover:text-red-750 font-bold p-1 bg-white/50 hover:bg-red-50 border border-red-200 rounded-lg transition-colors cursor-pointer"
+                  className="text-[10px] text-red-600 hover:text-red-750 font-bold p-1 bg-white/50 hover:bg-red-50 border border-red-200 rounded-lg transition-colors cursor-pointer ml-auto"
                 >
                   【セーブデータと全実績のリセット】
                 </button>
