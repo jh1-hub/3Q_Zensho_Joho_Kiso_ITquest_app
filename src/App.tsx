@@ -538,6 +538,7 @@ export default function App() {
     setPlayStartTime(Date.now());
     setRunCardIdsForResults([]);
     setTookDamageThisRun(false);
+    setIsGameClear(false); // 確実にリセット！
     
     // 挑戦回数アップ
     let nextStats = gameStats;
@@ -1152,23 +1153,15 @@ export default function App() {
       const nextStats = { ...gameStats, wins: gameStats.wins + 1 };
       setGameStats(nextStats);
 
-      // ボス撃破後はレベル1、XP 0に初期化してセーブ、冒険中カードはリセット
+      // ボス撃破後はセーブデータ上のステータスをレベル1、XP 0に初期化して保存
       saveToStorage(updatedCollected, newBest, [...new Set([...wrongTerms])], 1, 0, nextStats);
       rollTimeAttackUnlock();
 
-      const freshBonus = calculatePlayerBonus(updatedCollected, []);
-      const mhp = 100 + freshBonus.hp;
-      const atk = 100 + freshBonus.attack;
+      // リザルト画面で今回の冒険で到達した強さ（レベルなど）を表示するため、
+      // プレイヤー状態の初期化は次のゲーム開始時（handleStartGame）に行います。
       setPlayer(prev => ({
         ...prev,
-        level: 1,
-        xp: 0,
-        xpToNextLevel: getXpToNextLevel(1),
-        maxHp: mhp,
-        hp: mhp,
-        attack: atk,
         collectedCards: updatedCollected,
-        activeRunCardIds: [], // Reset run cards
         totalTimeSeconds: runSeconds
       }));
 
@@ -1305,19 +1298,10 @@ export default function App() {
       runSeconds = (Date.now() - playStartTime) / 1000;
     }
     
-    // 敗北後もレベル1、XP 0に常にリセット、冒険中カードは空に
-    const bonus = calculatePlayerBonus(player.collectedCards, []);
-    const mhp = 100 + bonus.hp;
-    const atk = 100 + bonus.attack;
+    // 敗北時も、リザルト画面に今回の最終ステータス（レベルなど）を表示させるため、
+    // プレイヤー状態の初期化は次のゲーム開始時（handleStartGame）に行います。
     setPlayer(prev => ({
       ...prev,
-      level: 1,
-      xp: 0,
-      xpToNextLevel: getXpToNextLevel(1),
-      maxHp: mhp,
-      hp: mhp,
-      attack: atk,
-      activeRunCardIds: [], // Clear run cards!
       totalTimeSeconds: runSeconds
     }));
 
