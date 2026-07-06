@@ -567,3 +567,38 @@ export function getTermEmoji(id: string): string {
 
   return importedGetTermEmoji(name);
 }
+
+/**
+ * 毎日異なるが、同じ日であれば一意に固定されるデイリーシード値を返す (YYYYMMDD形式)
+ */
+export function getDailySeed(): number {
+  const d = new Date();
+  return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+}
+
+/**
+ * シード付きの疑似乱数生成器 (Mulberry32)
+ */
+function sfc32(a: number) {
+  return function() {
+    a >>>= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * シード値を元に、配列を決定論的にシャッフルする
+ */
+export function shuffleArrayWithSeed<T>(array: T[], seed: number): T[] {
+  const copy = [...array];
+  const rand = sfc32(seed);
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+

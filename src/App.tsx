@@ -27,7 +27,9 @@ import {
   getEnemyConfig, 
   getXpToNextLevel,
   drawCard,
-  shuffleArray
+  shuffleArray,
+  getDailySeed,
+  shuffleArrayWithSeed
 } from './utils/gameHelpers';
 
 interface SaveData {
@@ -352,36 +354,19 @@ export default function App() {
       monsterDamage: (mode === 'category' || mode === 'subcategory') ? 120 : 160,
       monsterQuestions,
       monsterImagePath: (mode === 'category' || mode === 'subcategory')
-        ? "./img/monsters/training_slime_battle.jpg" 
-        : "./img/monsters/drill_golem_battle.jpg",
-      monsterThumbnailPath: (mode === 'category' || mode === 'subcategory')
-        ? "./img/monsters/training_slime_thumb.jpg" 
-        : "./img/monsters/drill_golem_thumb.jpg"
+        ? './img/monsters/it_slime_battle.jpg'
+        : './img/monsters/bug_dracky_battle.jpg',
+      monsterFallbackImage: (mode === 'category' || mode === 'subcategory')
+        ? 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=400&q=80'
+        : 'https://images.unsplash.com/photo-1555685812-4b943f1cb0eb?auto=format&fit=crop&w=400&q=80'
     };
 
-    const choiceCount = (mode === 'category' || mode === 'subcategory') ? 4 : 6;
-
-    // 出題される問題プールを用意（カテゴリ修行（大区分）では3問に1問は模擬試験にちかい実践問題を設定する）
-    const poolItems: any[] = [];
-    const catId = mode === 'category' ? (clusterId || "1") : "1";
-    const subIdsForCat = quizCategories.find(c => c.id === catId)?.subcategories.map(s => s.id) || [];
-    const parentPQs = shuffleArray(practicalQuestions.filter(pq => subIdsForCat.includes(pq.categoryId)));
-    let pqIdx = 0;
-
-    for (let i = 0; i < monsterQuestions; i++) {
-      if (mode === 'category' && i % 3 === 2 && pqIdx < parentPQs.length) {
-        poolItems.push({
-          isPractical: true,
-          practical: parentPQs[pqIdx++]
-        });
-      } else {
-        const stdProblem = battleProblems[i % battleProblems.length];
-        poolItems.push({
-          isPractical: false,
-          raw: stdProblem
-        });
-      }
-    }
+    const choiceCount = 4;
+    const poolItems = battleProblems.map(p => ({
+      isPractical: false,
+      raw: p,
+      practical: undefined as any
+    }));
 
     const firstItem = poolItems[0];
     let activeProg: ActiveProblem;
@@ -393,7 +378,6 @@ export default function App() {
       activeProg = generateActiveProblem(firstRaw, typeDecision, choiceCount, RAW_PROBLEMS);
     }
 
-    // バトルステート作成
     const initialBattle: BattleState = {
       currentNode: mockNode,
       questionsLeft: monsterQuestions,
@@ -410,42 +394,21 @@ export default function App() {
       selectedAnswer: null,
       isCorrect: null,
       damageEffect: { target: null, amount: 0 },
-      battleLog: 'しゅぎょうバトルが開始された！'
+      battleLog: `${monsterName}が勝負を仕掛けてきた！修行開始！`
     };
 
-    // 内部的な _problemPool をセット（ handleNextQuestion で使う）
     (initialBattle as any)._problemPool = poolItems;
 
-    setOverrideCardsPool(rewardsPool);
+    setOverrideCardsPool(rewardsPool || TERM_CARDS);
     setForceFullyRandom(isFullyRandom);
 
     setBattleState(initialBattle);
     setScreen('battle');
   };
 
-  // 決定性のあるシードベースのシャッフル関数
-  const shuffleArrayWithSeed = <T,>(array: T[], seed: number): T[] => {
-    const arr = [...array];
-    let m = arr.length, t, i;
-    let s = seed;
-    while (m) {
-      s = (s * 9301 + 49297) % 233280;
-      i = Math.floor((s / 233280) * m--);
-      t = arr[m];
-      arr[m] = arr[i];
-      arr[i] = t;
-    }
-    return arr;
-  };
-
-  const getDailySeed = () => {
-    const d = new Date();
-    return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
-  };
-
   const startDailyChallenge = () => {
-    // 毎回異なるジャンル・モンスターに巡り会えるよう、日付にランダムなシードオフセットを掛け合わせる
-    const seed = getDailySeed() + Math.floor(Math.random() * 100000);
+    // 毎日異なるが、同じ日であれば一意に固定されるデイリーシードを使用
+    const seed = getDailySeed();
 
     // 全階層（Floor 4を除く）から魔物を抽出
     const availableMonsters: any[] = [];
@@ -460,24 +423,33 @@ export default function App() {
     // 対戦相手を決定
     const monsterTemplate = availableMonsters[seed % availableMonsters.length];
 
-    // 小カテゴリを選択
+    // 「同じような問題ばかり出る」のを防ぐため、全10個の小カテゴリから異なる3つのカテゴリを選択して、
+    // それぞれから1問ずつ（合計3問）を抽出する総合試練形式にする。
     const allSubcategories = quizCategories.flatMap(c => c.subcategories);
-    const subcategoryObj = allSubcategories[seed % allSubcategories.length];
-    const subId = subcategoryObj.id;
+    const shuffledSubcategories = shuffleArrayWithSeed(allSubcategories, seed);
 
-    // その小カテゴリの問題から3問を抽出
-    const matchingProblems = RAW_PROBLEMS.filter(p => p.clusterId === subId);
-    let candidateProblems = [...matchingProblems];
-    if (candidateProblems.length < 3) {
-      const parentCatId = subId.split('-')[0];
-      const siblingSubIds = quizCategories.find(c => c.id === parentCatId)?.subcategories.map(s => s.id) || [];
-      const fallbackProblems = RAW_PROBLEMS.filter(p => siblingSubIds.includes(p.clusterId) && p.clusterId !== subId);
-      candidateProblems = [...candidateProblems, ...fallbackProblems];
+    const battleProblems: any[] = [];
+    const selectedSubcategoryTitles: string[] = [];
+    const selectedSubIds: string[] = [];
+
+    for (let i = 0; i < 3; i++) {
+      const subcategoryObj = shuffledSubcategories[i % shuffledSubcategories.length];
+      selectedSubcategoryTitles.push(subcategoryObj.title);
+      selectedSubIds.push(subcategoryObj.id);
+
+      const matchingProblems = RAW_PROBLEMS.filter(p => p.clusterId === subcategoryObj.id);
+      if (matchingProblems.length > 0) {
+        // 各サブカテゴリ内の問題を、その日のシード + インデックスでシャッフルして最初の1問を採用
+        const subProblemsShuffled = shuffleArrayWithSeed(matchingProblems, seed + i);
+        battleProblems.push(subProblemsShuffled[0]);
+      } else {
+        // フォールバック
+        const fallbackShuffled = shuffleArrayWithSeed(RAW_PROBLEMS, seed + i);
+        battleProblems.push(fallbackShuffled[0]);
+      }
     }
 
-    const shuffledBySeed = shuffleArrayWithSeed(candidateProblems, seed);
-    const battleProblems = shuffledBySeed.slice(0, 3);
-
+    const representativeSubId = selectedSubIds[0];
     const monsterName = `幻影の${monsterTemplate.name}`;
     const baseConfig = getEnemyConfig('battle_easy', 0);
     const monsterMaxHp = baseConfig.maxHp;
@@ -485,9 +457,9 @@ export default function App() {
     const monsterQuestions = 3;
 
     const mockNode: MapNode = {
-      id: `daily_${subId}`,
+      id: `daily_${representativeSubId}`,
       type: 'battle_easy',
-      label: `【しれんのほこら】日替わりの幻魔（${subcategoryObj.title}）`,
+      label: `【しれんのほこら】日替わりの総合幻魔（${selectedSubcategoryTitles.slice(0, 2).join('・')}他）`,
       completed: false,
       accessible: true,
       step: 0,
@@ -533,12 +505,13 @@ export default function App() {
 
     (initialBattle as any)._problemPool = poolItems;
 
-    const rewardsPool = TERM_CARDS.filter(c => c.clusterId === subId);
+    // 今回の試練で出題されたサブカテゴリのカードを報酬プールとする
+    const rewardsPool = TERM_CARDS.filter(c => selectedSubIds.includes(c.clusterId));
     setOverrideCardsPool(rewardsPool.length > 0 ? rewardsPool : TERM_CARDS);
     setForceFullyRandom(false);
 
     setActiveTrainingMode('daily_challenge');
-    setTrainingClusterId(subId);
+    setTrainingClusterId(representativeSubId);
     setBattleState(initialBattle);
 
     // プレイヤーのステータスをオーバーライドして開始
@@ -552,6 +525,9 @@ export default function App() {
 
     setScreen('battle');
   };
+
+
+
 
   // ----------------------------------------------------
   // ゲーム初期化 & 構築

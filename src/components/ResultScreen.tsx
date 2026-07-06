@@ -85,11 +85,36 @@ export default function ResultScreen({
 
   // Calculate customized final rank titles to award catharsis and promote replayability
   const getHeroTitleAndGrade = (time: number) => {
-    if (time <= 240) return { title: '神速のIT大賢者 (Rank SSS)', style: 'bg-gradient-to-r from-red-500 via-amber-400 to-yellow-300 text-slate-950 border-yellow-300 shadow-[0_0_15px_rgba(250,204,21,0.65)]' };
-    if (time <= 360) return { title: '栄光のフルスタック導師 (Rank SS)', style: 'bg-gradient-to-r from-amber-400 to-yellow-600 text-white border-yellow-300 shadow-[0_0_10px_rgba(250,204,21,0.55)] animate-pulse' };
-    if (time <= 540) return { title: '王立デジタル防衛兵団長 (Rank A)', style: 'bg-indigo-800 text-white border-indigo-400' };
-    if (time <= 720) return { title: '城下町の熟練プログラマー騎士 (Rank B)', style: 'bg-teal-800 text-indigo-50 border-teal-500' };
-    return { title: 'マイペースな放浪プログラマー (Rank C)', style: 'bg-slate-700 text-slate-100 border-slate-500' };
+    if (time <= 240) return { 
+      title: '伝説のはじまり (Rank SSS)', 
+      style: 'bg-gradient-to-r from-red-500 via-amber-400 to-yellow-300 text-slate-950 border-yellow-300 shadow-[0_0_15px_rgba(250,204,21,0.65)]',
+      image: './img/player/rank_sss.jpg',
+      message: 'あなたが紡いだ物語は伝説となり、時代を越えて語り継がれていきます。救われた世界では今日も、人々の未来が力強く脈動しています。'
+    };
+    if (time <= 360) return { 
+      title: '終焉を断つ者 (Rank SS)', 
+      style: 'bg-gradient-to-r from-amber-400 to-yellow-600 text-white border-yellow-300 shadow-[0_0_10px_rgba(250,204,21,0.55)] animate-pulse',
+      image: './img/player/rank_ss.jpg',
+      message: 'あなたの選択と覚悟が、永きにわたり世界を覆った闇の時代に終止符を打ちました。空に差し込む光が、新たな歴史の始まりを告げています。'
+    };
+    if (time <= 540) return { 
+      title: '世界の代行者 (Rank A)', 
+      style: 'bg-indigo-800 text-white border-indigo-400',
+      image: './img/player/rank_a.jpg',
+      message: '剣戟は雷鳴となり、想いは光となって激突しています。人々の願いを背負ったあなたの一撃が、滅びそのものへと突き立てられました。'
+    };
+    if (time <= 720) return { 
+      title: '終焉へ歩む者 (Rank B)', 
+      style: 'bg-teal-800 text-indigo-50 border-teal-500',
+      image: './img/player/rank_b.jpg',
+      message: '無数の出会いと別れが力となり、あなたは世界の果てへと辿り着きました。運命の歯車は回り始め、誰も知らぬ最終章の幕が上がろうとしています。'
+    };
+    return { 
+      title: '宿命を背負う者 (Rank C)', 
+      style: 'bg-slate-700 text-slate-100 border-slate-500',
+      image: './img/player/rank_c.jpg',
+      message: '長き旅路で積み重ねた決意が、ついに魔王城の門前へとあなたを導きました。世界の命運は今、ただ一振りの剣と、その歩みに託されています。'
+    };
   };
 
   const heroRank = getHeroTitleAndGrade(totalScoreTime);
@@ -188,14 +213,14 @@ export default function ResultScreen({
         {isWin && (
           <div className="flex flex-col gap-4">
             <div className="bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-500/15 border border-yellow-500/20 text-yellow-100 p-4 rounded-2xl text-xs leading-relaxed font-bold shadow-3xs max-w-2xl mx-auto w-full">
-              🛡️ あなたの詠唱したIT用語の言葉の力が、魔界の魔王封印に成功し、IT魔導界に太陽と輝かしい平穏を取り戻しました。すべての知識が力となって脈動しています！
+              🛡️ {heroRank.message || 'あなたの詠唱したIT用語の言葉の力が、魔界の魔王封印に成功し、IT魔導界に太陽と輝かしい平穏を取り戻しました。すべての知識が力となって脈動しています！'}
             </div>
             
             {/* 討伐記念クリアグラフィック画像 */}
             <div className="w-full overflow-hidden rounded-2xl border border-slate-850 bg-black flex justify-center items-center p-1.5 max-w-2xl mx-auto shadow-[0_8px_30px_rgba(0,0,0,0.95)]">
               <img 
-                src="./img/player/end1-1.jpg" 
-                alt="魔王討伐記念" 
+                src={heroRank.image} 
+                alt={heroRank.title} 
                 className="w-full h-auto rounded-xl object-contain max-h-[320px] md:max-h-[500px] transition-transform duration-500 hover:scale-[1.02]"
                 referrerPolicy="no-referrer"
               />
