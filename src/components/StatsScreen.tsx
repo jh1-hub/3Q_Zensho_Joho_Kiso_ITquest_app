@@ -24,7 +24,8 @@ interface StatsScreenProps {
     correctAnswersCount: number,
     droppedCard: any,
     runCardIds: string[],
-    wrongTerms: string[]
+    wrongTerms: string[],
+    noDamageClear?: boolean
   ) => void;
 }
 
@@ -82,6 +83,8 @@ export default function StatsScreen({
     // Random wrong terms
     const wrongTerms = shuffled.slice(5, 5 + Math.floor(Math.random() * 2) + 1).map(c => c.id);
 
+    const noDamageClear = Math.random() > 0.5;
+
     onDebugGoToResult(
       true, // isWin
       totalTimeSeconds,
@@ -90,7 +93,8 @@ export default function StatsScreen({
       correctAnswersCount,
       droppedCard,
       runCardIds,
-      wrongTerms
+      wrongTerms,
+      noDamageClear
     );
   };
 

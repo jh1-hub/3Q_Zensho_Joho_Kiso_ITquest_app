@@ -108,6 +108,7 @@ export default function App() {
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [nodes, setNodes] = useState<MapNode[]>([]);
   const [wrongTerms, setWrongTerms] = useState<string[]>([]); // 今回プレイで間違えた単語（リザルト表示用・以降の優先出題用）
+  const [tookDamageThisRun, setTookDamageThisRun] = useState<boolean>(false); // ノーミスクリア追跡用
 
   // 前回の戦闘の報酬追跡用
   const [lastDroppedCard, setLastDroppedCard] = useState<TermCard | null>(null);
@@ -536,6 +537,7 @@ export default function App() {
     // タイム計測開始
     setPlayStartTime(Date.now());
     setRunCardIdsForResults([]);
+    setTookDamageThisRun(false);
     
     // 挑戦回数アップ
     let nextStats = gameStats;
@@ -817,6 +819,10 @@ export default function App() {
     // 反帰
     const nextEnemyHp = Math.max(0, battleState.enemyHp - enemyHpDamage);
     const nextPlayerHp = Math.max(0, battleState.playerHp - playerHpDamage);
+
+    if (playerHpDamage > 0) {
+      setTookDamageThisRun(true);
+    }
 
     setFinalQuestionsCount(prev => prev + 1);
     if (isCorrect) setCorrectAnswersCount(prev => prev + 1);
@@ -1379,7 +1385,8 @@ export default function App() {
     correctAnswers: number,
     card: any,
     runCards: string[],
-    wrongs: string[]
+    wrongs: string[],
+    noDamageClear?: boolean
   ) => {
     setIsGameClear(isWin);
     setFinalQuestionsCount(finalQuestions);
@@ -1387,6 +1394,7 @@ export default function App() {
     setDroppedCard(card);
     setRunCardIdsForResults(runCards);
     setWrongTerms(wrongs);
+    setTookDamageThisRun(noDamageClear !== undefined ? !noDamageClear : false);
     setPlayer(prev => ({
       ...prev,
       totalTimeSeconds,
@@ -1477,6 +1485,7 @@ export default function App() {
           droppedCard={droppedCard}
           runCardIds={runCardIdsForResults}
           wrongTerms={wrongTerms}
+          noDamageClear={isGameClear && !tookDamageThisRun}
           onRestart={handleStartGame}
           onBackToTitle={() => setScreen('title')}
         />

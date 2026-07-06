@@ -17,6 +17,7 @@ interface ResultScreenProps {
   droppedCard: TermCard | null;
   runCardIds?: string[]; // この冒険中に獲得した全カードのIDリスト
   wrongTerms: string[]; // このプレイで誤答した用語のリスト
+  noDamageClear?: boolean; // ノーミスクリア
   onRestart: () => void;
   onBackToTitle: () => void; // タイトルに戻る
 }
@@ -29,6 +30,7 @@ export default function ResultScreen({
   droppedCard,
   runCardIds = [],
   wrongTerms,
+  noDamageClear = false,
   onRestart,
   onBackToTitle
 }: ResultScreenProps) {
@@ -85,7 +87,7 @@ export default function ResultScreen({
 
   // Calculate customized final rank titles to award catharsis and promote replayability
   const getHeroTitleAndGrade = (time: number) => {
-    if (time <= 240) return { 
+    if (time <= 240 || noDamageClear) return { 
       title: '伝説のはじまり (Rank SSS)', 
       style: 'bg-gradient-to-r from-red-500 via-amber-400 to-yellow-300 text-slate-950 border-yellow-300 shadow-[0_0_15px_rgba(250,204,21,0.65)]',
       image: './img/player/rank_sss.jpg',
@@ -286,10 +288,15 @@ export default function ResultScreen({
           {/* 偉大なカタルシス：称号プレート */}
           {isWin && (
             <div className="bg-slate-950 p-4 rounded-2xl border-2 border-yellow-450/45 text-center flex flex-col items-center gap-1 w-full col-span-2 md:col-span-3 mt-1.5 shadow-md">
-              <span className="text-yellow-400 text-[9.5px] uppercase tracking-widest font-black block">👑 世界に轟きし至高の栄誉称号 👑</span>
+              <span className="text-yellow-400 text-[9.5px] uppercase tracking-widest font-black block">👑 世界に轟きし至高 of 栄誉称号 👑</span>
               <div className={`px-4.5 py-2.5 rounded-xl border font-black text-xs uppercase tracking-wider font-sans mt-1 shadow-sm ${heroRank.style}`}>
                 {heroRank.title}
               </div>
+              {noDamageClear && (
+                <div className="mt-2 bg-gradient-to-r from-red-500/30 to-amber-500/30 border border-amber-400/50 text-yellow-300 text-[10px] font-black px-3 py-1 rounded-full animate-bounce tracking-widest">
+                  ⭐ NO DAMAGE CLEAR (ノーミスクリア) ⭐
+                </div>
+              )}
             </div>
           )}
         </div>
