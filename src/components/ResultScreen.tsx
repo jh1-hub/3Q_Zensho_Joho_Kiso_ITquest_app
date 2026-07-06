@@ -71,7 +71,7 @@ export default function ResultScreen({
       const delay = Math.random() * 3.5;
       const duration = Math.random() * 3.5 + 2.5;
       const colors = [
-        'bg-yellow-400 shadow-[0_0_8px_#facc15]',
+        'bg-yellow-400 shadw-[0_0_8px_#facc15]',
         'bg-amber-400 shadow-[0_0_8px_#fbbf24]',
         'bg-red-500 shadow-[0_0_8px_#ef4444]',
         'bg-indigo-400 shadow-[0_0_8px_#818cf8]',
@@ -89,31 +89,41 @@ export default function ResultScreen({
       title: '伝説のはじまり (Rank SSS)', 
       style: 'bg-gradient-to-r from-red-500 via-amber-400 to-yellow-300 text-slate-950 border-yellow-300 shadow-[0_0_15px_rgba(250,204,21,0.65)]',
       image: './img/player/rank_sss.jpg',
-      message: 'あなたが紡いだ物語は伝説となり、時代を越えて語り継がれていきます。救われた世界では今日も、人々の未来が力強く脈動しています。'
+      message: 'あなたの物語は魔導書に記され、時代を越えて語り継がれます。魔導書は今、来るべき時に向けて眠りにつきました。',
+      header: '👑 神話創生！',
+      subHeader: '◇ 永遠に語り継がれる魔導書の英雄 ◇'
     };
     if (time <= 360) return { 
       title: '終焉を断つ者 (Rank SS)', 
       style: 'bg-gradient-to-r from-amber-400 to-yellow-600 text-white border-yellow-300 shadow-[0_0_10px_rgba(250,204,21,0.55)] animate-pulse',
       image: './img/player/rank_ss.jpg',
-      message: 'あなたの選択と覚悟が、永きにわたり世界を覆った闇の時代に終止符を打ちました。空に差し込む光が、新たな歴史の始まりを告げています。'
+      message: 'あなたの選択と覚悟が、闇の時代に終止符を打ちました。魔王の手から落ちた魔導書に差し込む光が、新たな歴史の始まりを告げています。',
+      header: '👑 魔王討伐！',
+      subHeader: '◇ 闇を打ち破りし救世主 ◇'
     };
     if (time <= 540) return { 
       title: '世界の代行者 (Rank A)', 
       style: 'bg-indigo-800 text-white border-indigo-400',
       image: './img/player/rank_a.jpg',
-      message: '剣戟は雷鳴となり、想いは光となって激突しています。人々の願いを背負ったあなたの一撃が、滅びそのものへと突き立てられました。'
+      message: '剣戟は雷鳴となり、想いは光となって激突します。人々の願いを背負ったあなたの一撃が、滅びそのものとぶつかります。',
+      header: '👑 死闘の先へ',
+      subHeader: '◇ 終焉と剣を交えし勇者 ◇'
     };
     if (time <= 720) return { 
       title: '終焉へ歩む者 (Rank B)', 
       style: 'bg-teal-800 text-indigo-50 border-teal-500',
       image: './img/player/rank_b.jpg',
-      message: '無数の出会いと別れが力となり、あなたは世界の果てへと辿り着きました。運命の歯車は回り始め、誰も知らぬ最終章の幕が上がろうとしています。'
+      message: '無数の出会いと別れが力となり、あなたは世界の果てへと辿り着きました。運命の歯車は回り始め、誰も知らぬ最終章の幕が上がろうとしています。',
+      header: '👑 死闘へ',
+      subHeader: '◇ 運命の決戦に挑む英雄 ◇'
     };
     return { 
       title: '宿命を背負う者 (Rank C)', 
       style: 'bg-slate-700 text-slate-100 border-slate-500',
       image: './img/player/rank_c.jpg',
-      message: '長き旅路で積み重ねた決意が、ついに魔王城の門前へとあなたを導きました。世界の命運は今、ただ一振りの剣と、その歩みに託されています。'
+      message: '長き旅路で積み重ねた決意が、ついに魔王城の門前へとあなたを導きました。世界の命運は今、ただ一振りの剣と、その歩みに託されています。',
+      header: '👑 長き旅の終着',
+      subHeader: '◇ 世界の命運を託された戦士 ◇'
     };
   };
 
@@ -203,10 +213,10 @@ export default function ResultScreen({
           <h1 className={`text-2xl md:text-4xl font-black tracking-widest leading-tight ${
             isWin ? 'text-yellow-300 drop-shadow-[0_3px_5px_rgba(0,0,0,0.75)]' : 'text-red-500'
           }`}>
-            {isWin ? '👑 魔王討伐！' : '全滅してしまった…'}
+            {isWin ? (heroRank.header || '👑 魔王討伐！') : '全滅してしまった…'}
           </h1>
           <p className="text-xs text-blue-200 font-bold mt-2 uppercase tracking-widest border-y border-slate-800 py-2 w-full max-w-sm block mx-auto leading-none">
-            {isWin ? '◇ 世界に平和を呼び戻した伝説の勇者 ◇' : '◇ 諦めぬ心こそが最強の武器 ◇'}
+            {isWin ? (heroRank.subHeader || '◇ 世界に平和を呼び戻した伝説の勇者 ◇') : '◇ 諦めぬ心こそが最強の武器 ◇'}
           </p>
         </div>
 
