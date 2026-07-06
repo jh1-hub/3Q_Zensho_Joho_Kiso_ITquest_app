@@ -215,7 +215,7 @@ export default function ResultScreen({
           <h1 className={`text-2xl md:text-4xl font-black tracking-widest leading-tight ${
             isWin ? 'text-yellow-300 drop-shadow-[0_3px_5px_rgba(0,0,0,0.75)]' : 'text-red-500'
           }`}>
-            {isWin ? (heroRank.header || '👑 大魔王討伐！') : '全滅してしまった…'}
+            {isWin ? (heroRank.header || '👑 大魔王討伐！！') : '全滅してしまった…'}
           </h1>
           <p className="text-xs text-blue-200 font-bold mt-2 uppercase tracking-widest border-y border-slate-800 py-2 w-full max-w-sm block mx-auto leading-none">
             {isWin ? (heroRank.subHeader || '◇ 世界に平和を呼び戻した伝説の勇者 ◇') : '◇ 諦めぬ心こそが最強の武器 ◇'}
