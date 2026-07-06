@@ -865,7 +865,7 @@ export default function StatsScreen({
             <p className="text-[9px] text-slate-400 mt-2 font-semibold">ITクエストへの挑戦回数</p>
           </div>
 
-          {/* 2. 討伐クリア回数 */}
+          {/* 2. 討伐クリア回数  */}
           <div className="bg-white/95 p-4 rounded-xl border-2 border-emerald-150 shadow-md relative overflow-hidden flex flex-col justify-between">
             <div className="absolute top-2 right-2 p-1.5 bg-emerald-50 text-emerald-600 rounded-full">
               <CheckCircle size={18} />
