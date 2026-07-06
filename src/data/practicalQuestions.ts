@@ -791,7 +791,7 @@ export const practicalQuestions: PracticalQuestion[] = [
       '平均値と中央値はほぼ等しい値になる。',
       'データ数によっては、関係性が全く予測できない。'
     ],
-    correctAnswer: '平均値と中央値はほぼ等しい値になる',
+    correctAnswer: '平均値と中央値はほぼ等しい値になる。',
     displayType: 'single'
   },
   {
