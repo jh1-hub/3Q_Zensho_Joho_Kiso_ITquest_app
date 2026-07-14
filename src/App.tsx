@@ -1478,6 +1478,7 @@ export default function App() {
       {screen === 'collection' && (
         <CardCollection
           collectedIds={player.collectedCards}
+          playerLevel={player.level}
           onBack={() => {
             // タイトル画面または、ゲーム中の場合は、戦闘画面の中（Explore）に帰す
             if (selectedRoute) {

@@ -8,14 +8,17 @@ import { ArrowLeft, Award, Flame, HelpCircle } from 'lucide-react';
 import { TermCard } from '../types';
 import { TERM_CARDS, CLUSTERS, quizCategories } from '../data/problems';
 import { calculatePlayerBonus, getTermEmoji } from '../utils/gameHelpers';
+import { STORY_CARDS, StoryCard } from '../data/stories';
 
 interface CardCollectionProps {
   collectedIds: string[];
   onBack: () => void;
+  playerLevel: number;
 }
 
-export default function CardCollection({ collectedIds, onBack }: CardCollectionProps) {
+export default function CardCollection({ collectedIds, onBack, playerLevel }: CardCollectionProps) {
   const [selectedCard, setSelectedCard] = React.useState<TermCard | null>(null);
+  const [selectedStoryCard, setSelectedStoryCard] = React.useState<StoryCard | null>(null);
   const [versionIndex, setVersionIndex] = React.useState<number>(0);
   const [activeTab, setActiveTab] = React.useState<string>('all');
   const [activeSubTab, setActiveSubTab] = React.useState<string>('all');
@@ -137,7 +140,7 @@ export default function CardCollection({ collectedIds, onBack }: CardCollectionP
         </button>
         <h1 className="text-xl md:text-2xl font-black tracking-wider flex items-center gap-2 text-blue-900 drop-shadow-sm font-sans">
           <Award className="text-blue-700 animate-bounce" size={22} />
-          <span>コレクション（カード図鑑）</span>
+          <span>魔導書（カード図鑑）</span>
         </h1>
         <div className="text-xs font-mono text-slate-100 bg-blue-900 px-3.5 py-1.5 rounded-full border border-blue-800 shadow-sm font-extrabold flex gap-1 items-center animate-none">
           収集率: <span className="font-black text-yellow-300 text-sm">{uniqueCollectedCount}</span> / {TERM_CARDS.length}
@@ -181,64 +184,90 @@ export default function CardCollection({ collectedIds, onBack }: CardCollectionP
           </div>
 
           {/* 右：部門別コレクション率兼小カテゴリフィルター */}
-          <div className="lg:col-span-8 bg-white/90 p-4 border border-blue-200 rounded-2xl shadow-sm flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between border-b border-blue-100 pb-2 mb-2">
-                <h2 className="text-xs font-black tracking-wider text-blue-900 uppercase flex items-center gap-1.5">
-                  <span>✦</span>
-                  <span>小カテゴリ進捗（クリックして絞り込み）</span>
+          {activeTab === 'story' ? (
+            <div className="lg:col-span-8 bg-[#2d1b11] p-5 border-2 border-amber-800 rounded-2xl shadow-lg flex flex-col justify-between text-amber-100">
+              <div>
+                <h2 className="text-xs font-black tracking-wider text-amber-200 uppercase flex items-center gap-1.5 border-b border-amber-800/40 pb-2 mb-3">
+                  <span>📖</span>
+                  <span>魔導書の記憶（ストーリーの解放状況）</span>
                 </h2>
-                {activeSubTab !== 'all' && (
-                  <button
-                    onClick={() => setActiveSubTab('all')}
-                    className="text-[9.5px] bg-blue-50 hover:bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-md border border-blue-200 font-extrabold transition-colors cursor-pointer"
-                  >
-                    フィルター解除 ✕
-                  </button>
-                )}
+                <div className="space-y-2 text-xs">
+                  <p className="font-bold text-amber-300">
+                    現在のプレイヤーレベル: <span className="text-yellow-400 font-black text-sm">Lv {playerLevel}</span>
+                  </p>
+                  <p className="leading-relaxed text-[11px] text-amber-200/90">
+                    魔導書に刻まれた失われた記憶は、あなたのレベルが上がるごとに1頁ずつ解放されていきます。<br />
+                    第1頁は <span className="text-yellow-400 font-bold">Lv 2</span> で解放され、最終的に <span className="text-yellow-400 font-bold">Lv 99</span> ですべての頁（全98頁）が紡がれます。
+                  </p>
+                </div>
               </div>
-
-              {/* 横スクロールまたはラップする小カテゴリ進捗バッジ */}
-              <div className="flex flex-wrap gap-2 max-h-[110px] overflow-y-auto pr-1">
-                {activeSubcategories.map(cluster => {
-                  const totalCards = cluster.cardIds.length;
-                  const collectedInCluster = cluster.cardIds.filter(id => collectedIds.includes(id)).length;
-                  const completed = totalCards === collectedInCluster;
-                  const isSelected = activeSubTab === cluster.id;
-
-                  return (
-                    <button
-                      key={cluster.id}
-                      onClick={() => setActiveSubTab(isSelected ? 'all' : cluster.id)}
-                      className={`text-left p-1.5 px-3 rounded-xl border text-[10.5px] transition-all cursor-pointer flex-1 min-w-[130px] max-w-[210px] ${
-                        isSelected
-                          ? 'bg-blue-600 border-blue-700 text-white font-extrabold shadow-sm'
-                          : completed
-                          ? 'bg-blue-50 border-blue-300 text-slate-900 font-bold hover:bg-blue-105'
-                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                      }`}
-                    >
-                      <div className="flex justify-between items-center gap-1.5">
-                        <span className="truncate font-black max-w-[110px]">{cluster.name}</span>
-                        <span className={`text-[9.5px] px-1.5 py-0.5 rounded font-black font-mono ${
-                          isSelected 
-                            ? 'bg-blue-800 text-yellow-300' 
-                            : completed 
-                            ? 'bg-blue-200 text-blue-850' 
-                            : 'bg-slate-200 text-slate-600'
-                        }`}>
-                          {collectedInCluster}/{totalCards}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
+              <div className="flex justify-between items-center bg-[#1d110a] p-3 rounded-xl border border-amber-900/60 mt-3">
+                <span className="text-[10px] font-black text-amber-400">解放済みストーリー数</span>
+                <span className="text-xs font-mono font-black text-yellow-300 bg-[#28180f] px-3 py-1 rounded-full border border-amber-850">
+                  {STORY_CARDS.filter(s => playerLevel >= s.unlockLevel).length} / {STORY_CARDS.length} 頁
+                </span>
               </div>
             </div>
-            <p className="text-[8.5px] text-slate-450 mt-1.5 font-bold leading-none">
-              * 部門バッジをタップすると、その小カテゴリの用語カードだけを素早くグリッドにフィルタ表示します。
-            </p>
-          </div>
+          ) : (
+            <div className="lg:col-span-8 bg-white/90 p-4 border border-blue-200 rounded-2xl shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between border-b border-blue-100 pb-2 mb-2">
+                  <h2 className="text-xs font-black tracking-wider text-blue-900 uppercase flex items-center gap-1.5">
+                    <span>✦</span>
+                    <span>小カテゴリ進捗（クリックして絞り込み）</span>
+                  </h2>
+                  {activeSubTab !== 'all' && (
+                    <button
+                      onClick={() => setActiveSubTab('all')}
+                      className="text-[9.5px] bg-blue-50 hover:bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-md border border-blue-200 font-extrabold transition-colors cursor-pointer"
+                    >
+                      フィルター解除 ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* 横スクロールまたはラップする小カテゴリ進捗バッジ */}
+                <div className="flex flex-wrap gap-2 max-h-[110px] overflow-y-auto pr-1">
+                  {activeSubcategories.map(cluster => {
+                    const totalCards = cluster.cardIds.length;
+                    const collectedInCluster = cluster.cardIds.filter(id => collectedIds.includes(id)).length;
+                    const completed = totalCards === collectedInCluster;
+                    const isSelected = activeSubTab === cluster.id;
+
+                    return (
+                      <button
+                        key={cluster.id}
+                        onClick={() => setActiveSubTab(isSelected ? 'all' : cluster.id)}
+                        className={`text-left p-1.5 px-3 rounded-xl border text-[10.5px] transition-all cursor-pointer flex-1 min-w-[130px] max-w-[210px] ${
+                          isSelected
+                            ? 'bg-blue-600 border-blue-700 text-white font-extrabold shadow-sm'
+                            : completed
+                            ? 'bg-blue-50 border-blue-300 text-slate-900 font-bold hover:bg-blue-105'
+                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="flex justify-between items-center gap-1.5">
+                          <span className="truncate font-black max-w-[110px]">{cluster.name}</span>
+                          <span className={`text-[9.5px] px-1.5 py-0.5 rounded font-black font-mono ${
+                            isSelected 
+                              ? 'bg-blue-800 text-yellow-300' 
+                              : completed 
+                              ? 'bg-blue-200 text-blue-850' 
+                              : 'bg-slate-200 text-slate-600'
+                          }`}>
+                            {collectedInCluster}/{totalCards}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <p className="text-[8.5px] text-slate-450 mt-1.5 font-bold leading-none">
+                * 部門バッジをタップすると、その小カテゴリの用語カードだけを素早くグリッドにフィルタ表示します。
+              </p>
+            </div>
+          )}
 
         </div>
 
@@ -256,6 +285,16 @@ export default function CardCollection({ collectedIds, onBack }: CardCollectionP
               }`}
             >
               すべて表示
+            </button>
+            <button
+              onClick={() => handleSetMainTab('story')}
+              className={`py-2 px-4 rounded-lg font-black text-[10.5px] shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
+                activeTab === 'story'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'text-slate-650 hover:bg-amber-55 hover:text-amber-800'
+              }`}
+            >
+              📖 ストーリー
             </button>
             {quizCategories.map(cat => {
               const cleanedTitle = cat.title.replace(/^[⑴⑵⑶]\s*/, '');
@@ -279,139 +318,217 @@ export default function CardCollection({ collectedIds, onBack }: CardCollectionP
           {/* 広範なカードグリッドエリア */}
           <div className="bg-white/45 backdrop-blur-xs p-4 border border-blue-200/50 rounded-2xl flex-1 shadow-inner relative overflow-y-auto scrollbar-thin space-y-6">
             
-            {quizCategories
-              .filter(cat => activeTab === 'all' || activeTab === cat.id)
-              .map(cat => {
-                // サブカテゴリフィルタ適用
-                const targetSubs = cat.subcategories.filter(sub => activeSubTab === 'all' || sub.id === activeSubTab);
-                if (targetSubs.length === 0) return null;
+            {activeTab === 'story' ? (
+              /* ================== ストーリー表示 ================== */
+              <div className="space-y-4">
+                <div className="border-b-2 border-amber-700/80 pb-1.5 flex items-center justify-between">
+                  <h3 className="text-xs md:text-[13px] font-black text-amber-950 tracking-wider">
+                    📖 魔導書ストーリー（レベルアップで解放）
+                  </h3>
+                  <span className="text-[10px] font-mono font-extrabold bg-amber-150 text-amber-850 px-2.5 py-0.5 rounded-full shrink-0">
+                    解放: {STORY_CARDS.filter(s => playerLevel >= s.unlockLevel).length} / {STORY_CARDS.length}
+                  </span>
+                </div>
 
-                const catCompleteTotal = cat.subcategories.reduce((acc, sub) => acc + TERM_CARDS.filter(c => c.clusterId === sub.id && collectedIds.includes(c.id)).length, 0);
-                const catCardsTotal = cat.subcategories.reduce((acc, sub) => acc + TERM_CARDS.filter(c => c.clusterId === sub.id).length, 0);
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-6">
+                  {STORY_CARDS.map(story => {
+                    const unlocked = playerLevel >= story.unlockLevel;
 
-                return (
-                  <div key={cat.id} className="space-y-3.5">
-                    {/* 大カテゴリ見だし */}
-                    <div className="border-b-2 border-blue-700/80 pb-1.5 flex items-center justify-between">
-                      <h3 className="text-xs md:text-[13px] font-black text-blue-950 tracking-wider">
-                        📂 {cat.title}
-                      </h3>
-                      <span className="text-[10px] font-mono font-extrabold bg-blue-150 text-blue-850 px-2.5 py-0.5 rounded-full shrink-0">
-                        収集: {catCompleteTotal} / {catCardsTotal}
-                      </span>
-                    </div>
-
-                    {/* サブカテゴリごとのカード一覧 */}
-                    <div className="space-y-4">
-                      {targetSubs.map(sub => {
-                        const subCards = TERM_CARDS.filter(card => card.clusterId === sub.id);
-                        if (subCards.length === 0) return null;
-
-                        const subCollectedCount = subCards.filter(c => collectedIds.includes(c.id)).length;
-
-                        return (
-                          <div key={sub.id} className="bg-white/90 border border-slate-200 rounded-xl p-4 shadow-sm space-y-4">
-                            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                              <h4 className="font-extrabold text-[11.5px] md:text-xs tracking-wider text-blue-905 flex items-center gap-1.5">
-                                <span className="w-5 h-5 rounded-md bg-blue-105 text-blue-800 flex items-center justify-center font-mono text-[9px] font-black">{sub.id}</span>
-                                <span>{sub.title}</span>
-                              </h4>
-                              <span className="text-[9.5px] font-bold text-slate-500 font-mono">
-                                (収集: {subCollectedCount} / {subCards.length})
+                    return (
+                      <button
+                        key={story.id}
+                        onClick={() => {
+                          if (unlocked) {
+                            setSelectedStoryCard(story);
+                          }
+                        }}
+                        className={`group relative rounded-2xl border text-left p-5 flex flex-col justify-between transition-all duration-300 min-h-[225px] shadow-sm select-none ${
+                          unlocked
+                            ? 'bg-gradient-to-br from-amber-55 to-orange-100/60 border-2 border-amber-600/80 text-amber-950 hover:-translate-y-1.5 hover:shadow-xl hover:border-amber-500 cursor-pointer'
+                            : 'bg-slate-100/55 border-dashed border-slate-300 border-2 text-slate-400'
+                        }`}
+                        id={`story-card-${story.id}`}
+                      >
+                        {!unlocked ? (
+                          <div className="absolute inset-0 bg-slate-100/50 border border-dashed border-slate-300 flex flex-col items-center justify-center p-3 rounded-2xl">
+                            <span className="text-lg mb-1">🔒</span>
+                            <span className="text-xs font-mono text-slate-400 font-black tracking-widest">第 {story.page} 頁</span>
+                            <span className="text-[10px] font-extrabold text-amber-700 mt-2 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100 text-center">
+                              Lv {story.unlockLevel} で解放
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col h-full w-full justify-between gap-3 z-10 font-sans">
+                            {/* 上段：魔導書デザインヘッダー */}
+                            <div className="flex justify-between items-center w-full pb-1.5 border-b border-amber-300/60 text-[10px] font-mono tracking-wide">
+                              <span className="text-amber-850 font-black px-1.5 py-0.5 bg-amber-100 border border-amber-200 rounded">
+                                📖 第 {story.page} 頁
                               </span>
+                              <span className="text-amber-700/80 font-bold">ストーリー</span>
                             </div>
 
-                            {/* 極めて見やすいフルサイズグリッド。サイズを大きく拡大 */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-6">
-                              {subCards.map(card => {
-                                const collected = collectedIds.includes(card.id);
-                                const count = collectedIds.filter(id => id === card.id).length;
-                                const rarityStyle = getRarityCardStyle(card.rarity);
+                            {/* メイン部分：本をモチーフにしたデザイン */}
+                            <div className="flex items-center gap-3 my-0.5">
+                              <span className="text-3xl text-amber-700">📜</span>
+                              <div className="flex flex-col min-w-0">
+                                <h4 className="font-extrabold text-[13.5px] text-amber-950 group-hover:text-amber-800 transition-colors leading-tight tracking-wide truncate">
+                                  {story.title}
+                                </h4>
+                              </div>
+                            </div>
 
-                                return (
-                                  <button
-                                    key={card.id}
-                                    onClick={() => {
-                                      if (collected) {
-                                        setSelectedCard(card);
-                                        setVersionIndex(0); // Reset switcher to stage 1
-                                      }
-                                    }}
-                                    className={`group relative rounded-2xl border text-left p-5 flex flex-col justify-between transition-all duration-300 min-h-[225px] shadow-sm select-none ${
-                                      collected
-                                        ? `${rarityStyle} hover:-translate-y-1.5 hover:shadow-xl hover:border-blue-500 cursor-pointer`
-                                        : 'bg-slate-100/55 border-dashed border-slate-300 border-2 text-slate-400'
-                                    }`}
-                                    id={`collect-card-${card.id}`}
-                                  >
-                                    {!collected ? (
-                                      <div className="absolute inset-0 bg-slate-100/50 border border-dashed border-slate-300 flex flex-col items-center justify-center p-3 rounded-2xl">
-                                        <HelpCircle size={22} className="text-slate-300 animate-pulse mb-1.5" />
-                                        <span className="text-sm font-mono text-slate-400 font-black tracking-widest">？？？？</span>
-                                        <span className="text-[10px] font-semibold text-slate-400 mt-1.5 text-center leading-tight">
-                                          バトルに勝利すると開放
-                                        </span>
-                                      </div>
-                                    ) : (
-                                      <div className="flex flex-col h-full w-full justify-between gap-3 z-10 font-sans">
-                                        {/* 上段：レア度 & 部門 */}
-                                        <div className="flex justify-between items-center w-full pb-1.5 border-b border-slate-150 text-[10px] font-mono tracking-wide">
-                                          <span className={getRarityBadgeColor(card.rarity)}>
-                                            {getRarityText(card.rarity)}
+                            {/* 中段：本文の一部 */}
+                            <p className="text-[11px] text-amber-900/95 font-medium leading-relaxed line-clamp-4 bg-amber-50/50 border border-amber-250 p-3 rounded-xl font-serif flex-1 whitespace-pre-line">
+                              {story.content}
+                            </p>
+
+                            {/* 下段：タップ案内 */}
+                            <div className="text-[9px] font-sans bg-amber-100/40 border border-amber-200/40 px-2 py-1 rounded-lg text-center text-amber-800 font-black w-full shadow-inner leading-none">
+                              タップして全文を読む
+                            </div>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              /* ================== 通常の用語カード表示（ストーリーは除外） ================== */
+              quizCategories
+                .filter(cat => activeTab === 'all' || activeTab === cat.id)
+                .map(cat => {
+                  // サブカテゴリフィルタ適用
+                  const targetSubs = cat.subcategories.filter(sub => activeSubTab === 'all' || sub.id === activeSubTab);
+                  if (targetSubs.length === 0) return null;
+
+                  const catCompleteTotal = cat.subcategories.reduce((acc, sub) => acc + TERM_CARDS.filter(c => c.clusterId === sub.id && collectedIds.includes(c.id)).length, 0);
+                  const catCardsTotal = cat.subcategories.reduce((acc, sub) => acc + TERM_CARDS.filter(c => c.clusterId === sub.id).length, 0);
+
+                  return (
+                    <div key={cat.id} className="space-y-3.5">
+                      {/* 大カテゴリ見だし */}
+                      <div className="border-b-2 border-blue-700/80 pb-1.5 flex items-center justify-between">
+                        <h3 className="text-xs md:text-[13px] font-black text-blue-950 tracking-wider">
+                          📂 {cat.title}
+                        </h3>
+                        <span className="text-[10px] font-mono font-extrabold bg-blue-150 text-blue-850 px-2.5 py-0.5 rounded-full shrink-0">
+                          収集: {catCompleteTotal} / {catCardsTotal}
+                        </span>
+                      </div>
+
+                      {/* サブカテゴリごとのカード一覧 */}
+                      <div className="space-y-4">
+                        {targetSubs.map(sub => {
+                          const subCards = TERM_CARDS.filter(card => card.clusterId === sub.id);
+                          if (subCards.length === 0) return null;
+
+                          const subCollectedCount = subCards.filter(c => collectedIds.includes(c.id)).length;
+
+                          return (
+                            <div key={sub.id} className="bg-white/90 border border-slate-200 rounded-xl p-4 shadow-sm space-y-4">
+                              <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                                <h4 className="font-extrabold text-[11.5px] md:text-xs tracking-wider text-blue-905 flex items-center gap-1.5">
+                                  <span className="w-5 h-5 rounded-md bg-blue-105 text-blue-800 flex items-center justify-center font-mono text-[9px] font-black">{sub.id}</span>
+                                  <span>{sub.title}</span>
+                                </h4>
+                                <span className="text-[9.5px] font-bold text-slate-500 font-mono">
+                                  (収集: {subCollectedCount} / {subCards.length})
+                                </span>
+                              </div>
+
+                              {/* 極めて見やすいフルサイズグリッド。サイズを大きく拡大 */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-6">
+                                {subCards.map(card => {
+                                  const collected = collectedIds.includes(card.id);
+                                  const count = collectedIds.filter(id => id === card.id).length;
+                                  const rarityStyle = getRarityCardStyle(card.rarity);
+
+                                  return (
+                                    <button
+                                      key={card.id}
+                                      onClick={() => {
+                                        if (collected) {
+                                          setSelectedCard(card);
+                                          setVersionIndex(0); // Reset switcher to stage 1
+                                        }
+                                      }}
+                                      className={`group relative rounded-2xl border text-left p-5 flex flex-col justify-between transition-all duration-300 min-h-[225px] shadow-sm select-none ${
+                                        collected
+                                          ? `${rarityStyle} hover:-translate-y-1.5 hover:shadow-xl hover:border-blue-500 cursor-pointer`
+                                          : 'bg-slate-100/55 border-dashed border-slate-300 border-2 text-slate-400'
+                                      }`}
+                                      id={`collect-card-${card.id}`}
+                                    >
+                                      {!collected ? (
+                                        <div className="absolute inset-0 bg-slate-100/50 border border-dashed border-slate-300 flex flex-col items-center justify-center p-3 rounded-2xl">
+                                          <HelpCircle size={22} className="text-slate-300 animate-pulse mb-1.5" />
+                                          <span className="text-sm font-mono text-slate-400 font-black tracking-widest">？？？？</span>
+                                          <span className="text-[10px] font-semibold text-slate-400 mt-1.5 text-center leading-tight">
+                                            バトルに勝利すると開放
                                           </span>
-                                          <div className="text-slate-500 font-bold text-[9.5px] flex items-center gap-1 max-w-[100px] sm:max-w-[125px] min-w-0 shrink-0 justify-end select-none">
-                                            {count > 1 && (
-                                              <span className="px-1 py-0.5 bg-yellow-400 text-slate-950 border border-yellow-500 font-black rounded text-[8px] scale-90 shrink-0">
-                                                x{count}
+                                        </div>
+                                      ) : (
+                                        <div className="flex flex-col h-full w-full justify-between gap-3 z-10 font-sans">
+                                          {/* 上段：レア度 & 部門 */}
+                                          <div className="flex justify-between items-center w-full pb-1.5 border-b border-slate-150 text-[10px] font-mono tracking-wide">
+                                            <span className={getRarityBadgeColor(card.rarity)}>
+                                              {getRarityText(card.rarity)}
+                                            </span>
+                                            <div className="text-slate-500 font-bold text-[9.5px] flex items-center gap-1 max-w-[100px] sm:max-w-[125px] min-w-0 shrink-0 justify-end select-none">
+                                              {count > 1 && (
+                                                <span className="px-1 py-0.5 bg-yellow-400 text-slate-950 border border-yellow-500 font-black rounded text-[8px] scale-90 shrink-0">
+                                                  x{count}
+                                                </span>
+                                              )}
+                                              <span className="truncate block font-sans">
+                                                {CLUSTERS.find(c => c.id === card.clusterId)?.name}
                                               </span>
-                                            )}
-                                            <span className="truncate block font-sans">
-                                              {CLUSTERS.find(c => c.id === card.clusterId)?.name}
+                                            </div>
+                                          </div>
+
+                                          {/* メイン部分：絵文字枠と見出しを大きく */}
+                                          <div className="flex items-center gap-3.5 my-0.5">
+                                            <div className="w-18 h-18 rounded-2xl bg-slate-50 border-2 border-slate-200 flex items-center justify-center text-4.5xl shrink-0 font-mono shadow-inner">
+                                              {getTermEmoji(card.id)}
+                                            </div>
+                                            <div className="flex flex-col min-w-0">
+                                              <h4 className="font-extrabold text-[14.5px] text-slate-950 group-hover:text-blue-900 transition-colors leading-tight font-sans tracking-wide">
+                                                {card.name}
+                                              </h4>
+
+                                            </div>
+                                          </div>
+
+                                          {/* 中段：勉強のための用語定義の視認性向上 */}
+                                          <p className="text-[11.5px] text-slate-750 font-bold leading-relaxed line-clamp-3 bg-slate-100 border border-slate-200/60 p-3 rounded-xl font-sans flex-1">
+                                            {card.definition}
+                                          </p>
+
+                                          {/* 下段：バフ 表記を「永続効果」に統一 */}
+                                          <div className="text-[9.5px] font-mono bg-slate-100 border border-slate-205 px-2.5 py-1 rounded-lg flex justify-between items-center mt-auto w-full shadow-inner">
+                                            <span className="text-slate-500 font-sans font-black">永続効果:</span>
+                                            <span className="text-indigo-850 font-black flex gap-1 flex-wrap justify-end">
+                                              {card.statsBonus.hp ? `HP +${(card.statsBonus.hp * 0.5).toFixed(1)}` : ''}
+                                              {card.statsBonus.attack ? `ATK +${(card.statsBonus.attack * 0.5).toFixed(1)}` : ''}
+                                              {card.statsBonus.xpBonus ? `XP +${(card.statsBonus.xpBonus * 0.5).toFixed(1)}%` : ''}
+                                              {card.statsBonus.timerBonus ? `Time +${(card.statsBonus.timerBonus * 0.5).toFixed(1)}秒` : ''}
                                             </span>
                                           </div>
                                         </div>
-
-                                        {/* メイン部分：絵文字枠と見出しを大きく */}
-                                        <div className="flex items-center gap-3.5 my-0.5">
-                                          <div className="w-18 h-18 rounded-2xl bg-slate-50 border-2 border-slate-200 flex items-center justify-center text-4.5xl shrink-0 font-mono shadow-inner">
-                                            {getTermEmoji(card.id)}
-                                          </div>
-                                          <div className="flex flex-col min-w-0">
-                                            <h4 className="font-extrabold text-[14.5px] text-slate-950 group-hover:text-blue-900 transition-colors leading-tight font-sans tracking-wide">
-                                              {card.name}
-                                            </h4>
-
-                                          </div>
-                                        </div>
-
-                                        {/* 中段：勉強のための用語定義の視認性向上 */}
-                                        <p className="text-[11.5px] text-slate-750 font-bold leading-relaxed line-clamp-3 bg-slate-100 border border-slate-200/60 p-3 rounded-xl font-sans flex-1">
-                                          {card.definition}
-                                        </p>
-
-                                        {/* 下段：バフ 表記を「永続効果」に統一 */}
-                                        <div className="text-[9.5px] font-mono bg-slate-100 border border-slate-205 px-2.5 py-1 rounded-lg flex justify-between items-center mt-auto w-full shadow-inner">
-                                          <span className="text-slate-500 font-sans font-black">永続効果:</span>
-                                          <span className="text-indigo-850 font-black flex gap-1 flex-wrap justify-end">
-                                            {card.statsBonus.hp ? `HP +${(card.statsBonus.hp * 0.5).toFixed(1)}` : ''}
-                                            {card.statsBonus.attack ? `ATK +${(card.statsBonus.attack * 0.5).toFixed(1)}` : ''}
-                                            {card.statsBonus.xpBonus ? `XP +${(card.statsBonus.xpBonus * 0.5).toFixed(1)}%` : ''}
-                                            {card.statsBonus.timerBonus ? `Time +${(card.statsBonus.timerBonus * 0.5).toFixed(1)}秒` : ''}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    )}
-                                  </button>
-                                );
-                              })}
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+            )}
           </div>
         </div>
       </div>
@@ -555,6 +672,60 @@ export default function CardCollection({ collectedIds, onBack }: CardCollectionP
           </div>
         );
       })()}
+
+      {/* モーダル：ストーリーカード詳細ビュー（魔導書専用の美しいデザイン） */}
+      {selectedStoryCard && (
+        <div 
+          className="fixed inset-0 bg-slate-950/95 backdrop-blur-lg flex items-center justify-center p-4 z-50 animate-fade-in cursor-pointer"
+          onClick={() => setSelectedStoryCard(null)}
+        >
+          {/* 美しい魔導書を思わせる背景エフェクト */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.25)_0%,transparent_75%)] pointer-events-none mix-blend-screen opacity-60" />
+
+          <div 
+            className="bg-[#faf6ee] border-8 border-amber-800 shadow-[0_0_50px_rgba(139,94,26,0.6)] rounded-3xl max-w-sm md:max-w-md w-full p-6 md:p-8 relative flex flex-col gap-6 text-left text-amber-950 overflow-hidden font-serif m-auto animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 装飾コーナー */}
+            <div className="absolute top-2 left-2 text-amber-800/40 text-xl pointer-events-none">✦</div>
+            <div className="absolute top-2 right-2 text-amber-800/40 text-xl pointer-events-none">✦</div>
+            <div className="absolute bottom-2 left-2 text-amber-800/40 text-xl pointer-events-none">✦</div>
+            <div className="absolute bottom-2 right-2 text-amber-800/40 text-xl pointer-events-none">✦</div>
+
+            {/* ヘッダー */}
+            <div className="flex justify-between items-center border-b-2 border-amber-800/40 pb-2">
+              <span className="text-xs font-bold font-sans tracking-widest text-amber-850 px-2.5 py-1 bg-amber-100 border border-amber-200 rounded-lg shadow-inner">
+                📖 第 {selectedStoryCard.page} 頁
+              </span>
+              <span className="text-xs font-mono text-amber-700/80 font-bold uppercase tracking-widest font-sans">
+                Ancient Story
+              </span>
+            </div>
+
+            {/* タイトル */}
+            <div className="text-center py-1">
+              <h2 className="text-lg md:text-xl font-black text-amber-950 font-serif tracking-wider leading-relaxed border-b border-amber-800/20 pb-2">
+                {selectedStoryCard.title}
+              </h2>
+            </div>
+
+            {/* 本文エリア */}
+            <div className="bg-[#fcfaf2] border border-amber-900/10 p-5 md:p-6 rounded-2xl shadow-inner min-h-[160px] flex items-center justify-center">
+              <p className="text-[13px] md:text-sm text-amber-900 font-medium leading-loose tracking-wide whitespace-pre-line text-justify font-serif">
+                {selectedStoryCard.content}
+              </p>
+            </div>
+
+            {/* 閉じるボタン */}
+            <button
+              onClick={() => setSelectedStoryCard(null)}
+              className="w-full py-3 bg-amber-800 hover:bg-amber-900 text-white font-extrabold rounded-xl border-2 border-amber-900/60 shadow-md active:scale-95 transition-all cursor-pointer text-xs uppercase tracking-widest text-center font-sans"
+            >
+              [ 魔導書を閉じる ]
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

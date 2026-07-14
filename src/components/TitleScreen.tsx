@@ -398,7 +398,7 @@ export default function TitleScreen({
               id="view-collection-btn"
             >
               <Library size={16} className="text-blue-200" />
-              <span>ずかんをひらく</span>
+              <span>まどうしょ</span>
             </button>
 
             <button
