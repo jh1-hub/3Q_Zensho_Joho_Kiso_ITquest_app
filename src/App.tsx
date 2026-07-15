@@ -1568,7 +1568,6 @@ export default function App() {
           onBack={() => setScreen('title')}
           onResetData={handleResetAllData}
           onDebugGoToResult={handleDebugGoToResult}
-          onDebugUnlockAllCards={handleDebugUnlockAllCards}
         />
       )}
 

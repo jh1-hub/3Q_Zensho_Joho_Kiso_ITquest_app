@@ -16,7 +16,6 @@ interface StatsScreenProps {
   collectedIds: string[];
   onBack: () => void;
   onResetData?: () => void;
-  onDebugUnlockAllCards?: () => void;
   onDebugGoToResult?: (
     isWin: boolean,
     totalTimeSeconds: number,
@@ -36,7 +35,6 @@ export default function StatsScreen({
   collectedIds,
   onBack,
   onResetData,
-  onDebugUnlockAllCards,
   onDebugGoToResult
 }: StatsScreenProps) {
   // 大カテゴリ選択タブ (すべて, 1, 2, 3)
@@ -1176,17 +1174,6 @@ export default function StatsScreen({
           <div className="flex justify-between items-center gap-3 z-10 w-full mt-4 border-t border-slate-200/50 pt-4">
             {confirmStep === 0 && (
               <>
-                {onDebugUnlockAllCards && (
-                  <button
-                    onClick={() => {
-                      onDebugUnlockAllCards();
-                      alert('デバッグ：すべてのカードを3枚ずつ入手（フルコンプリート）しました！コレクターレベルがLv.99になりました。');
-                    }}
-                    className="text-[10px] text-emerald-600 hover:text-emerald-750 font-bold p-1 bg-white/50 hover:bg-emerald-50 border border-emerald-200 rounded-lg transition-colors cursor-pointer mr-auto"
-                  >
-                    【デバッグ：カードフルコンプリート】
-                  </button>
-                )}
                 <button
                   onClick={triggerStep1}
                   className="text-[10px] text-red-600 hover:text-red-750 font-bold p-1 bg-white/50 hover:bg-red-50 border border-red-200 rounded-lg transition-colors cursor-pointer ml-auto"
