@@ -67,7 +67,7 @@ export default function StoryUnlockModal({
           >
             <span className="bg-slate-950 text-yellow-300 font-mono font-black text-[10px] md:text-xs px-4 py-1 rounded-full tracking-widest uppercase flex items-center gap-1.5">
               <Sparkles className="text-yellow-300 animate-spin" size={13} />
-              COLLECTOR LEVEL UP!
+              MAGIC BOOK LEVEL UP!
             </span>
           </motion.div>
 
@@ -77,7 +77,7 @@ export default function StoryUnlockModal({
             transition={{ duration: 0.6, ease: 'easeOut', delay: 0.3 }}
             className="text-2xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-400 drop-shadow-[0_2px_10px_rgba(245,158,11,0.3)] tracking-wider mt-1"
           >
-            コレクターレベル Lv.{currentLevel}
+            魔導書レベル Lv.{currentLevel}
           </motion.h2>
 
           <motion.p

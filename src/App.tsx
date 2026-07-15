@@ -113,7 +113,7 @@ export default function App() {
   const [wrongTerms, setWrongTerms] = useState<string[]>([]); // 今回プレイで間違えた単語（リザルト表示用・以降の優先出題用）
   const [tookDamageThisRun, setTookDamageThisRun] = useState<boolean>(false); // ノーミスクリア追跡用
 
-  // コレクターレベルアップ・ストーリーカード解放用の状態
+  // 魔導書レベルアップ・ストーリーカード解放用の状態
   const [unlockedStories, setUnlockedStories] = useState<StoryCard[] | null>(null);
   const [currentCollectorLevel, setCurrentCollectorLevel] = useState<number>(1);
   const [hasLoaded, setHasLoaded] = useState<boolean>(false);
@@ -236,7 +236,7 @@ export default function App() {
   useEffect(() => {
     loadSaveData();
     
-    // アプリ起動時のコレクターレベル初期値を安全に計算してセット
+    // アプリ起動時の魔導書レベル初期値を安全に計算してセット
     try {
       const dataStr = secureStorage.getItem('it-rogue-save-data');
       let collected: string[] = [];
@@ -252,7 +252,7 @@ export default function App() {
     setHasLoaded(true);
   }, []);
 
-  // コレクターレベルアップ時のストーリーカード解放検知
+  // 魔導書レベルアップ時のストーリーカード解放検知
   useEffect(() => {
     if (!hasLoaded) return;
 
@@ -264,10 +264,14 @@ export default function App() {
     }
 
     if (currentLvl > prevCollectorLevelRef.current) {
+      const hasSSClear = secureStorage.getItem('it-rogue-ss-clear-achieved') === 'true';
+      const hasNoDamageClear = secureStorage.getItem('it-rogue-nodamage-clear-achieved') === 'true';
+      const isSecretUnlocked = hasSSClear && hasNoDamageClear && currentLvl >= 99;
+
       // 新しく解放されたストーリーカード（unlockLevelが前回レベルより大きく今回レベル以下）を特定
       const newlyUnlocked = STORY_CARDS.filter(
         s => s.unlockLevel > prevCollectorLevelRef.current! && s.unlockLevel <= currentLvl
-      );
+      ).filter(s => s.page <= 98 || (s.page === 99 && isSecretUnlocked));
       if (newlyUnlocked.length > 0) {
         setUnlockedStories(newlyUnlocked);
         setCurrentCollectorLevel(currentLvl);
@@ -1191,6 +1195,7 @@ export default function App() {
       
       let newBest = bestTime;
       let runSeconds = 0;
+      let isSSorAbove = false;
       if (playStartTime) {
         runSeconds = (Date.now() - playStartTime) / 1000;
         const totalEvaluationTime = runSeconds + player.penaltySeconds;
@@ -1198,6 +1203,16 @@ export default function App() {
           newBest = totalEvaluationTime;
           setBestTime(newBest);
         }
+        isSSorAbove = totalEvaluationTime <= 360 || !tookDamageThisRun;
+      } else {
+        isSSorAbove = !tookDamageThisRun;
+      }
+
+      if (isSSorAbove) {
+        secureStorage.setItem('it-rogue-ss-clear-achieved', 'true');
+      }
+      if (!tookDamageThisRun) {
+        secureStorage.setItem('it-rogue-nodamage-clear-achieved', 'true');
       }
 
       // ボス撃破時はクリア数winsを追加加算
@@ -1372,6 +1387,8 @@ export default function App() {
     secureStorage.removeItem('it-rogue-save-data');
     secureStorage.removeItem('it-rogue-last-daily-date');
     secureStorage.removeItem('it-rogue-time-attack-unlocked');
+    secureStorage.removeItem('it-rogue-ss-clear-achieved');
+    secureStorage.removeItem('it-rogue-nodamage-clear-achieved');
     setIsDailyChallengeCompleted(false);
     setIsTimeAttackUnlocked(false);
     

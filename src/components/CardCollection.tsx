@@ -9,6 +9,7 @@ import { TermCard } from '../types';
 import { TERM_CARDS, CLUSTERS, quizCategories } from '../data/problems';
 import { calculatePlayerBonus, getTermEmoji } from '../utils/gameHelpers';
 import { STORY_CARDS, StoryCard } from '../data/stories';
+import { secureStorage } from '../utils/secureStorage';
 
 const CHAPTERS = [
   { id: 1, name: '第一章 伝説の時代', range: '第1頁〜第30頁', minPage: 1, maxPage: 30 },
@@ -33,18 +34,39 @@ export default function CardCollection({ collectedIds, onBack, playerLevel }: Ca
   const bonus = calculatePlayerBonus(collectedIds);
   const uniqueCollectedCount = React.useMemo(() => Array.from(new Set(collectedIds)).length, [collectedIds]);
 
+  // 隠しストーリー（99頁目）の解放状況を判定
+  const hasSSClear = React.useMemo(() => secureStorage.getItem('it-rogue-ss-clear-achieved') === 'true', []);
+  const hasNoDamageClear = React.useMemo(() => secureStorage.getItem('it-rogue-nodamage-clear-achieved') === 'true', []);
+  const isLevel99 = playerLevel >= 99;
+  const isSecretUnlocked = hasSSClear && hasNoDamageClear && isLevel99;
+
+  // 表示するストーリーの一覧
+  const displayedStories = React.useMemo(() => {
+    return STORY_CARDS.filter(s => s.page <= 98 || (s.page === 99 && isSecretUnlocked));
+  }, [isSecretUnlocked]);
+
+  // 動的チャプターの定義
+  const chapters = React.useMemo(() => {
+    return [
+      { id: 1, name: '第一章 伝説の時代', range: '第1頁〜第30頁', minPage: 1, maxPage: 30 },
+      { id: 2, name: '第二章 忘れられた歴史', range: '第31頁〜第60頁', minPage: 31, maxPage: 60 },
+      { id: 3, name: '第三章 隠された真実', range: '第61頁〜第80頁', minPage: 61, maxPage: 80 },
+      { id: 4, name: '第四章 魔導書の継承', range: isSecretUnlocked ? '第81頁〜第99頁' : '第81頁〜第98頁', minPage: 81, maxPage: isSecretUnlocked ? 99 : 98 },
+    ];
+  }, [isSecretUnlocked]);
+
   React.useEffect(() => {
     if (selectedChapter !== 'all') {
-      const ch = CHAPTERS.find(c => c.id === selectedChapter);
+      const ch = chapters.find(c => c.id === selectedChapter);
       if (ch) {
-        const chapterStories = STORY_CARDS.filter(s => s.page >= ch.minPage && s.page <= ch.maxPage);
+        const chapterStories = displayedStories.filter(s => s.page >= ch.minPage && s.page <= ch.maxPage);
         const unlockedCount = chapterStories.filter(s => playerLevel >= s.unlockLevel).length;
         if (unlockedCount === 0) {
           setSelectedChapter('all');
         }
       }
     }
-  }, [playerLevel, selectedChapter]);
+  }, [playerLevel, selectedChapter, chapters, displayedStories]);
 
   const getRarityBadgeColor = (rarity: string) => {
     switch (rarity) {
@@ -214,18 +236,18 @@ export default function CardCollection({ collectedIds, onBack, playerLevel }: Ca
                 </h2>
                 <div className="space-y-2 text-xs">
                   <p className="font-bold text-amber-300">
-                    現在のコレクターレベル: <span className="text-yellow-400 font-black text-sm">Lv {playerLevel}</span>
+                    現在の魔導書レベル: <span className="text-yellow-400 font-black text-sm">Lv {playerLevel}</span>
                   </p>
                   <p className="leading-relaxed text-[11px] text-amber-200/90">
-                    魔導書に刻まれた失われた記憶は、あなたのコレクターレベル（カードの収集進捗）が上がるごとに1頁ずつ解放されていきます。<br />
-                    第1頁は <span className="text-yellow-400 font-bold">Lv 2</span> で解放され、最終的に <span className="text-yellow-400 font-bold">Lv 99</span> ですべての頁（全98頁）が紡がれます。
+                    魔導書に刻まれた失われた記憶は、あなたの魔導書レベル（カードの収集進捗）が上がるごとに1頁ずつ解放されていきます。<br />
+                    第1頁は <span className="text-yellow-400 font-bold">Lv 2</span> で解放され、最終的に <span className="text-yellow-400 font-bold">Lv 99</span> ですべての頁（全{isSecretUnlocked ? 99 : 98}頁）が紡がれます。
                   </p>
                 </div>
               </div>
               <div className="flex justify-between items-center bg-[#1d110a] p-3 rounded-xl border border-amber-900/60 mt-3">
                 <span className="text-[10px] font-black text-amber-400">解放済みストーリー数</span>
                 <span className="text-xs font-mono font-black text-yellow-300 bg-[#28180f] px-3 py-1 rounded-full border border-amber-850">
-                  {STORY_CARDS.filter(s => playerLevel >= s.unlockLevel).length} / {STORY_CARDS.length} 頁
+                  {displayedStories.filter(s => playerLevel >= s.unlockLevel).length} / {displayedStories.length} 頁
                 </span>
               </div>
             </div>
@@ -345,10 +367,10 @@ export default function CardCollection({ collectedIds, onBack, playerLevel }: Ca
                 {/* ヘッダー＆統計情報 */}
                 <div className="border-b-2 border-amber-700/80 pb-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <h3 className="text-xs md:text-[13px] font-black text-amber-950 tracking-wider">
-                    📖 魔導書ストーリー（コレクターレベルアップで解放）
+                    📖 魔導書ストーリー（魔導書レベルアップで解放）
                   </h3>
                   <span className="text-[10px] font-mono font-extrabold bg-amber-150 text-amber-850 px-2.5 py-0.5 rounded-full shrink-0 self-start sm:self-auto">
-                    解放: {STORY_CARDS.filter(s => playerLevel >= s.unlockLevel).length} / {STORY_CARDS.length}
+                    解放: {displayedStories.filter(s => playerLevel >= s.unlockLevel).length} / {displayedStories.length}
                   </span>
                 </div>
 
@@ -364,9 +386,9 @@ export default function CardCollection({ collectedIds, onBack, playerLevel }: Ca
                   >
                     すべて読む
                   </button>
-                  {CHAPTERS.map(ch => {
+                  {chapters.map(ch => {
                     const isSelected = selectedChapter === ch.id;
-                    const chapterStories = STORY_CARDS.filter(s => s.page >= ch.minPage && s.page <= ch.maxPage);
+                    const chapterStories = displayedStories.filter(s => s.page >= ch.minPage && s.page <= ch.maxPage);
                     const unlockedCount = chapterStories.filter(s => playerLevel >= s.unlockLevel).length;
 
                     if (unlockedCount === 0) return null;
@@ -390,15 +412,15 @@ export default function CardCollection({ collectedIds, onBack, playerLevel }: Ca
 
                 {/* 章ごとのストーリーカード描画 */}
                 <div className="space-y-8">
-                  {CHAPTERS
+                  {chapters
                     .filter(ch => {
-                      const chapterStories = STORY_CARDS.filter(s => s.page >= ch.minPage && s.page <= ch.maxPage);
+                      const chapterStories = displayedStories.filter(s => s.page >= ch.minPage && s.page <= ch.maxPage);
                       const unlockedCount = chapterStories.filter(s => playerLevel >= s.unlockLevel).length;
                       if (unlockedCount === 0) return false;
                       return selectedChapter === 'all' || selectedChapter === ch.id;
                     })
                     .map(ch => {
-                      const chapterStories = STORY_CARDS.filter(story => story.page >= ch.minPage && story.page <= ch.maxPage);
+                      const chapterStories = displayedStories.filter(story => story.page >= ch.minPage && story.page <= ch.maxPage);
                       const unlockedCount = chapterStories.filter(s => playerLevel >= s.unlockLevel).length;
 
                       return (

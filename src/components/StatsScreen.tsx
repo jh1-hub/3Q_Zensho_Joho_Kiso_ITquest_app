@@ -286,7 +286,7 @@ export default function StatsScreen({
       comment = '基本知識が定着しています。さらにカードを揃えて実力をつけよう！';
     }
 
-    // --- コレクターレベルの計算 (画像出力に反映させる)
+    // --- 魔導書レベルの計算 (画像出力に反映させる)
     const collectedCount = collectedIds.length;
     const totalPossible = totalCardsCount * 3;
     const levelRequirements: number[] = [0];
@@ -325,7 +325,7 @@ export default function StatsScreen({
       }
     }
 
-    // コレクターレベルのバッジを氏名欄の右側に描画
+    // 魔導書レベルのバッジを氏名欄の右側に描画
     ctx.save();
     ctx.fillStyle = '#1e3a8a';
     ctx.beginPath();
@@ -340,7 +340,7 @@ export default function StatsScreen({
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
     ctx.font = 'bold 9px "Hiragino Kaku Gothic ProN", sans-serif';
-    ctx.fillText('コレクターLv', 685, infoY + 23);
+    ctx.fillText('魔導書Lv', 685, infoY + 23);
     ctx.font = '900 16px "Inter", sans-serif';
     ctx.fillStyle = '#f59e0b'; // ゴールド
     ctx.fillText(`${collectorLevel}`, 685, infoY + 41);

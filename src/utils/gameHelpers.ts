@@ -15,7 +15,7 @@ export function getXpToNextLevel(level: number): number {
 }
 
 /**
- * 獲得カード数からコレクターレベル (1〜99) を計算する
+ * 獲得カード数から魔導書レベル (1〜99) を計算する
  */
 export function calculateCollectorLevel(collectedCardIds: string[]): number {
   const totalPossible = TERM_CARDS.length * 3;

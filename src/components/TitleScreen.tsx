@@ -54,7 +54,7 @@ export default function TitleScreen({
   const totalPossible = TERM_CARDS.length * 3;
   const collectedCount = collectedCardIds.length;
 
-  // コレクターレベル (1〜99) の動的経験値テーブル計算
+  // 魔導書レベル (1〜99) の動的経験値テーブル計算
   // 序盤はレベルアップしやすく、後半に行くにつれて必要カード総数が急増する曲線
   const levelRequirements: number[] = [0]; // インデックスがそのまま必要な累積獲得カード数に対応
   for (let lvl = 1; lvl <= 99; lvl++) {
@@ -239,9 +239,9 @@ export default function TitleScreen({
               </span>
             </div>
 
-            {/* コレクターレベル */}
+            {/* 魔導書レベル */}
             <div className="flex flex-col items-center py-2 sm:py-0 sm:px-4">
-              <span className="text-blue-600 text-[10.5px] uppercase tracking-wider font-extrabold mb-1.5 select-none">コレクターレベル</span>
+              <span className="text-blue-600 text-[10.5px] uppercase tracking-wider font-extrabold mb-1.5 select-none">魔導書レベル</span>
               <div className="flex flex-col items-center gap-1.5 w-full min-w-[125px]">
                 <div className={getLevelBadgeStyle(currentLevel)}>
                   Lv. {currentLevel}
