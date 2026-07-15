@@ -13,7 +13,9 @@ import LootScreen from './components/LootScreen';
 import StatsScreen from './components/StatsScreen';
 import TrainingScreen from './components/TrainingScreen';
 import TimeAttackScreen from './components/TimeAttackScreen';
+import StoryUnlockModal from './components/StoryUnlockModal';
 import { secureStorage } from './utils/secureStorage';
+import { STORY_CARDS, StoryCard } from './data/stories';
 
 import { PlayerState, BattleState, MapNode, NodeType, RawProblem, TermCard, ActiveProblem, GameStats } from './types';
 import { quizCategories, RAW_PROBLEMS, TERM_CARDS } from './data/problems';
@@ -110,6 +112,12 @@ export default function App() {
   const [nodes, setNodes] = useState<MapNode[]>([]);
   const [wrongTerms, setWrongTerms] = useState<string[]>([]); // 今回プレイで間違えた単語（リザルト表示用・以降の優先出題用）
   const [tookDamageThisRun, setTookDamageThisRun] = useState<boolean>(false); // ノーミスクリア追跡用
+
+  // コレクターレベルアップ・ストーリーカード解放用の状態
+  const [unlockedStories, setUnlockedStories] = useState<StoryCard[] | null>(null);
+  const [currentCollectorLevel, setCurrentCollectorLevel] = useState<number>(1);
+  const [hasLoaded, setHasLoaded] = useState<boolean>(false);
+  const prevCollectorLevelRef = React.useRef<number | null>(null);
 
   // 前回の戦闘の報酬追跡用
   const [lastDroppedCard, setLastDroppedCard] = useState<TermCard | null>(null);
@@ -227,7 +235,49 @@ export default function App() {
 
   useEffect(() => {
     loadSaveData();
+    
+    // アプリ起動時のコレクターレベル初期値を安全に計算してセット
+    try {
+      const dataStr = secureStorage.getItem('it-rogue-save-data');
+      let collected: string[] = [];
+      if (dataStr) {
+        const parsed = JSON.parse(dataStr) as SaveData;
+        collected = parsed.collectedCards || [];
+      }
+      const initialLvl = calculateCollectorLevel(collected);
+      prevCollectorLevelRef.current = initialLvl;
+    } catch (e) {
+      prevCollectorLevelRef.current = 1;
+    }
+    setHasLoaded(true);
   }, []);
+
+  // コレクターレベルアップ時のストーリーカード解放検知
+  useEffect(() => {
+    if (!hasLoaded) return;
+
+    const currentLvl = calculateCollectorLevel(player.collectedCards);
+
+    if (prevCollectorLevelRef.current === null) {
+      prevCollectorLevelRef.current = currentLvl;
+      return;
+    }
+
+    if (currentLvl > prevCollectorLevelRef.current) {
+      // 新しく解放されたストーリーカード（unlockLevelが前回レベルより大きく今回レベル以下）を特定
+      const newlyUnlocked = STORY_CARDS.filter(
+        s => s.unlockLevel > prevCollectorLevelRef.current! && s.unlockLevel <= currentLvl
+      );
+      if (newlyUnlocked.length > 0) {
+        setUnlockedStories(newlyUnlocked);
+        setCurrentCollectorLevel(currentLvl);
+      }
+      prevCollectorLevelRef.current = currentLvl;
+    } else if (currentLvl < prevCollectorLevelRef.current) {
+      // データ削除や初期化によるレベル減少時は参照値をシンク
+      prevCollectorLevelRef.current = currentLvl;
+    }
+  }, [player.collectedCards, hasLoaded]);
 
   // 画面遷移時にスクロール位置を最上部にリセット
   useEffect(() => {
@@ -1539,6 +1589,14 @@ export default function App() {
             }));
             saveToStorage(updatedCollected, bestTime, wrongTerms, player.level, player.xp, gameStats);
           }}
+        />
+      )}
+
+      {unlockedStories && (
+        <StoryUnlockModal
+          unlockedStories={unlockedStories}
+          currentLevel={currentCollectorLevel}
+          onClose={() => setUnlockedStories(null)}
         />
       )}
     </div>

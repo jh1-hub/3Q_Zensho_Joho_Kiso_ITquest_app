@@ -10,6 +10,13 @@ import { TERM_CARDS, CLUSTERS, quizCategories } from '../data/problems';
 import { calculatePlayerBonus, getTermEmoji } from '../utils/gameHelpers';
 import { STORY_CARDS, StoryCard } from '../data/stories';
 
+const CHAPTERS = [
+  { id: 1, name: '第一章 伝説の時代', range: '第1頁〜第30頁', minPage: 1, maxPage: 30 },
+  { id: 2, name: '第二章 忘れられた歴史', range: '第31頁〜第60頁', minPage: 31, maxPage: 60 },
+  { id: 3, name: '第三章 隠された真実', range: '第61頁〜第80頁', minPage: 61, maxPage: 80 },
+  { id: 4, name: '第四章 魔導書の継承', range: '第81頁〜第98頁', minPage: 81, maxPage: 98 },
+];
+
 interface CardCollectionProps {
   collectedIds: string[];
   onBack: () => void;
@@ -22,6 +29,7 @@ export default function CardCollection({ collectedIds, onBack, playerLevel }: Ca
   const [versionIndex, setVersionIndex] = React.useState<number>(0);
   const [activeTab, setActiveTab] = React.useState<string>('all');
   const [activeSubTab, setActiveSubTab] = React.useState<string>('all');
+  const [selectedChapter, setSelectedChapter] = React.useState<number | 'all'>('all');
   const bonus = calculatePlayerBonus(collectedIds);
   const uniqueCollectedCount = React.useMemo(() => Array.from(new Set(collectedIds)).length, [collectedIds]);
 
@@ -320,77 +328,139 @@ export default function CardCollection({ collectedIds, onBack, playerLevel }: Ca
             
             {activeTab === 'story' ? (
               /* ================== ストーリー表示 ================== */
-              <div className="space-y-4">
-                <div className="border-b-2 border-amber-700/80 pb-1.5 flex items-center justify-between">
+              <div className="space-y-6">
+                {/* ヘッダー＆統計情報 */}
+                <div className="border-b-2 border-amber-700/80 pb-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <h3 className="text-xs md:text-[13px] font-black text-amber-950 tracking-wider">
                     📖 魔導書ストーリー（コレクターレベルアップで解放）
                   </h3>
-                  <span className="text-[10px] font-mono font-extrabold bg-amber-150 text-amber-850 px-2.5 py-0.5 rounded-full shrink-0">
+                  <span className="text-[10px] font-mono font-extrabold bg-amber-150 text-amber-850 px-2.5 py-0.5 rounded-full shrink-0 self-start sm:self-auto">
                     解放: {STORY_CARDS.filter(s => playerLevel >= s.unlockLevel).length} / {STORY_CARDS.length}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-6">
-                  {STORY_CARDS.map(story => {
-                    const unlocked = playerLevel >= story.unlockLevel;
+                {/* 章切り替えサブタブ */}
+                <div className="flex flex-wrap gap-1.5 p-1.5 bg-amber-950/10 border border-amber-800/15 rounded-xl">
+                  <button
+                    onClick={() => setSelectedChapter('all')}
+                    className={`px-3 py-1.5 rounded-lg text-[10.5px] font-black tracking-wider transition-all cursor-pointer ${
+                      selectedChapter === 'all'
+                        ? 'bg-amber-850 text-white shadow-md'
+                        : 'text-amber-850 hover:bg-amber-100/40'
+                    }`}
+                  >
+                    すべて読む
+                  </button>
+                  {CHAPTERS.map(ch => {
+                    const isSelected = selectedChapter === ch.id;
+                    const chapterStories = STORY_CARDS.filter(s => s.page >= ch.minPage && s.page <= ch.maxPage);
+                    const unlockedCount = chapterStories.filter(s => playerLevel >= s.unlockLevel).length;
 
                     return (
                       <button
-                        key={story.id}
-                        onClick={() => {
-                          if (unlocked) {
-                            setSelectedStoryCard(story);
-                          }
-                        }}
-                        className={`group relative rounded-2xl border text-left p-5 flex flex-col justify-between transition-all duration-300 min-h-[225px] shadow-sm select-none ${
-                          unlocked
-                            ? 'bg-gradient-to-br from-amber-55 to-orange-100/60 border-2 border-amber-600/80 text-amber-950 hover:-translate-y-1.5 hover:shadow-xl hover:border-amber-500 cursor-pointer'
-                            : 'bg-slate-100/55 border-dashed border-slate-300 border-2 text-slate-400'
+                        key={ch.id}
+                        onClick={() => setSelectedChapter(ch.id)}
+                        className={`px-3 py-1.5 rounded-lg text-[10.5px] font-black tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${
+                          isSelected
+                            ? 'bg-amber-850 text-white shadow-md'
+                            : 'text-amber-850 hover:bg-amber-105/50'
                         }`}
-                        id={`story-card-${story.id}`}
                       >
-                        {!unlocked ? (
-                          <div className="absolute inset-0 bg-slate-100/50 border border-dashed border-slate-300 flex flex-col items-center justify-center p-3 rounded-2xl">
-                            <span className="text-lg mb-1">🔒</span>
-                            <span className="text-xs font-mono text-slate-400 font-black tracking-widest">第 {story.page} 頁</span>
-                            <span className="text-[10px] font-extrabold text-amber-700 mt-2 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100 text-center">
-                              Lv {story.unlockLevel} で解放
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col h-full w-full justify-between gap-3 z-10 font-sans">
-                            {/* 上段：魔導書デザインヘッダー */}
-                            <div className="flex justify-between items-center w-full pb-1.5 border-b border-amber-300/60 text-[10px] font-mono tracking-wide">
-                              <span className="text-amber-850 font-black px-1.5 py-0.5 bg-amber-100 border border-amber-200 rounded">
-                                📖 第 {story.page} 頁
-                              </span>
-                              <span className="text-amber-700/80 font-bold">ストーリー</span>
-                            </div>
-
-                            {/* メイン部分：本をモチーフにしたデザイン */}
-                            <div className="flex items-center gap-3 my-0.5">
-                              <span className="text-3xl text-amber-700">📜</span>
-                              <div className="flex flex-col min-w-0">
-                                <h4 className="font-extrabold text-[13.5px] text-amber-950 group-hover:text-amber-800 transition-colors leading-tight tracking-wide truncate">
-                                  {story.title}
-                                </h4>
-                              </div>
-                            </div>
-
-                            {/* 中段：本文の一部 */}
-                            <p className="text-[11px] text-amber-900/95 font-medium leading-relaxed line-clamp-4 bg-amber-50/50 border border-amber-250 p-3 rounded-xl font-serif flex-1 whitespace-pre-line">
-                              {story.content}
-                            </p>
-
-                            {/* 下段：タップ案内 */}
-                            <div className="text-[9px] font-sans bg-amber-100/40 border border-amber-200/40 px-2 py-1 rounded-lg text-center text-amber-800 font-black w-full shadow-inner leading-none">
-                              タップして全文を読む
-                            </div>
-                          </div>
-                        )}
+                        <span>{ch.name.split(' ')[0]}</span>
+                        <span className="text-[9.5px] opacity-75 font-normal">({unlockedCount}/{chapterStories.length})</span>
                       </button>
                     );
                   })}
+                </div>
+
+                {/* 章ごとのストーリーカード描画 */}
+                <div className="space-y-8">
+                  {CHAPTERS
+                    .filter(ch => selectedChapter === 'all' || selectedChapter === ch.id)
+                    .map(ch => {
+                      const chapterStories = STORY_CARDS.filter(story => story.page >= ch.minPage && story.page <= ch.maxPage);
+                      const unlockedCount = chapterStories.filter(s => playerLevel >= s.unlockLevel).length;
+
+                      return (
+                        <div key={ch.id} className="space-y-4">
+                          {/* 章見出し */}
+                          <div className="border-b border-amber-800/20 pb-1.5 flex items-baseline justify-between">
+                            <div className="flex items-baseline gap-2">
+                              <h4 className="text-xs md:text-sm font-black text-amber-950 tracking-wider">
+                                📖 {ch.name}
+                              </h4>
+                              <span className="text-[10px] text-amber-700/85 font-mono font-bold">({ch.range})</span>
+                            </div>
+                            <span className="text-[10px] font-mono font-black bg-amber-100 text-amber-850 px-2.5 py-0.5 border border-amber-205 rounded-full">
+                              解放: {unlockedCount} / {chapterStories.length}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-6">
+                            {chapterStories.map(story => {
+                              const unlocked = playerLevel >= story.unlockLevel;
+
+                              return (
+                                <button
+                                  key={story.id}
+                                  onClick={() => {
+                                    if (unlocked) {
+                                      setSelectedStoryCard(story);
+                                    }
+                                  }}
+                                  className={`group relative rounded-2xl border text-left p-5 flex flex-col justify-between transition-all duration-300 min-h-[225px] shadow-sm select-none ${
+                                    unlocked
+                                      ? 'bg-gradient-to-br from-amber-55 to-orange-100/60 border-2 border-amber-600/80 text-amber-950 hover:-translate-y-1.5 hover:shadow-xl hover:border-amber-500 cursor-pointer'
+                                      : 'bg-slate-100/55 border-dashed border-slate-300 border-2 text-slate-400'
+                                  }`}
+                                  id={`story-card-${story.id}`}
+                                >
+                                  {!unlocked ? (
+                                    <div className="absolute inset-0 bg-slate-100/50 border border-dashed border-slate-300 flex flex-col items-center justify-center p-3 rounded-2xl">
+                                      <span className="text-lg mb-1">🔒</span>
+                                      <span className="text-xs font-mono text-slate-400 font-black tracking-widest">第 {story.page} 頁</span>
+                                      <span className="text-[10px] font-extrabold text-amber-700 mt-2 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100 text-center">
+                                        Lv {story.unlockLevel} で解放
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-col h-full w-full justify-between gap-3 z-10 font-sans">
+                                      {/* 上段：魔導書デザインヘッダー */}
+                                      <div className="flex justify-between items-center w-full pb-1.5 border-b border-amber-300/60 text-[10px] font-mono tracking-wide">
+                                        <span className="text-amber-850 font-black px-1.5 py-0.5 bg-amber-100 border border-amber-200 rounded">
+                                          📖 第 {story.page} 頁
+                                        </span>
+                                        <span className="text-amber-700/80 font-bold">ストーリー</span>
+                                      </div>
+
+                                      {/* メイン部分：本をモチーフにしたデザイン */}
+                                      <div className="flex items-center gap-3 my-0.5">
+                                        <span className="text-3xl text-amber-700">📜</span>
+                                        <div className="flex flex-col min-w-0">
+                                          <h4 className="font-extrabold text-[13.5px] text-amber-950 group-hover:text-amber-800 transition-colors leading-tight tracking-wide truncate">
+                                            {story.title}
+                                          </h4>
+                                        </div>
+                                      </div>
+
+                                      {/* 中段：本文の一部 */}
+                                      <p className="text-[11px] text-amber-900/95 font-medium leading-relaxed line-clamp-4 bg-amber-50/50 border border-amber-250 p-3 rounded-xl font-serif flex-1 whitespace-pre-line">
+                                        {story.content}
+                                      </p>
+
+                                      {/* 下段：タップ案内 */}
+                                      <div className="text-[9px] font-sans bg-amber-100/40 border border-amber-200/40 px-2 py-1 rounded-lg text-center text-amber-800 font-black w-full shadow-inner leading-none">
+                                        タップして全文を読む
+                                      </div>
+                                    </div>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
             ) : (
