@@ -47,6 +47,16 @@ export default function ResultScreen({
     return `${mins}分 ${secs}秒`;
   };
 
+  const getImagePath = (path: string) => {
+    if (!path) return '';
+    if (path.startsWith('/')) {
+      const baseUrl = (import.meta as any).env?.BASE_URL || '/';
+      const cleanBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+      return `${cleanBase}${path}`;
+    }
+    return path;
+  };
+
   const correctRate = finalQuestionsCount > 0 
     ? Math.round((correctAnswersCount / finalQuestionsCount) * 100) 
     : 0;
@@ -231,7 +241,7 @@ export default function ResultScreen({
             {/* 討伐記念クリアグラフィック画像 */}
             <div className="w-full overflow-hidden rounded-2xl border border-slate-850 bg-black flex justify-center items-center p-1.5 max-w-2xl mx-auto shadow-[0_8px_30px_rgba(0,0,0,0.95)]">
               <img 
-                src={heroRank.image} 
+                src={getImagePath(heroRank.image)} 
                 alt={heroRank.title} 
                 className="w-full h-auto rounded-xl object-contain max-h-[320px] md:max-h-[500px] transition-transform duration-500 hover:scale-[1.02]"
                 referrerPolicy="no-referrer"
