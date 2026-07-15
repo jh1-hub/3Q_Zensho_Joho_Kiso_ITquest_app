@@ -286,16 +286,6 @@ export default function CardCollection({ collectedIds, onBack, playerLevel }: Ca
             >
               すべて表示
             </button>
-            <button
-              onClick={() => handleSetMainTab('story')}
-              className={`py-2 px-4 rounded-lg font-black text-[10.5px] shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
-                activeTab === 'story'
-                  ? 'bg-amber-600 text-white shadow-xs'
-                  : 'text-slate-650 hover:bg-amber-55 hover:text-amber-800'
-              }`}
-            >
-              📖 ストーリー
-            </button>
             {quizCategories.map(cat => {
               const cleanedTitle = cat.title.replace(/^[⑴⑵⑶]\s*/, '');
               const isSelected = activeTab === cat.id;
@@ -313,6 +303,16 @@ export default function CardCollection({ collectedIds, onBack, playerLevel }: Ca
                 </button>
               );
             })}
+            <button
+              onClick={() => handleSetMainTab('story')}
+              className={`py-2 px-4 rounded-lg font-black text-[10.5px] shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
+                activeTab === 'story'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'text-slate-650 hover:bg-amber-55 hover:text-amber-800'
+              }`}
+            >
+              📖 ストーリー
+            </button>
           </div>
 
           {/* 広範なカードグリッドエリア */}

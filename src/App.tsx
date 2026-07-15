@@ -26,6 +26,7 @@ import {
   getChoiceCountForStep, 
   getEnemyConfig, 
   getXpToNextLevel,
+  calculateCollectorLevel,
   drawCard,
   shuffleArray,
   getDailySeed,
@@ -356,10 +357,10 @@ export default function App() {
       monsterQuestions,
       monsterImagePath: (mode === 'category' || mode === 'subcategory')
         ? './img/monsters/it_slime_battle.jpg'
-        : './img/monsters/bug_dracky_battle.jpg',
+        : './img/monsters/virus_golem_battle.jpg',
       monsterFallbackImage: (mode === 'category' || mode === 'subcategory')
         ? 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=400&q=80'
-        : 'https://images.unsplash.com/photo-1555685812-4b943f1cb0eb?auto=format&fit=crop&w=400&q=80'
+        : 'https://images.unsplash.com/photo-1510511459019-5dda7724fd87?auto=format&fit=crop&w=400&q=80'
     };
 
     const choiceCount = 4;
@@ -1478,7 +1479,7 @@ export default function App() {
       {screen === 'collection' && (
         <CardCollection
           collectedIds={player.collectedCards}
-          playerLevel={player.level}
+          playerLevel={calculateCollectorLevel(player.collectedCards)}
           onBack={() => {
             // タイトル画面または、ゲーム中の場合は、戦闘画面の中（Explore）に帰す
             if (selectedRoute) {

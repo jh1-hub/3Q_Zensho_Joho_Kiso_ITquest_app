@@ -15,6 +15,54 @@ export function getXpToNextLevel(level: number): number {
 }
 
 /**
+ * 獲得カード数からコレクターレベル (1〜99) を計算する
+ */
+export function calculateCollectorLevel(collectedCardIds: string[]): number {
+  const totalPossible = TERM_CARDS.length * 3;
+  const collectedCount = collectedCardIds.length;
+
+  const levelRequirements: number[] = [0];
+  for (let lvl = 1; lvl <= 99; lvl++) {
+    if (lvl === 1) {
+      levelRequirements.push(0);
+      continue;
+    }
+    if (lvl === 99) {
+      levelRequirements.push(totalPossible);
+      continue;
+    }
+    const norm = (lvl - 1) / 98;
+    const curveValue = totalPossible * Math.pow(norm, 2.8);
+    const linearValue = lvl - 1;
+    const blended = linearValue * (1 - norm) + curveValue * norm;
+    
+    let req = Math.round(blended);
+    const prevReq = levelRequirements[lvl - 1];
+    
+    if (req <= prevReq) {
+      req = prevReq + 1;
+    }
+    
+    const remainingLevels = 99 - lvl;
+    if (req > totalPossible - remainingLevels) {
+      req = totalPossible - remainingLevels;
+    }
+    
+    levelRequirements.push(req);
+  }
+
+  let currentLevel = 1;
+  for (let lvl = 1; lvl <= 99; lvl++) {
+    if (collectedCount >= levelRequirements[lvl]) {
+      currentLevel = lvl;
+    } else {
+      break;
+    }
+  }
+  return currentLevel;
+}
+
+/**
  * プレイヤーのカード効果を累積計算する
  */
 export interface PlayerBonus {
