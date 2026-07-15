@@ -356,8 +356,8 @@ export default function App() {
       monsterDamage: (mode === 'category' || mode === 'subcategory') ? 120 : 160,
       monsterQuestions,
       monsterImagePath: (mode === 'category' || mode === 'subcategory')
-        ? './img/monsters/it_slime_battle.jpg'
-        : './img/monsters/virus_golem_battle.jpg',
+        ? './img/monsters/training_slime_battle.jpg'
+        : './img/monsters/drill_golem_battle.jpg',
       monsterFallbackImage: (mode === 'category' || mode === 'subcategory')
         ? 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=400&q=80'
         : 'https://images.unsplash.com/photo-1510511459019-5dda7724fd87?auto=format&fit=crop&w=400&q=80'
@@ -1388,6 +1388,25 @@ export default function App() {
     setScreen('result');
   };
 
+  /**
+   * デバッグ用：すべてのカードをフルコンプリート（3枚ずつ所持）
+   */
+  const handleDebugUnlockAllCards = () => {
+    const fullCompleteList: string[] = [];
+    TERM_CARDS.forEach(card => {
+      fullCompleteList.push(card.id, card.id, card.id);
+    });
+
+    setPlayer(prev => {
+      const updated = {
+        ...prev,
+        collectedCards: fullCompleteList,
+      };
+      saveToStorage(fullCompleteList, bestTime, wrongTerms, prev.level, prev.xp, gameStats);
+      return updated;
+    });
+  };
+
   // ----------------------------------------------------
   // レンダリング処理
   // ----------------------------------------------------
@@ -1499,6 +1518,7 @@ export default function App() {
           onBack={() => setScreen('title')}
           onResetData={handleResetAllData}
           onDebugGoToResult={handleDebugGoToResult}
+          onDebugUnlockAllCards={handleDebugUnlockAllCards}
         />
       )}
 

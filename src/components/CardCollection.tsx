@@ -193,10 +193,10 @@ export default function CardCollection({ collectedIds, onBack, playerLevel }: Ca
                 </h2>
                 <div className="space-y-2 text-xs">
                   <p className="font-bold text-amber-300">
-                    現在のプレイヤーレベル: <span className="text-yellow-400 font-black text-sm">Lv {playerLevel}</span>
+                    現在のコレクターレベル: <span className="text-yellow-400 font-black text-sm">Lv {playerLevel}</span>
                   </p>
                   <p className="leading-relaxed text-[11px] text-amber-200/90">
-                    魔導書に刻まれた失われた記憶は、あなたのレベルが上がるごとに1頁ずつ解放されていきます。<br />
+                    魔導書に刻まれた失われた記憶は、あなたのコレクターレベル（カードの収集進捗）が上がるごとに1頁ずつ解放されていきます。<br />
                     第1頁は <span className="text-yellow-400 font-bold">Lv 2</span> で解放され、最終的に <span className="text-yellow-400 font-bold">Lv 99</span> ですべての頁（全98頁）が紡がれます。
                   </p>
                 </div>
@@ -323,7 +323,7 @@ export default function CardCollection({ collectedIds, onBack, playerLevel }: Ca
               <div className="space-y-4">
                 <div className="border-b-2 border-amber-700/80 pb-1.5 flex items-center justify-between">
                   <h3 className="text-xs md:text-[13px] font-black text-amber-950 tracking-wider">
-                    📖 魔導書ストーリー（レベルアップで解放）
+                    📖 魔導書ストーリー（コレクターレベルアップで解放）
                   </h3>
                   <span className="text-[10px] font-mono font-extrabold bg-amber-150 text-amber-850 px-2.5 py-0.5 rounded-full shrink-0">
                     解放: {STORY_CARDS.filter(s => playerLevel >= s.unlockLevel).length} / {STORY_CARDS.length}
