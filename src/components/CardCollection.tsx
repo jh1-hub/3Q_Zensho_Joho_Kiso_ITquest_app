@@ -33,6 +33,19 @@ export default function CardCollection({ collectedIds, onBack, playerLevel }: Ca
   const bonus = calculatePlayerBonus(collectedIds);
   const uniqueCollectedCount = React.useMemo(() => Array.from(new Set(collectedIds)).length, [collectedIds]);
 
+  React.useEffect(() => {
+    if (selectedChapter !== 'all') {
+      const ch = CHAPTERS.find(c => c.id === selectedChapter);
+      if (ch) {
+        const chapterStories = STORY_CARDS.filter(s => s.page >= ch.minPage && s.page <= ch.maxPage);
+        const unlockedCount = chapterStories.filter(s => playerLevel >= s.unlockLevel).length;
+        if (unlockedCount === 0) {
+          setSelectedChapter('all');
+        }
+      }
+    }
+  }, [playerLevel, selectedChapter]);
+
   const getRarityBadgeColor = (rarity: string) => {
     switch (rarity) {
       case 'C': return 'text-slate-650 bg-slate-100 border border-slate-300 px-1.5 py-0.5 rounded shadow-sm font-mono text-[9px] uppercase tracking-wider font-extrabold';
@@ -356,6 +369,8 @@ export default function CardCollection({ collectedIds, onBack, playerLevel }: Ca
                     const chapterStories = STORY_CARDS.filter(s => s.page >= ch.minPage && s.page <= ch.maxPage);
                     const unlockedCount = chapterStories.filter(s => playerLevel >= s.unlockLevel).length;
 
+                    if (unlockedCount === 0) return null;
+
                     return (
                       <button
                         key={ch.id}
@@ -376,7 +391,12 @@ export default function CardCollection({ collectedIds, onBack, playerLevel }: Ca
                 {/* 章ごとのストーリーカード描画 */}
                 <div className="space-y-8">
                   {CHAPTERS
-                    .filter(ch => selectedChapter === 'all' || selectedChapter === ch.id)
+                    .filter(ch => {
+                      const chapterStories = STORY_CARDS.filter(s => s.page >= ch.minPage && s.page <= ch.maxPage);
+                      const unlockedCount = chapterStories.filter(s => playerLevel >= s.unlockLevel).length;
+                      if (unlockedCount === 0) return false;
+                      return selectedChapter === 'all' || selectedChapter === ch.id;
+                    })
                     .map(ch => {
                       const chapterStories = STORY_CARDS.filter(story => story.page >= ch.minPage && story.page <= ch.maxPage);
                       const unlockedCount = chapterStories.filter(s => playerLevel >= s.unlockLevel).length;
