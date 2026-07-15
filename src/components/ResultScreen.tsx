@@ -99,7 +99,7 @@ export default function ResultScreen({
       title: '終焉を断つ者 (Rank SS)', 
       style: 'bg-gradient-to-r from-amber-400 to-yellow-600 text-white border-yellow-300 shadow-[0_0_10px_rgba(250,204,21,0.55)] animate-pulse',
       image: '/img/player/rank_ss.jpg',
-      message: 'あなたの選択と覚悟が、闇の時代に終止符を打ちました。魔王の手から落ちた魔導書に差し込む光が、新たな歴史 of 始まりを告げています。',
+      message: 'あなたの選択と覚悟が、闇の時代に終止符を打ちました。魔王の手から落ちた魔導書に差し込む光が、新たな歴史の始まりを告げています。',
       header: '👑 魔王討伐！',
       subHeader: '◇ 闇を打ち破りし救世主 ◇'
     };
