@@ -157,6 +157,9 @@ export default function App() {
   // タイムアタック用計測用インスタントタイマー
   const [playStartTime, setPlayStartTime] = useState<number | null>(null);
 
+  // 冒険中に過去に出題した問題IDを追跡（重複出題防止）
+  const [askedProblemIds, setAskedProblemIds] = useState<string[]>([]);
+
   // デイリーチャレンジ・タイムアタック（ときのかいろう）開放状態
   const [isDailyChallengeCompleted, setIsDailyChallengeCompleted] = useState<boolean>(false);
   const [isTimeAttackUnlocked, setIsTimeAttackUnlocked] = useState<boolean>(false);
@@ -303,6 +306,7 @@ export default function App() {
   // 修行（しゅぎょう・たんれん）の開始
   // ----------------------------------------------------
   const startTrainingBattle = (mode: 'category' | 'subcategory' | 'drill', clusterId: string | null = null) => {
+    setAskedProblemIds([]);
     setActiveTrainingMode(mode);
     setTrainingClusterId(clusterId);
     
@@ -464,6 +468,7 @@ export default function App() {
   };
 
   const startDailyChallenge = () => {
+    setAskedProblemIds([]);
     // 毎日異なるが、同じ日であれば一意に固定されるデイリーシードを使用
     const seed = getDailySeed();
 
@@ -590,6 +595,7 @@ export default function App() {
   // ゲーム初期化 & 構築
   // ----------------------------------------------------
   const handleStartGame = () => {
+    setAskedProblemIds([]);
     // タイム計測開始
     setPlayStartTime(Date.now());
     setRunCardIdsForResults([]);
@@ -735,19 +741,27 @@ export default function App() {
       const remainingCount = 8 - wrongList.length;
 
       if (remainingCount > 0) {
-        const others = RAW_PROBLEMS.filter(p => !wrongList.some(wl => wl.id === p.id));
-        battleProblems = [...wrongList, ...shuffleArray(others).slice(0, remainingCount)];
+        const unusedOthers = RAW_PROBLEMS.filter(p => !wrongList.some(wl => wl.id === p.id) && !askedProblemIds.includes(p.id));
+        const fallbackOthers = RAW_PROBLEMS.filter(p => !wrongList.some(wl => wl.id === p.id));
+        const candidates = unusedOthers.length >= remainingCount ? unusedOthers : fallbackOthers;
+        battleProblems = [...wrongList, ...shuffleArray(candidates).slice(0, remainingCount)];
       } else {
         battleProblems = wrongList.slice(0, 8);
       }
     } else {
-      // 通常戦
-      // 階層や難易度に合わせて出題
+      // 通常戦：階層や難易度に合わせて出題（未出題を優先）
       const targetDiffs = node.type === 'battle_hard' ? ['medium', 'hard'] : ['easy', 'medium'];
       const matchingProblems = RAW_PROBLEMS.filter(p => targetDiffs.includes(p.difficulty));
       
-      battleProblems = shuffleArray(matchingProblems).slice(0, enemyQuestions);
+      const unusedMatching = matchingProblems.filter(p => !askedProblemIds.includes(p.id));
+      const candidates = unusedMatching.length >= enemyQuestions ? unusedMatching : matchingProblems;
+      
+      battleProblems = shuffleArray(candidates).slice(0, enemyQuestions);
     }
+
+    // 選ばれた問題のIDを出題済みリストに記録
+    const newlyAskedIds = battleProblems.map(p => p.id);
+    setAskedProblemIds(prev => Array.from(new Set([...prev, ...newlyAskedIds])));
 
     // ----------------------------------------------------
     // 実践問題（模擬試験）の抽選処理の設定

@@ -209,9 +209,22 @@ export function generateActivePracticalProblem(pq: PracticalQuestion): ActivePro
   };
 }
 
+// 関連単位・仲間用語グループの定義（正解がグループに属する場合、同グループの項目をダミーに優先配置）
+const UNIT_GROUPS: string[][] = [
+  ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'バイト', 'キロバイト', 'メガバイト', 'ギガバイト', 'テラバイト', 'ペタバイト', 'bit', 'ビット'],
+  ['s', '秒', 'ms', 'ミリ秒', 'μs', 'マイクロ秒', 'ns', 'ナノ秒', 'ps', 'ピコ秒'],
+  ['bps', 'Kbps', 'Mbps', 'Gbps', 'Tbps'],
+  ['2進数', '8進数', '10進数', '16進数', '2進法', '8進法', '10進法', '16進法'],
+  ['AND', 'OR', 'NOT', 'NAND', 'NOR', 'XOR', 'XNOR', 'AND回路', 'OR回路', 'NOT回路', 'NAND回路', 'NOR回路', 'XOR回路'],
+  ['LAN', 'WAN', 'MAN', 'WLAN', 'SAN'],
+  ['HTTP', 'HTTPS', 'FTP', 'SMTP', 'POP3', 'IMAP', 'DNS', 'DHCP', 'TCP', 'UDP', 'IP', 'SSH', 'SSL/TLS'],
+  ['共通鍵暗号', '公開鍵暗号', 'ハイブリッド暗号', 'ハッシュ関数', 'デジタル署名'],
+  ['JPEG', 'PNG', 'GIF', 'BMP', 'SVG', 'MP3', 'MP4', 'WAV', 'PDF', 'CSV']
+];
+
 /**
  * 動的な選択肢生成と問題オブジェクトの作成
- * 同一クラスタ→同一カテゴリ→全体の優先順位でダミーを集める
+ * 同一単位/関連用語グループ→同一クラスタ→同一カテゴリ→全体の優先順位でダミーを集める
  */
 export function generateActiveProblem(
   raw: RawProblem,
@@ -225,21 +238,56 @@ export function generateActiveProblem(
   // ダミー選択肢候補を集める
   let dummyCandidates = allProblems.filter(p => p.id !== raw.id);
 
-  // 1. 同一クラスタのダミー
-  let clusterDummies = dummyCandidates.filter(p => p.clusterId === raw.clusterId);
-  // 2. 同一カテゴリのダミー（もしクラスタだけで足りなければ）
-  let categoryDummies = dummyCandidates.filter(p => p.category === raw.category && p.clusterId !== raw.clusterId);
-  // 3. その他のダミー
-  let otherDummies = dummyCandidates.filter(p => p.category !== raw.category && p.clusterId !== raw.clusterId);
+  // 0. 関連単位・仲間用語グループの検出
+  const targetTerm = raw.termName.trim();
+  const matchedGroup = UNIT_GROUPS.find(group =>
+    group.some(item => item.toLowerCase() === targetTerm.toLowerCase() || targetTerm.toLowerCase().includes(item.toLowerCase()))
+  );
 
-  // 優先順位に従って結合
-  const sortedDummies = [...clusterDummies, ...categoryDummies, ...otherDummies];
+  let groupDummies: RawProblem[] = [];
+  if (matchedGroup) {
+    groupDummies = dummyCandidates.filter(p =>
+      matchedGroup.some(item => p.termName.toLowerCase() === item.toLowerCase() || p.termName.toLowerCase().includes(item.toLowerCase()))
+    );
+  }
+
+  // 1. 同一クラスタのダミー
+  let clusterDummies = dummyCandidates.filter(p => p.clusterId === raw.clusterId && !groupDummies.includes(p));
+  // 2. 同一カテゴリのダミー（もしクラスタだけで足りなければ）
+  let categoryDummies = dummyCandidates.filter(p => p.category === raw.category && p.clusterId !== raw.clusterId && !groupDummies.includes(p));
+  // 3. その他のダミー
+  let otherDummies = dummyCandidates.filter(p => p.category !== raw.category && p.clusterId !== raw.clusterId && !groupDummies.includes(p));
+
+  // 優先順位に従って結合（シャッフルしてバラけさせる）
+  const sortedDummies = [
+    ...shuffleArray(groupDummies),
+    ...shuffleArray(clusterDummies),
+    ...shuffleArray(categoryDummies),
+    ...shuffleArray(otherDummies)
+  ];
 
   // ダミーの実際の表示用文字列に変換
-  const dummyStrings = sortedDummies.map(p => (type === 'term_to_def' ? p.definition : p.termName));
+  let dummyStrings = sortedDummies.map(p => (type === 'term_to_def' ? p.definition : p.termName));
 
-  // ユニークにする
-  const uniqueDummies = Array.from(new Set(dummyStrings));
+  // 用語選択（def_to_term）の場合で同グループが存在する場合、グループの他の用語を直接ダミー先頭に挿入補填する
+  if (type === 'def_to_term' && matchedGroup) {
+    const existingSet = new Set(dummyStrings);
+    const relatedTerms = matchedGroup.filter(t => t.toLowerCase() !== targetTerm.toLowerCase());
+    const shuffledRelated = shuffleArray(relatedTerms);
+    
+    // 先頭から優先的に補填
+    const extraTerms: string[] = [];
+    for (const term of shuffledRelated) {
+      if (!existingSet.has(term)) {
+        extraTerms.push(term);
+        existingSet.add(term);
+      }
+    }
+    dummyStrings = [...extraTerms, ...dummyStrings];
+  }
+
+  // ユニークにする（正解テキストも除く）
+  const uniqueDummies = Array.from(new Set(dummyStrings)).filter(d => d !== correctText);
 
   // 必要数（choiceCount - 1）だけ抽出
   const chosenDummies = uniqueDummies.slice(0, choiceCount - 1);
