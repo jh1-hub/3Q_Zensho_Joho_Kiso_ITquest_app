@@ -44,25 +44,22 @@ export default function LootScreen({
       const getTargetRarity = (nodeType?: string) => {
         const r = Math.random() * 100;
         if (nodeType === 'boss') {
-          if (r < 10) return 'C';
-          if (r < 25) return 'UC';
-          if (r < 55) return 'SR';
-          if (r < 85) return 'UR';
-          return 'LG';
+          // 大ボス魔王: 最高級レアリティの確定・高確率（R: 10%, SR: 50%, UR: 40%）
+          if (r < 10) return 'R';
+          if (r < 60) return 'SR';
+          return 'UR';
         } else if (nodeType === 'battle_hard') {
-          // 強敵：コモン率引き下げ、SR/UR増大
+          // つよい魔物: C: 25%, R: 40%, SR: 25%, UR: 10%
           if (r < 25) return 'C';
-          if (r < 55) return 'UC';
-          if (r < 80) return 'SR';
-          if (r < 94) return 'UR';
-          return 'LG';
+          if (r < 65) return 'R';
+          if (r < 90) return 'SR';
+          return 'UR';
         } else {
-          // 通常戦闘/修行：標準確率
-          if (r < 55) return 'C';
-          if (r < 85) return 'UC';
-          if (r < 95) return 'SR';
-          if (r < 99) return 'UR';
-          return 'LG';
+          // 普通の魔物: C: 79.9%, R: 17%, SR: 3%, UR: 0.1%
+          if (r < 79.9) return 'C';
+          if (r < 96.9) return 'R';
+          if (r < 99.9) return 'SR';
+          return 'UR';
         }
       };
 
@@ -74,8 +71,8 @@ export default function LootScreen({
         tries++;
         const targetRarity = getTargetRarity(currentNodeType);
         
-        // 該当レアリティ、またはRとUCは同等扱い
-        let candidates = pool.filter(c => (c.rarity === targetRarity || (targetRarity === 'UC' && c.rarity === 'R')));
+        // 該当レアリティのカード候補を抽出
+        let candidates = pool.filter(c => c.rarity === targetRarity);
         if (candidates.length === 0) {
           candidates = pool;
         }
