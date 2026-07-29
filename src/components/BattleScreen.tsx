@@ -203,6 +203,9 @@ export default function BattleScreen({
   // 回答処理
   const handleSelection = (index: number, isTimeout = false) => {
     if (isAnswered) return;
+    if (!isTimeout) {
+      playSE('click');
+    }
 
     let correct = false;
     if (!isTimeout && activeProblem) {

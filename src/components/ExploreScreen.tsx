@@ -8,6 +8,7 @@ import { Sparkles, Swords, Heart, Shield, Award, HelpCircle, ArrowRight, Library
 import { PlayerState, MapNode, TermCard } from '../types';
 import { CLUSTERS, TERM_CARDS } from '../data/problems';
 import { getEnemyConfig, getTermEmoji } from '../utils/gameHelpers';
+import { playSE } from '../utils/sound';
 
 interface ExploreScreenProps {
   player: PlayerState;
@@ -204,7 +205,10 @@ export default function ExploreScreen({
             return (
               <button
                 key={node.id}
-                onClick={() => onSelectNode(node)}
+                onClick={() => {
+                  playSE('click');
+                  onSelectNode(node);
+                }}
                 className={`group relative rounded-2xl border-4 overflow-hidden text-left bg-white flex flex-col justify-between transition-all duration-300 hover:scale-[1.03] cursor-pointer shadow-md hover:shadow-xl ${
                   isBoss
                     ? 'border-red-500 hover:border-red-650'

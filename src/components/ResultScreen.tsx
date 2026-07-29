@@ -8,6 +8,7 @@ import { Award, Timer, CheckCircle2, RefreshCw, Star, Home, AlertOctagon } from 
 import { PlayerState, TermCard } from '../types';
 import { TERM_CARDS } from '../data/problems';
 import { getTermEmoji } from '../utils/gameHelpers';
+import { playSE } from '../utils/sound';
 
 interface ResultScreenProps {
   isWin: boolean;
@@ -74,6 +75,14 @@ export default function ResultScreen({
   };
 
   // Generate particles for completion victory celebration (confetti & fireworks)
+  React.useEffect(() => {
+    if (isWin) {
+      playSE('victory');
+    } else {
+      playSE('defeat');
+    }
+  }, [isWin]);
+
   const [particles] = useState(() => {
     if (!isWin) return [];
     return Array.from({ length: 45 }).map((_, i) => {
