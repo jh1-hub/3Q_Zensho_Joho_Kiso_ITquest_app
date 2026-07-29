@@ -8,6 +8,7 @@ import { ArrowRight, Sparkles } from 'lucide-react';
 import { TermCard } from '../types';
 import { TERM_CARDS, CLUSTERS } from '../data/problems';
 import { shuffleArray, getTermEmoji } from '../utils/gameHelpers';
+import { playSE } from '../utils/sound';
 
 interface LootScreenProps {
   key?: string;
@@ -109,6 +110,12 @@ export default function LootScreen({
 
   const handleCardClick = (index: number) => {
     if (revealed) return;
+    const card = options[index];
+    if (card && (card.rarity === 'UR' || card.rarity === 'SR' || card.rarity === 'LG')) {
+      playSE('rareGet');
+    } else {
+      playSE('cardGet');
+    }
     setSelectedIndex(index);
     setRevealed(true);
   };

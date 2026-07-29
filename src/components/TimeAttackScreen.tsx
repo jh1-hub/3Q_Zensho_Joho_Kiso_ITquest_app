@@ -8,6 +8,7 @@ import { Timer, Zap, RotateCcw, Home, Award, AlertCircle, Sparkles, Swords, Hear
 import { RawProblem, ActiveProblem, GameStats, TermCard } from '../types';
 import { RAW_PROBLEMS, TERM_CARDS, CLUSTERS } from '../data/problems';
 import { generateActiveProblem, shuffleArray, drawCard, getTermEmoji } from '../utils/gameHelpers';
+import { playSE } from '../utils/sound';
 
 interface TimeAttackScreenProps {
   onClose: () => void;
@@ -98,9 +99,31 @@ export default function TimeAttackScreen({ onClose, gameStats, collectedCardIds,
     };
   }, []);
 
-  // 効果音・BGMは冒険の仕様に合わせて完全無効化（パフォーマンス優先で動作軽量化）
+  // 効果音（SE）の再生処理
   const playSound = (type: 'correct' | 'wrong' | 'comboUp' | 'superCombo' | 'tick' | 'timesUp' | 'start' | 'damage' | 'victory') => {
-    // 完全に無効化（空関数）
+    switch (type) {
+      case 'correct':
+      case 'comboUp':
+      case 'superCombo':
+        playSE('correct');
+        break;
+      case 'wrong':
+        playSE('wrong');
+        break;
+      case 'damage':
+        playSE('attack');
+        break;
+      case 'victory':
+        playSE('victory');
+        break;
+      case 'tick':
+      case 'start':
+        playSE('tick');
+        break;
+      case 'timesUp':
+        playSE('timesUp');
+        break;
+    }
   };
 
   // カウントダウン開始

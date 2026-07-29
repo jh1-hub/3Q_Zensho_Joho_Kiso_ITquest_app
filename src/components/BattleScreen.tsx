@@ -8,6 +8,7 @@ import { Swords, Shield, Heart, Zap, Timer, ChevronRight, HelpCircle, Skull, Ale
 import { BattleState, TermCard, RawProblem } from '../types';
 import { TERM_CARDS } from '../data/problems';
 import { getTermEmoji, getEnemyConfig } from '../utils/gameHelpers';
+import { playSE } from '../utils/sound';
 
 interface BattleScreenProps {
   battleState: BattleState;
@@ -238,6 +239,8 @@ export default function BattleScreen({
 
     // 敵・プレイヤーへの被弾のビジュアルブレ＆フラッシュ
     if (correct) {
+      playSE('correct');
+      playSE('attack');
       setEnemyFlash(true);
       setShakeEnemy(true);
       setShowStrikeSlash(true);
@@ -249,6 +252,8 @@ export default function BattleScreen({
         setScreenAttackShake(false);
       }, 500);
     } else {
+      playSE('wrong');
+      playSE('playerDamage');
       setPlayerFlash(true);
       setShakePlayer(true);
       setShowBarrierCrack(true);
@@ -289,12 +294,14 @@ export default function BattleScreen({
     
     // HP確認とゲームオーバー発動
     if (playerHp <= 0) {
+      playSE('defeat');
       onGameOver();
       return;
     }
 
     // 敵HPが0になった場合のみ、勝利してマップに進める
     if (enemyHp <= 0) {
+      playSE('victory');
       const isBoss = currentNode.type === 'boss';
       let gainedXp = isBoss ? 60 : (currentNode.type === 'battle_hard' ? 35 : 20);
       

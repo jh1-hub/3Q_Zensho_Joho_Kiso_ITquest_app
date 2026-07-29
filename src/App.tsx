@@ -14,6 +14,7 @@ import StatsScreen from './components/StatsScreen';
 import TrainingScreen from './components/TrainingScreen';
 import TimeAttackScreen from './components/TimeAttackScreen';
 import StoryUnlockModal from './components/StoryUnlockModal';
+import { SoundToggleButton } from './components/SoundToggleButton';
 import { secureStorage } from './utils/secureStorage';
 import { STORY_CARDS, StoryCard } from './data/stories';
 
@@ -1478,7 +1479,8 @@ export default function App() {
   // レンダリング処理
   // ----------------------------------------------------
   return (
-    <div className="bg-slate-900 min-h-screen text-slate-100 flex flex-col justify-between">
+    <div className="bg-slate-900 min-h-screen text-slate-100 flex flex-col justify-between relative">
+      <SoundToggleButton />
       {screen === 'title' && (
         <TitleScreen
           collectedCardIds={player.collectedCards}
