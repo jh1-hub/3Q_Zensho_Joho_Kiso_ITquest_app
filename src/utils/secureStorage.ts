@@ -58,37 +58,65 @@ function decode(obfuscated: string): string {
   }
 }
 
+const inMemoryStore: Record<string, string> = {};
+
 export const secureStorage = {
   setItem(key: string, value: string): void {
+    const encryptedValue = encode(value);
+    inMemoryStore[key] = encryptedValue;
     try {
-      const encryptedValue = encode(value);
-      localStorage.setItem(key, encryptedValue);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(key, encryptedValue);
+      }
     } catch (e) {
-      console.error('secureStorage setItem error:', e);
-      localStorage.setItem(key, value);
+      console.warn('secureStorage: localStorage setItem failed, fallback to in-memory', e);
     }
   },
 
   getItem(key: string): string | null {
+    let val: string | null = null;
     try {
-      const val = localStorage.getItem(key);
-      if (!val) return null;
-      const decrypted = decode(val);
-      if (decrypted) {
-        return decrypted;
+      if (typeof window !== 'undefined' && window.localStorage) {
+        val = localStorage.getItem(key);
       }
-      return val; // Fallback to plain text if decryption fails
     } catch (e) {
-      console.error('secureStorage getItem error:', e);
-      return localStorage.getItem(key);
+      console.warn('secureStorage: localStorage getItem failed, fallback to in-memory', e);
     }
+
+    if (!val) {
+      val = inMemoryStore[key] || null;
+    }
+
+    if (!val) return null;
+
+    const decrypted = decode(val);
+    if (decrypted) {
+      return decrypted;
+    }
+    return val; // Fallback to plain text if decryption fails
   },
 
   removeItem(key: string): void {
-    localStorage.removeItem(key);
+    delete inMemoryStore[key];
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.removeItem(key);
+      }
+    } catch (e) {
+      console.warn('secureStorage: localStorage removeItem failed', e);
+    }
   },
 
   clear(): void {
-    localStorage.clear();
+    for (const key in inMemoryStore) {
+      delete inMemoryStore[key];
+    }
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.clear();
+      }
+    } catch (e) {
+      console.warn('secureStorage: localStorage clear failed', e);
+    }
   }
 };

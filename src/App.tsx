@@ -1494,7 +1494,6 @@ export default function App() {
   // ----------------------------------------------------
   return (
     <div className="bg-slate-900 min-h-screen text-slate-100 flex flex-col justify-between relative">
-      <SoundToggleButton />
       {screen === 'title' && (
         <TitleScreen
           collectedCardIds={player.collectedCards}

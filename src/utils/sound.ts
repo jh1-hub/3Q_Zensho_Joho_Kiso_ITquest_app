@@ -3,11 +3,13 @@
 let soundEnabled = false;
 let audioCtx: AudioContext | null = null;
 
-// ストレージから初期状態を復元
+// ストレージから初期状態を復元（デフォルトはOFF）
 try {
   const saved = localStorage.getItem('it-rogue-se-enabled');
   if (saved !== null) {
     soundEnabled = saved === 'true';
+  } else {
+    soundEnabled = false;
   }
 } catch {
   soundEnabled = false;

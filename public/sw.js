@@ -1,19 +1,7 @@
-const CACHE_NAME = 'it-quest-cache-v2';
-const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon-512.png'
-];
+const CACHE_NAME = 'it-quest-cache-v3';
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        return cache.addAll(ASSETS_TO_CACHE);
-      })
-      .then(() => self.skipWaiting())
-  );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -31,33 +19,36 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Cache-first strategy for GET requests to preserve mobile data and allow robust offline load
   if (event.request.method !== 'GET') {
     return;
   }
 
+  // Network-first strategy to prevent white screen issues on Vercel deployments
   event.respondWith(
-    caches.match(event.request)
-      .then((cachedResponse) => {
-        if (cachedResponse) {
-          // Serve immediately from local browser disk storage! No bandwidth used.
-          return cachedResponse;
-        }
-
-        return fetch(event.request).then((networkResponse) => {
-          // If response is valid, write it dynamically to custom local cache for future instantaneous loads
-          if (!networkResponse || networkResponse.status !== 200) {
-            return networkResponse;
-          }
-
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
+            try {
+              cache.put(event.request, responseToCache);
+            } catch (e) {
+              // ignore cache write errors
+            }
           });
-
-          return networkResponse;
-        }).catch(() => {
-          // Fallback offline behavior
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        // Fallback to cache if network fails (offline mode)
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          if (event.request.mode === 'navigate') {
+            return caches.match('/index.html');
+          }
+          return new Response('Network error', { status: 408, headers: { 'Content-Type': 'text/plain' } });
         });
       })
   );
