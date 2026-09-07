@@ -151,12 +151,14 @@ export interface GameStats {
 }
 
 export interface SaveData {
+  ownerUserId?: string | null;
   level: number;
   xp: number;
   collectedCards: string[];
   bestTimeSeconds: number | null;
   wrongTerms: string[];
   stats?: GameStats;
+  updated_at?: string;
 }
 
 export type UserRole = 'student' | 'admin';

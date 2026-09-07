@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import TitleScreen from './components/TitleScreen';
 import ExploreScreen from './components/ExploreScreen';
 import BattleScreen from './components/BattleScreen';
@@ -19,7 +19,7 @@ import { AuthModal } from './components/AuthModal';
 import { AdminDashboard } from './components/AdminDashboard';
 import { secureStorage } from './utils/secureStorage';
 import { STORY_CARDS, StoryCard } from './data/stories';
-import { supabase, getUserProfile, getGameSave, upsertGameSave } from './lib/supabaseClient';
+import { supabase, getUserProfile, getGameSave, upsertGameSave, mergeSaveData } from './lib/supabaseClient';
 
 import { PlayerState, BattleState, MapNode, NodeType, RawProblem, TermCard, ActiveProblem, GameStats, SaveData, UserProfile } from './types';
 import { quizCategories, RAW_PROBLEMS, TERM_CARDS } from './data/problems';
@@ -194,49 +194,84 @@ export default function App() {
     };
   }, []);
 
+  // 先生自身・現在のセーブデータ
+  const currentSaveData: SaveData = useMemo(() => ({
+    level: player.level,
+    xp: player.xp,
+    collectedCards: player.collectedCards,
+    bestTimeSeconds: bestTime,
+    wrongTerms: wrongTerms,
+    stats: gameStats,
+  }), [player.level, player.xp, player.collectedCards, bestTime, wrongTerms, gameStats]);
+
+  // クラウド同期中ステート
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+
   // ----------------------------------------------------
   // セーブデータ（Supabaseクラウド同期 & ローカルキャッシュ）
   // ----------------------------------------------------
   const loadSaveData = async (targetUserId?: string | null) => {
     try {
+      setIsSyncing(true);
       const uid = targetUserId !== undefined ? targetUserId : currentUser?.id;
-      let dataToApply: SaveData | null = null;
 
-      // 1. ログイン中の場合：Supabaseのgame_savesテーブルから取得
+      // 1. ローカルキャッシュの取得
+      let localData: SaveData | null = null;
+      const localStr = secureStorage.getItem('it-rogue-save-data');
+      if (localStr) {
+        try {
+          localData = JSON.parse(localStr) as SaveData;
+        } catch (e) {
+          console.error('Error parsing local save:', e);
+        }
+      }
+
+      // 2. ログイン中の場合：Supabase（テーブル + user_metadata）から取得
+      let cloudData: SaveData | null = null;
       if (uid) {
         const cloudSave = await getGameSave(uid);
         if (cloudSave) {
-          dataToApply = {
+          cloudData = {
+            ownerUserId: uid,
             level: cloudSave.level || 1,
             xp: cloudSave.xp || 0,
             collectedCards: cloudSave.collected_cards || [],
             bestTimeSeconds: cloudSave.best_time_seconds,
             wrongTerms: cloudSave.wrong_terms || [],
-            stats: cloudSave.stats || { attempts: 0, wins: 0, termStats: {} }
+            stats: cloudSave.stats || { attempts: 0, wins: 0, termStats: {} },
+            updated_at: cloudSave.updated_at,
           };
-          // ローカルキャッシュも最新化
-          secureStorage.setItem('it-rogue-save-data', JSON.stringify(dataToApply));
-        } else {
-          // 初回ログイン：ローカルに既存データがあればそれをクラウドにアップロードして引き継ぐ
-          const localStr = secureStorage.getItem('it-rogue-save-data');
-          if (localStr) {
-            try {
-              const localParsed = JSON.parse(localStr) as SaveData;
-              dataToApply = localParsed;
-              await upsertGameSave(uid, localParsed);
-            } catch (e) {
-              console.error('Error migrating local save to cloud:', e);
-            }
-          }
         }
       }
 
-      // 2. クラウドにデータが無い、または未ログイン（ゲスト）の場合：ローカルキャッシュから復元
-      if (!dataToApply) {
-        const dataStr = secureStorage.getItem('it-rogue-save-data');
-        if (dataStr) {
-          dataToApply = JSON.parse(dataStr) as SaveData;
+      let dataToApply: SaveData | null = null;
+
+      if (uid) {
+        // ログイン中の場合
+        if (cloudData && localData) {
+          // ローカルが別のユーザーIDのデータであれば、他生徒のデータを混入させずクラウド側を採用
+          if (localData.ownerUserId && localData.ownerUserId !== uid) {
+            dataToApply = cloudData;
+          } else {
+            // 同一ユーザー、または未ログイン（ゲスト）時のプレイデータを引き継ぐマージ
+            dataToApply = mergeSaveData(cloudData, localData, uid);
+            // 統合した最善データをクラウドへもバックアップ同期
+            if (dataToApply) {
+              await upsertGameSave(uid, dataToApply);
+            }
+          }
+        } else if (cloudData) {
+          // 別のブラウザや端末から初めてログインしたケース：クラウドのセーブデータをそのまま適用
+          dataToApply = cloudData;
+        } else if (localData) {
+          // クラウドがまだ空でローカルにデータがあるケース：ローカルデータをクラウドへアップロード
+          dataToApply = { ...localData, ownerUserId: uid };
+          await upsertGameSave(uid, dataToApply);
         }
+      } else {
+        // 未ログイン（ゲスト）の場合：ローカルキャッシュから復元
+        dataToApply = localData;
       }
 
       if (dataToApply) {
@@ -259,6 +294,30 @@ export default function App() {
         if (dataToApply.stats) {
           setGameStats(dataToApply.stats);
         }
+
+        // ローカルキャッシュも最新のデータで更新
+        secureStorage.setItem('it-rogue-save-data', JSON.stringify(dataToApply));
+
+        // 魔導書レベルの参照値を同期（ログイン直後にストーリー解放モーダルが誤爆するのを防止）
+        const initialLvl = calculateCollectorLevel(collected);
+        prevCollectorLevelRef.current = initialLvl;
+      } else if (uid) {
+        // クラウドもローカルも完全に新規の場合
+        setPlayer(prev => ({
+          ...prev,
+          level: 1,
+          xp: 0,
+          xpToNextLevel: getXpToNextLevel(1),
+          collectedCards: [],
+          activeRunCardIds: [],
+          maxHp: 100,
+          hp: 100,
+          attack: 10
+        }));
+        setBestTime(null);
+        setWrongTerms([]);
+        setGameStats({ attempts: 0, wins: 0, termStats: {} });
+        prevCollectorLevelRef.current = 1;
       }
 
       // デイリーチャレンジ・タイムアタック開放状態の復元
@@ -268,8 +327,11 @@ export default function App() {
 
       const taUnlocked = secureStorage.getItem('it-rogue-time-attack-unlocked') === 'true';
       setIsTimeAttackUnlocked(taUnlocked);
+      setLastSyncTime(new Date().toLocaleTimeString());
     } catch (e) {
       console.error('Error loading save data:', e);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -283,21 +345,28 @@ export default function App() {
   ) => {
     try {
       const dataToSave: SaveData = {
+        ownerUserId: currentUser?.id || null,
         level: currentLevel ?? player.level,
         xp: currentXp ?? player.xp,
         collectedCards: updatedCollected,
         bestTimeSeconds: updatedBest,
         wrongTerms: updatedWrong,
-        stats: statsOverride ?? gameStats
+        stats: statsOverride ?? gameStats,
+        updated_at: new Date().toISOString(),
       };
 
       // 1. ローカルキャッシュに即時保存（オフラインでもゲームが継続可能）
       secureStorage.setItem('it-rogue-save-data', JSON.stringify(dataToSave));
 
-      // 2. ログインユーザーが存在する場合はSupabaseクラウドへ非同期同期
+      // 2. ログインユーザーが存在する場合はSupabaseクラウドへ非同期同期 (user_metadata + game_saves)
       if (currentUser?.id) {
-        upsertGameSave(currentUser.id, dataToSave).catch(err => {
+        setIsSyncing(true);
+        upsertGameSave(currentUser.id, dataToSave).then(() => {
+          setLastSyncTime(new Date().toLocaleTimeString());
+        }).catch(err => {
           console.error('Failed to sync save data to Supabase:', err);
+        }).finally(() => {
+          setIsSyncing(false);
         });
       }
     } catch (e) {
@@ -384,7 +453,23 @@ export default function App() {
       await supabase.auth.signOut();
       setCurrentUser(null);
       setCurrentUserProfile(null);
-      await loadSaveData(null);
+      // 共有端末・別アカウント利用時のデータ混入を防ぐため、ローカルキャッシュをクリア
+      secureStorage.removeItem('it-rogue-save-data');
+      setPlayer(prev => ({
+        ...prev,
+        level: 1,
+        xp: 0,
+        xpToNextLevel: getXpToNextLevel(1),
+        collectedCards: [],
+        activeRunCardIds: [],
+        maxHp: 100,
+        hp: 100,
+        attack: 10
+      }));
+      setBestTime(null);
+      setWrongTerms([]);
+      setGameStats({ attempts: 0, wins: 0, termStats: {} });
+      prevCollectorLevelRef.current = 1;
     } catch (err) {
       console.error('Logout error:', err);
     }
@@ -1663,12 +1748,22 @@ export default function App() {
             setScreen('admin');
             window.history.pushState({}, '', '/admin');
           }}
+          isSyncing={isSyncing}
+          onManualSync={async () => {
+            if (!currentUser?.id) {
+              setAuthModalMode('login');
+              setIsAuthModalOpen(true);
+              return;
+            }
+            await loadSaveData(currentUser.id);
+          }}
         />
       )}
 
       {screen === 'admin' && (
         <AdminDashboard
           currentUserProfile={currentUserProfile}
+          currentSaveData={currentSaveData}
           onBackToGame={() => {
             setScreen('title');
             if (window.location.pathname === '/admin') {

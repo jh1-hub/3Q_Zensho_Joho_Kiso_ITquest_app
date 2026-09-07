@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Skull, Award, Play, Library, Zap, BookOpen, Swords, Flame, Download, Timer, User, LogIn, LogOut, ShieldCheck } from 'lucide-react';
+import { Skull, Award, Play, Library, Zap, BookOpen, Swords, Flame, Download, Timer, User, LogIn, LogOut, ShieldCheck, RefreshCw } from 'lucide-react';
 import { TERM_CARDS } from '../data/problems';
 import type { UserProfile } from '../types';
 
@@ -25,6 +25,8 @@ interface TitleScreenProps {
   onOpenAuth?: () => void;
   onLogout?: () => void;
   onOpenAdmin?: () => void;
+  isSyncing?: boolean;
+  onManualSync?: () => void;
 }
 
 export default function TitleScreen({
@@ -43,7 +45,9 @@ export default function TitleScreen({
   userProfile,
   onOpenAuth,
   onLogout,
-  onOpenAdmin
+  onOpenAdmin,
+  isSyncing = false,
+  onManualSync
 }: TitleScreenProps) {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -208,7 +212,23 @@ export default function TitleScreen({
                     </button>
                   )}
                 </div>
-                <div className="text-[9px] text-slate-500 font-mono">クラウド同期中</div>
+                <div className="flex items-center gap-1.5 text-[9px] font-medium">
+                  <span className="text-emerald-700 font-bold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>クラウド同期済み ({uniqueCollectedCount}枚)</span>
+                  </span>
+                  {onManualSync && (
+                    <button
+                      onClick={onManualSync}
+                      disabled={isSyncing}
+                      className="text-slate-400 hover:text-blue-600 transition p-0.5 rounded hover:bg-slate-100 disabled:opacity-50 flex items-center gap-0.5"
+                      title="クラウドと最新データを同期"
+                    >
+                      <RefreshCw size={9} className={isSyncing ? 'animate-spin text-blue-600' : ''} />
+                      <span className="text-[8.5px] text-slate-400">{isSyncing ? '同期中...' : '同期'}</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* 管理者ボタン */}
@@ -239,13 +259,18 @@ export default function TitleScreen({
               )}
             </div>
           ) : (
-            <button
-              onClick={onOpenAuth}
-              className="flex items-center gap-1.5 bg-white/90 hover:bg-white text-blue-900 font-bold text-xs px-3 py-1.5 rounded-xl border border-blue-300 shadow-xs hover:shadow transition active:scale-95"
-            >
-              <LogIn size={13} className="text-blue-600" />
-              <span>新規登録 / ログイン</span>
-            </button>
+            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1.5">
+              <span className="text-[9px] text-amber-900 bg-amber-100/90 border border-amber-300/80 px-2 py-1 rounded-lg font-bold shadow-xs">
+                💡 ログインで別ブラウザ・スマホへ引き継ぎ可能
+              </span>
+              <button
+                onClick={onOpenAuth}
+                className="flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs px-3 py-1.5 rounded-xl shadow-xs hover:shadow transition active:scale-95 cursor-pointer"
+              >
+                <LogIn size={13} className="text-white" />
+                <span>新規登録 / ログイン</span>
+              </button>
+            </div>
           )}
         </div>
 

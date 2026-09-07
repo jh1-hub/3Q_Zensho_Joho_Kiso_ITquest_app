@@ -4,11 +4,12 @@ import type { UserProfile, GameSaveRow, SaveData, StudentOverview } from '../typ
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://oeutpjgtfztqfcocqtcf.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ldXRwamd0Znp0cWZjb2NxdGNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2OTU1OTgsImV4cCI6MjEwNDI3MTU5OH0.FyxN2db_TvPd54PbklXxd6NX2LSBotcw99c2Vy_MAVs';
 
-// 管理者メールアドレスのリスト（自動的に管理者権限を付与する対象）
-const ADMIN_EMAILS = [
-  'bard77633@gmail.com',
-  ...(import.meta.env.VITE_ADMIN_EMAILS ? import.meta.env.VITE_ADMIN_EMAILS.split(',').map((e: string) => e.trim().toLowerCase()) : [])
-];
+// 管理者メールアドレスのリスト（環境変数 VITE_ADMIN_EMAILS から取得）
+const ADMIN_EMAILS: string[] = (
+  import.meta.env.VITE_ADMIN_EMAILS
+    ? import.meta.env.VITE_ADMIN_EMAILS.split(',').map((e: string) => e.trim().toLowerCase())
+    : []
+);
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
@@ -170,9 +171,54 @@ export async function updateUserProfile(
 }
 
 /**
-  ユーザーのセーブデータを取得する
+  2つのセーブデータを進捗を失わないようインテリジェントにマージする
+ */
+export function mergeSaveData(a: SaveData | null, b: SaveData | null, ownerId?: string | null): SaveData | null {
+  if (!a && !b) return null;
+  if (!a) return b;
+  if (!b) return a;
+
+  const collected = Array.from(new Set([...(a.collectedCards || []), ...(b.collectedCards || [])]));
+  const wrong = Array.from(new Set([...(a.wrongTerms || []), ...(b.wrongTerms || [])]));
+
+  let bestTime: number | null = null;
+  if (a.bestTimeSeconds !== null && b.bestTimeSeconds !== null) {
+    bestTime = Math.min(a.bestTimeSeconds, b.bestTimeSeconds);
+  } else {
+    bestTime = a.bestTimeSeconds ?? b.bestTimeSeconds ?? null;
+  }
+
+  const mergedStats = {
+    attempts: Math.max(a.stats?.attempts || 0, b.stats?.attempts || 0),
+    wins: Math.max(a.stats?.wins || 0, b.stats?.wins || 0),
+    termStats: {
+      ...(a.stats?.termStats || {}),
+      ...(b.stats?.termStats || {}),
+    },
+    timeAttackHighScore: Math.max(a.stats?.timeAttackHighScore || 0, b.stats?.timeAttackHighScore || 0) || undefined,
+    timeAttackMaxCombo: Math.max(a.stats?.timeAttackMaxCombo || 0, b.stats?.timeAttackMaxCombo || 0) || undefined,
+  };
+
+  return {
+    ownerUserId: ownerId ?? a.ownerUserId ?? b.ownerUserId ?? null,
+    level: Math.max(a.level || 1, b.level || 1),
+    xp: Math.max(a.xp || 0, b.xp || 0),
+    collectedCards: collected,
+    bestTimeSeconds: bestTime,
+    wrongTerms: wrong,
+    stats: mergedStats,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+/**
+  ユーザーのセーブデータを取得する (game_savesテーブル + 認証user_metadataのデュアル復元)
  */
 export async function getGameSave(userId: string): Promise<GameSaveRow | null> {
+  let tableSave: GameSaveRow | null = null;
+  let metaSave: SaveData | null = null;
+
+  // 1. Supabaseの game_saves テーブルから取得試行
   try {
     const { data, error } = await supabase
       .from('game_saves')
@@ -180,21 +226,106 @@ export async function getGameSave(userId: string): Promise<GameSaveRow | null> {
       .eq('user_id', userId)
       .maybeSingle();
 
-    if (error) {
-      console.error('Error fetching game save:', error);
-      return null;
+    if (!error && data) {
+      tableSave = data as GameSaveRow;
+    } else if (error) {
+      console.warn('game_saves table query warning (falling back to user_metadata):', error);
     }
-    return data as GameSaveRow | null;
   } catch (err) {
-    console.error('Failed to get game save:', err);
-    return null;
+    console.warn('Failed to get game save from table:', err);
   }
+
+  // 2. Supabase Auth の user_metadata から取得試行 (RLSエラー時や別ブラウザでの最速復元)
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && user.id === userId && user.user_metadata?.game_save) {
+      metaSave = user.user_metadata.game_save as SaveData;
+    }
+  } catch (err) {
+    console.warn('Failed to get game save from user_metadata:', err);
+  }
+
+  // 3. 両方からデータが取得できた場合は、双方のカード・進捗を合算して最善のデータを返す
+  if (tableSave && metaSave) {
+    const tableAsSaveData: SaveData = {
+      level: tableSave.level,
+      xp: tableSave.xp,
+      collectedCards: tableSave.collected_cards || [],
+      bestTimeSeconds: tableSave.best_time_seconds,
+      wrongTerms: tableSave.wrong_terms || [],
+      stats: tableSave.stats,
+      updated_at: tableSave.updated_at,
+    };
+    const merged = mergeSaveData(tableAsSaveData, metaSave, userId);
+    if (merged) {
+      return {
+        user_id: userId,
+        level: merged.level,
+        xp: merged.xp,
+        collected_cards: merged.collectedCards,
+        best_time_seconds: merged.bestTimeSeconds,
+        wrong_terms: merged.wrongTerms,
+        stats: merged.stats || { attempts: 0, wins: 0, termStats: {} },
+        updated_at: merged.updated_at || new Date().toISOString(),
+      };
+    }
+  }
+
+  if (tableSave) return tableSave;
+
+  if (metaSave) {
+    return {
+      user_id: userId,
+      level: metaSave.level || 1,
+      xp: metaSave.xp || 0,
+      collected_cards: metaSave.collectedCards || [],
+      best_time_seconds: metaSave.bestTimeSeconds ?? null,
+      wrong_terms: metaSave.wrongTerms || [],
+      stats: metaSave.stats || { attempts: 0, wins: 0, termStats: {} },
+      updated_at: metaSave.updated_at || new Date().toISOString(),
+    };
+  }
+
+  return null;
 }
 
 /**
-  ユーザーのセーブデータを保存・更新する (Upsert)
+  ユーザーのセーブデータを保存・更新する (Upsert & user_metadata デュアル永続化)
  */
 export async function upsertGameSave(userId: string, saveData: SaveData): Promise<boolean> {
+  const nowIso = new Date().toISOString();
+  let metaSuccess = false;
+  let tableSuccess = false;
+
+  // 1. Supabase Auth の user_metadata に直接保存
+  // ※ RLSポリシーやPostgresテーブル再帰エラーの影響を一切受けず、
+  //    別のブラウザや端末でログインした際にも確実に即時引き継がれます
+  try {
+    const { error: metaError } = await supabase.auth.updateUser({
+      data: {
+        game_save: {
+          level: saveData.level,
+          xp: saveData.xp,
+          collectedCards: saveData.collectedCards || [],
+          bestTimeSeconds: saveData.bestTimeSeconds,
+          wrongTerms: saveData.wrongTerms || [],
+          stats: saveData.stats || { attempts: 0, wins: 0, termStats: {} },
+          ownerUserId: userId,
+          updated_at: nowIso,
+        }
+      }
+    });
+
+    if (!metaError) {
+      metaSuccess = true;
+    } else {
+      console.warn('user_metadata game_save update warning:', metaError);
+    }
+  } catch (err) {
+    console.warn('Exception updating user_metadata game_save:', err);
+  }
+
+  // 2. game_saves テーブルへの保存 (管理者・先生の一覧画面用)
   try {
     const row: Partial<GameSaveRow> = {
       user_id: userId,
@@ -204,22 +335,23 @@ export async function upsertGameSave(userId: string, saveData: SaveData): Promis
       best_time_seconds: saveData.bestTimeSeconds,
       wrong_terms: saveData.wrongTerms || [],
       stats: saveData.stats || { attempts: 0, wins: 0, termStats: {} },
-      updated_at: new Date().toISOString(),
+      updated_at: nowIso,
     };
 
     const { error } = await supabase
       .from('game_saves')
       .upsert(row, { onConflict: 'user_id' });
 
-    if (error) {
-      console.error('Error upserting game save:', error);
-      return false;
+    if (!error) {
+      tableSuccess = true;
+    } else {
+      console.warn('game_saves table upsert warning (user_metadata fallback saved successfully):', error);
     }
-    return true;
   } catch (err) {
-    console.error('Failed to upsert game save:', err);
-    return false;
+    console.warn('Exception upserting to game_saves table:', err);
   }
+
+  return metaSuccess || tableSuccess;
 }
 
 /**

@@ -2,18 +2,21 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, Search, ArrowLeft, RefreshCw, Download, 
   Award, Clock, AlertTriangle, ShieldCheck, BookOpen, 
-  CheckCircle2, X, ChevronRight, BarChart3, Filter, Copy, Key
+  CheckCircle2, X, ChevronRight, BarChart3, Filter, Copy, Key, UserCheck, Flame
 } from 'lucide-react';
-import type { StudentOverview, UserProfile, GameSaveRow } from '../types';
+import type { StudentOverview, UserProfile, GameSaveRow, SaveData } from '../types';
 import { fetchAllStudentsOverview, promoteToAdmin } from '../lib/supabaseClient';
+import { TERM_CARDS } from '../data/problems';
 
 interface AdminDashboardProps {
   currentUserProfile: UserProfile | null;
+  currentSaveData?: SaveData | null;
   onBackToGame: () => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
   currentUserProfile, 
+  currentSaveData,
   onBackToGame 
 }) => {
   const [students, setStudents] = useState<StudentOverview[]>([]);
@@ -22,6 +25,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [selectedStudent, setSelectedStudent] = useState<StudentOverview | null>(null);
   const [sortBy, setSortBy] = useState<'level' | 'cards' | 'updated' | 'name'>('updated');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'students' | 'teacher'>('all');
   const [isPromoting, setIsPromoting] = useState<boolean>(false);
   const [promoteSuccess, setPromoteSuccess] = useState<boolean>(false);
   const [copiedSQL, setCopiedSQL] = useState<boolean>(false);
@@ -64,16 +68,91 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  const rlsFixSQL = `-- Supabase SQL Editorで実行してください（無限再帰エラー解消用）
+  // 先生自身（ログイン中のアカウント）のセーブデータ行
+  const teacherSaveDataRow = useMemo<GameSaveRow | null>(() => {
+    if (!currentUserProfile?.id) return null;
+    // 1. Supabaseからフェッチした一覧に先生のデータがあるか
+    const remoteTeacher = students.find(s => s.profile.id === currentUserProfile.id)?.saveData;
+    if (remoteTeacher) return remoteTeacher;
+
+    // 2. なければローカルの currentSaveData から生成
+    if (currentSaveData) {
+      return {
+        user_id: currentUserProfile.id,
+        level: currentSaveData.level || 1,
+        xp: currentSaveData.xp || 0,
+        collected_cards: currentSaveData.collectedCards || [],
+        best_time_seconds: currentSaveData.bestTimeSeconds ?? null,
+        wrong_terms: currentSaveData.wrongTerms || [],
+        stats: currentSaveData.stats || { attempts: 0, wins: 0, termStats: {} },
+        updated_at: new Date().toISOString(),
+      };
+    }
+    return null;
+  }, [students, currentUserProfile, currentSaveData]);
+
+  // 先生自身の Overview オブジェクト
+  const teacherOverview = useMemo<StudentOverview | null>(() => {
+    if (!currentUserProfile) return null;
+    return {
+      profile: {
+        ...currentUserProfile,
+        role: 'admin',
+      },
+      saveData: teacherSaveDataRow,
+    };
+  }, [currentUserProfile, teacherSaveDataRow]);
+
+  // 先生自身のデータを含む全リスト
+  const studentsWithTeacher = useMemo<StudentOverview[]>(() => {
+    if (!teacherOverview) return students;
+    const exists = students.some(s => s.profile.id === teacherOverview.profile.id);
+    if (!exists) {
+      return [teacherOverview, ...students];
+    }
+    // 既に存在する場合は最新のセーブデータで上書き
+    return students.map(s => s.profile.id === teacherOverview.profile.id ? teacherOverview : s);
+  }, [students, teacherOverview]);
+
+  const rlsFixSQL = `-- Supabase SQL Editorで実行してください（無限再帰エラー解消＆全機能開放用）
+-- 1. profiles テーブル（生徒プロフィール閲覧用）
 DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
 DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
 DROP POLICY IF EXISTS "Allow all authenticated to read profiles" ON profiles;
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 
--- 認証済みユーザーにprofilesの閲覧を許可（無限再帰防止）
 CREATE POLICY "Allow all authenticated to read profiles"
 ON profiles FOR SELECT
 TO authenticated
-USING ( true );`;
+USING ( true );
+
+CREATE POLICY "Users can update own profile"
+ON profiles FOR UPDATE
+TO authenticated
+USING ( auth.uid() = id );
+
+-- 2. game_saves テーブル（先生ダッシュボード集計＆生徒セーブ用）
+DROP POLICY IF EXISTS "Users can view own game save" ON game_saves;
+DROP POLICY IF EXISTS "Users can insert own game save" ON game_saves;
+DROP POLICY IF EXISTS "Users can update own game save" ON game_saves;
+DROP POLICY IF EXISTS "Admins can view all game saves" ON game_saves;
+DROP POLICY IF EXISTS "Allow all authenticated to read game_saves" ON game_saves;
+
+CREATE POLICY "Allow all authenticated to read game_saves"
+ON game_saves FOR SELECT
+TO authenticated
+USING ( true );
+
+CREATE POLICY "Users can insert own game save"
+ON game_saves FOR INSERT
+TO authenticated
+WITH CHECK ( auth.uid() = user_id );
+
+CREATE POLICY "Users can update own game save"
+ON game_saves FOR UPDATE
+TO authenticated
+USING ( auth.uid() = user_id );`;
 
   const handleCopySQL = () => {
     navigator.clipboard.writeText(rlsFixSQL);
@@ -159,7 +238,13 @@ USING ( true );`;
 
   // 検索・フィルタリング・ソート
   const filteredStudents = useMemo(() => {
-    let result = students.filter(item => {
+    let result = studentsWithTeacher.filter(item => {
+      // 区分フィルター
+      const isTeacher = item.profile.id === currentUserProfile?.id || item.profile.role === 'admin';
+      if (roleFilter === 'students' && isTeacher) return false;
+      if (roleFilter === 'teacher' && !isTeacher) return false;
+
+      // 検索クエリ
       const name = (item.profile.display_name || '').toLowerCase();
       const email = (item.profile.email || '').toLowerCase();
       const q = searchQuery.toLowerCase().trim();
@@ -167,6 +252,10 @@ USING ( true );`;
     });
 
     result.sort((a, b) => {
+      // 先生自身（ログイン中のアカウント）を最優先にする場合、またはソート基準
+      if (a.profile.id === currentUserProfile?.id && roleFilter === 'all') return -1;
+      if (b.profile.id === currentUserProfile?.id && roleFilter === 'all') return 1;
+
       let valA = 0;
       let valB = 0;
 
@@ -189,7 +278,7 @@ USING ( true );`;
     });
 
     return result;
-  }, [students, searchQuery, sortBy, sortOrder]);
+  }, [studentsWithTeacher, searchQuery, sortBy, sortOrder, roleFilter, currentUserProfile]);
 
   // CSVエクスポート
   const handleExportCSV = () => {
@@ -202,7 +291,7 @@ USING ( true );`;
         `"${s.profile.student_name || ''}"`,
         `"${s.profile.display_name || '未設定'}"`,
         `"${s.profile.email || ''}"`,
-        `"${s.profile.role}"`,
+        `"${s.profile.id === currentUserProfile?.id ? '先生（ログイン中）' : s.profile.role}"`,
         s.saveData?.level || 1,
         s.saveData?.xp || 0,
         s.saveData?.collected_cards?.length || 0,
@@ -218,7 +307,7 @@ USING ( true );`;
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `生徒学習データ一覧_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `学習進捗データ_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -243,15 +332,15 @@ USING ( true );`;
             </div>
             <div>
               <h1 className="text-sm font-bold text-slate-100 leading-none">先生用 管理ダッシュボード</h1>
-              <span className="text-[10px] text-slate-400">全生徒の学習進捗・成績の閲覧・分析</span>
+              <span className="text-[10px] text-slate-400">学習進捗・成績・先生ご自身のデータ閲覧</span>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           <div className="text-right hidden sm:block">
-            <div className="text-xs font-medium text-slate-200">{currentUserProfile.display_name || '管理者'}</div>
-            <div className="text-[10px] text-amber-400/90 font-mono">{currentUserProfile.email} (admin)</div>
+            <div className="text-xs font-medium text-slate-200">{currentUserProfile?.display_name || '管理者（先生）'}</div>
+            <div className="text-[10px] text-amber-400/90 font-mono">{currentUserProfile?.email} (admin)</div>
           </div>
           <button
             onClick={loadStudents}
@@ -274,6 +363,92 @@ USING ( true );`;
 
       {/* メインコンテンツ */}
       <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-6">
+        {/* 先生（あなた自身）のアカウント＆プレイデータ カード */}
+        {teacherOverview && (
+          <div className="bg-gradient-to-br from-amber-500/10 via-slate-900 to-slate-900 border-2 border-amber-500/40 p-5 rounded-2xl shadow-xl space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-black text-lg shadow-md">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-black text-slate-100">
+                      {teacherOverview.profile.student_year && teacherOverview.profile.student_name
+                        ? `${teacherOverview.profile.student_year}年${teacherOverview.profile.student_class}組${teacherOverview.profile.student_no}番 ${teacherOverview.profile.student_name}`
+                        : teacherOverview.profile.display_name || '先生のアカウント'}
+                    </h2>
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black tracking-wider uppercase">
+                      先生（あなた）のデータ
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 font-mono mt-0.5">
+                    {teacherOverview.profile.email}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSelectedStudent(teacherOverview)}
+                className="py-2 px-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>自分の詳細データ・カード一覧を見る</span>
+              </button>
+            </div>
+
+            {/* 先生の学習・プレイ状況ステータスグリッド */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1 border-t border-amber-500/20">
+              <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                <span className="text-[10px] text-slate-400 block mb-0.5">レベル・経験値</span>
+                <span className="text-base font-bold text-amber-400">
+                  Lv.{teacherOverview.saveData?.level || 1}
+                </span>
+                <span className="text-[10px] text-slate-500 ml-1.5">
+                  ({teacherOverview.saveData?.xp || 0} XP)
+                </span>
+              </div>
+
+              <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                <span className="text-[10px] text-slate-400 block mb-0.5">収集カード数</span>
+                <span className="text-base font-bold text-emerald-400">
+                  {teacherOverview.saveData?.collected_cards?.length || 0}
+                </span>
+                <span className="text-[10px] text-slate-500 ml-1">枚</span>
+              </div>
+
+              <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                <span className="text-[10px] text-slate-400 block mb-0.5">最速クリアタイム</span>
+                <span className="text-base font-bold text-cyan-400 font-mono">
+                  {teacherOverview.saveData?.best_time_seconds != null
+                    ? `${Math.floor(teacherOverview.saveData.best_time_seconds / 60)}分${teacherOverview.saveData.best_time_seconds % 60}秒`
+                    : '未記録'}
+                </span>
+              </div>
+
+              <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                <span className="text-[10px] text-slate-400 block mb-0.5">勝率 / 挑戦回数</span>
+                <span className="text-base font-bold text-purple-400">
+                  {(teacherOverview.saveData?.stats?.attempts || 0) > 0
+                    ? `${Math.round(((teacherOverview.saveData?.stats?.wins || 0) / teacherOverview.saveData!.stats!.attempts) * 100)}%`
+                    : '-'}
+                </span>
+                <span className="text-[10px] text-slate-500 ml-1">
+                  ({teacherOverview.saveData?.stats?.wins || 0}勝 / {teacherOverview.saveData?.stats?.attempts || 0}戦)
+                </span>
+              </div>
+
+              <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800 col-span-2 sm:col-span-1">
+                <span className="text-[10px] text-slate-400 block mb-0.5">復習用語（誤答）</span>
+                <span className="text-base font-bold text-red-400">
+                  {teacherOverview.saveData?.wrong_terms?.length || 0}
+                </span>
+                <span className="text-[10px] text-slate-500 ml-1">件</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 概要カード群 */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm">
@@ -281,7 +456,10 @@ USING ( true );`;
               <span>登録生徒数</span>
               <Users className="w-4 h-4 text-blue-400" />
             </div>
-            <div className="text-2xl font-bold text-slate-100">{students.length}<span className="text-xs font-normal text-slate-500 ml-1">名</span></div>
+            <div className="text-2xl font-bold text-slate-100">
+              {students.filter(s => s.profile.id !== currentUserProfile?.id && s.profile.role !== 'admin').length}
+              <span className="text-xs font-normal text-slate-500 ml-1">名</span>
+            </div>
           </div>
 
           <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm">
@@ -322,10 +500,44 @@ USING ( true );`;
           </div>
         </div>
 
-        {/* コントロールバー（検索・ソート） */}
+        {/* コントロールバー（検索・ソート・タブフィルター） */}
         <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4">
+          {/* タブ切り替え（全員・生徒のみ・先生自身） */}
+          <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+            <button
+              onClick={() => setRoleFilter('all')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                roleFilter === 'all'
+                  ? 'bg-amber-500 text-slate-950 shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              全員を表示 ({studentsWithTeacher.length})
+            </button>
+            <button
+              onClick={() => setRoleFilter('students')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                roleFilter === 'students'
+                  ? 'bg-amber-500 text-slate-950 shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              生徒のみ ({studentsWithTeacher.filter(s => s.profile.id !== currentUserProfile?.id && s.profile.role !== 'admin').length})
+            </button>
+            <button
+              onClick={() => setRoleFilter('teacher')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                roleFilter === 'teacher'
+                  ? 'bg-amber-500 text-slate-950 shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              先生（あなた）
+            </button>
+          </div>
+
           {/* 検索 */}
-          <div className="relative flex-1 min-w-[240px]">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
@@ -407,17 +619,31 @@ USING ( true );`;
                     const attempts = save?.stats?.attempts || 0;
                     const wins = save?.stats?.wins || 0;
                     const winRate = attempts > 0 ? Math.round((wins / attempts) * 100) : 0;
+                    const isSelf = item.profile.id === currentUserProfile?.id;
 
                     return (
                       <tr
                         key={item.profile.id}
                         onClick={() => setSelectedStudent(item)}
-                        className="hover:bg-slate-800/50 cursor-pointer transition"
+                        className={`cursor-pointer transition ${
+                          isSelf 
+                            ? 'bg-amber-500/10 hover:bg-amber-500/15 border-l-4 border-l-amber-500' 
+                            : 'hover:bg-slate-800/50'
+                        }`}
                       >
                         <td className="py-3.5 px-4">
-                          <div className="font-semibold text-slate-100 flex items-center gap-1.5">
-                            {item.profile.display_name || '（名前未設定）'}
-                            {item.profile.role === 'admin' && (
+                          <div className="font-semibold text-slate-100 flex items-center gap-1.5 flex-wrap">
+                            <span>
+                              {item.profile.student_year && item.profile.student_name
+                                ? `${item.profile.student_year}年${item.profile.student_class}組${item.profile.student_no}番 ${item.profile.student_name}`
+                                : item.profile.display_name || '（名前未設定）'}
+                            </span>
+                            {isSelf && (
+                              <span className="px-2 py-0.5 rounded bg-amber-500 text-slate-950 text-[10px] font-black tracking-wide">
+                                ⭐ あなた（先生）
+                              </span>
+                            )}
+                            {!isSelf && item.profile.role === 'admin' && (
                               <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[10px] font-bold">
                                 先生
                               </span>
@@ -506,11 +732,21 @@ USING ( true );`;
                 Lv.{selectedStudent.saveData?.level || 1}
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                  {selectedStudent.profile.display_name || '名前未設定'}
-                  <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
-                    {selectedStudent.profile.role}
+                <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2 flex-wrap">
+                  <span>
+                    {selectedStudent.profile.student_year && selectedStudent.profile.student_name
+                      ? `${selectedStudent.profile.student_year}年${selectedStudent.profile.student_class}組${selectedStudent.profile.student_no}番 ${selectedStudent.profile.student_name}`
+                      : selectedStudent.profile.display_name || '名前未設定'}
                   </span>
+                  {selectedStudent.profile.id === currentUserProfile?.id ? (
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black">
+                      ⭐ あなた（先生）
+                    </span>
+                  ) : (
+                    <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
+                      {selectedStudent.profile.role === 'admin' ? '先生' : '生徒'}
+                    </span>
+                  )}
                 </h3>
                 <p className="text-xs text-slate-400 font-mono mt-0.5">
                   {selectedStudent.profile.email} (ID: {selectedStudent.profile.id.slice(0, 8)}...)
@@ -598,6 +834,47 @@ USING ( true );`;
                 </div>
               </div>
             )}
+
+            {/* 収集済み魔導書カード一覧 */}
+            <div className="mb-4">
+              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+                <span>収集した魔導書カード: {selectedStudent.saveData?.collected_cards?.length || 0}枚</span>
+              </h4>
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 max-h-52 overflow-y-auto">
+                {selectedStudent.saveData?.collected_cards && selectedStudent.saveData.collected_cards.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {selectedStudent.saveData.collected_cards.map((cardId) => {
+                      const card = TERM_CARDS.find(c => c.id === cardId);
+                      const rarity = card?.rarity || 'C';
+                      const rarityColors: Record<string, string> = {
+                        C: 'bg-slate-800 text-slate-300 border-slate-700',
+                        UC: 'bg-emerald-950/80 text-emerald-300 border-emerald-700/50',
+                        R: 'bg-blue-950/80 text-blue-300 border-blue-700/50',
+                        SR: 'bg-purple-950/80 text-purple-300 border-purple-700/50',
+                        UR: 'bg-amber-950/80 text-amber-300 border-amber-500/50',
+                        LG: 'bg-yellow-400 text-slate-950 font-black border-yellow-300',
+                      };
+                      return (
+                        <div
+                          key={cardId}
+                          className="flex items-center gap-2 p-2 bg-slate-900/90 border border-slate-800 rounded-lg text-xs"
+                        >
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border ${rarityColors[rarity] || rarityColors.C}`}>
+                            {rarity}
+                          </span>
+                          <span className="font-semibold text-slate-200 truncate">
+                            {card?.name || cardId}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 text-center py-3">収集したカードはまだありません</p>
+                )}
+              </div>
+            </div>
 
             <div className="mt-6 flex justify-end">
               <button
