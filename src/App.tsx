@@ -15,10 +15,13 @@ import TrainingScreen from './components/TrainingScreen';
 import TimeAttackScreen from './components/TimeAttackScreen';
 import StoryUnlockModal from './components/StoryUnlockModal';
 import { SoundToggleButton } from './components/SoundToggleButton';
+import { AuthModal } from './components/AuthModal';
+import { AdminDashboard } from './components/AdminDashboard';
 import { secureStorage } from './utils/secureStorage';
 import { STORY_CARDS, StoryCard } from './data/stories';
+import { supabase, getUserProfile, getGameSave, upsertGameSave } from './lib/supabaseClient';
 
-import { PlayerState, BattleState, MapNode, NodeType, RawProblem, TermCard, ActiveProblem, GameStats } from './types';
+import { PlayerState, BattleState, MapNode, NodeType, RawProblem, TermCard, ActiveProblem, GameStats, SaveData, UserProfile } from './types';
 import { quizCategories, RAW_PROBLEMS, TERM_CARDS } from './data/problems';
 import { AREA_LOCATIONS, MONSTER_POOLS } from './data/monsters';
 import { practicalQuestions } from './data/practicalQuestions';
@@ -35,15 +38,6 @@ import {
   getDailySeed,
   shuffleArrayWithSeed
 } from './utils/gameHelpers';
-
-interface SaveData {
-  level: number;
-  xp: number;
-  collectedCards: string[];
-  bestTimeSeconds: number | null;
-  wrongTerms: string[]; // 優先習得用の誤答リスト
-  stats?: GameStats;
-}
 
 export default function App() {
   // ----------------------------------------------------
@@ -71,9 +65,16 @@ export default function App() {
   };
 
   // ----------------------------------------------------
+  // ユーザー認証・管理者ステート (Supabase)
+  // ----------------------------------------------------
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+
+  // ----------------------------------------------------
   // ゲームのメインステート
   // ----------------------------------------------------
-  const [screen, setScreen] = useState<'title' | 'battle' | 'result' | 'collection' | 'loot' | 'stats' | 'training-hub' | 'time-attack'>('title');
+  const [screen, setScreen] = useState<'title' | 'battle' | 'result' | 'collection' | 'loot' | 'stats' | 'training-hub' | 'time-attack' | 'admin'>('title');
   const [activeTrainingMode, setActiveTrainingMode] = useState<'category' | 'subcategory' | 'drill' | 'daily_challenge' | null>(null);
   const [dailyChallengeLootCount, setDailyChallengeLootCount] = useState<number>(1);
   const [trainingClusterId, setTrainingClusterId] = useState<string | null>(null);
@@ -174,14 +175,70 @@ export default function App() {
   };
 
   // ----------------------------------------------------
-  // ローカルストレージバインド
+  // ルーティング（/admin URL直接アクセス検知）
   // ----------------------------------------------------
-  const loadSaveData = () => {
+  useEffect(() => {
+    const checkAdminRoute = () => {
+      if (window.location.pathname === '/admin' || window.location.hash === '#admin') {
+        setScreen('admin');
+      }
+    };
+    checkAdminRoute();
+    window.addEventListener('popstate', checkAdminRoute);
+    window.addEventListener('hashchange', checkAdminRoute);
+    return () => {
+      window.removeEventListener('popstate', checkAdminRoute);
+      window.removeEventListener('hashchange', checkAdminRoute);
+    };
+  }, []);
+
+  // ----------------------------------------------------
+  // セーブデータ（Supabaseクラウド同期 & ローカルキャッシュ）
+  // ----------------------------------------------------
+  const loadSaveData = async (targetUserId?: string | null) => {
     try {
-      const dataStr = secureStorage.getItem('it-rogue-save-data');
-      if (dataStr) {
-        const parsed = JSON.parse(dataStr) as SaveData;
-        const collected = parsed.collectedCards || [];
+      const uid = targetUserId !== undefined ? targetUserId : currentUser?.id;
+      let dataToApply: SaveData | null = null;
+
+      // 1. ログイン中の場合：Supabaseのgame_savesテーブルから取得
+      if (uid) {
+        const cloudSave = await getGameSave(uid);
+        if (cloudSave) {
+          dataToApply = {
+            level: cloudSave.level || 1,
+            xp: cloudSave.xp || 0,
+            collectedCards: cloudSave.collected_cards || [],
+            bestTimeSeconds: cloudSave.best_time_seconds,
+            wrongTerms: cloudSave.wrong_terms || [],
+            stats: cloudSave.stats || { attempts: 0, wins: 0, termStats: {} }
+          };
+          // ローカルキャッシュも最新化
+          secureStorage.setItem('it-rogue-save-data', JSON.stringify(dataToApply));
+        } else {
+          // 初回ログイン：ローカルに既存データがあればそれをクラウドにアップロードして引き継ぐ
+          const localStr = secureStorage.getItem('it-rogue-save-data');
+          if (localStr) {
+            try {
+              const localParsed = JSON.parse(localStr) as SaveData;
+              dataToApply = localParsed;
+              await upsertGameSave(uid, localParsed);
+            } catch (e) {
+              console.error('Error migrating local save to cloud:', e);
+            }
+          }
+        }
+      }
+
+      // 2. クラウドにデータが無い、または未ログイン（ゲスト）の場合：ローカルキャッシュから復元
+      if (!dataToApply) {
+        const dataStr = secureStorage.getItem('it-rogue-save-data');
+        if (dataStr) {
+          dataToApply = JSON.parse(dataStr) as SaveData;
+        }
+      }
+
+      if (dataToApply) {
+        const collected = dataToApply.collectedCards || [];
         const mhp = getPlayerMaxHp(1, collected, []);
         const atk = getPlayerAttack(1, collected, []);
         setPlayer(prev => ({
@@ -195,10 +252,10 @@ export default function App() {
           hp: mhp,
           attack: atk
         }));
-        setBestTime(parsed.bestTimeSeconds || null);
-        setWrongTerms(parsed.wrongTerms || []);
-        if (parsed.stats) {
-          setGameStats(parsed.stats);
+        setBestTime(dataToApply.bestTimeSeconds || null);
+        setWrongTerms(dataToApply.wrongTerms || []);
+        if (dataToApply.stats) {
+          setGameStats(dataToApply.stats);
         }
       }
 
@@ -231,16 +288,57 @@ export default function App() {
         wrongTerms: updatedWrong,
         stats: statsOverride ?? gameStats
       };
+
+      // 1. ローカルキャッシュに即時保存（オフラインでもゲームが継続可能）
       secureStorage.setItem('it-rogue-save-data', JSON.stringify(dataToSave));
+
+      // 2. ログインユーザーが存在する場合はSupabaseクラウドへ非同期同期
+      if (currentUser?.id) {
+        upsertGameSave(currentUser.id, dataToSave).catch(err => {
+          console.error('Failed to sync save data to Supabase:', err);
+        });
+      }
     } catch (e) {
       console.error('Error saving data:', e);
     }
   };
 
+  // ----------------------------------------------------
+  // 認証セッション監視 & 初期データロード
+  // ----------------------------------------------------
   useEffect(() => {
-    loadSaveData();
-    
-    // アプリ起動時の魔導書レベル初期値を安全に計算してセット
+    let isMounted = true;
+
+    // 初期セッションチェック
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!isMounted) return;
+      if (session?.user) {
+        setCurrentUser(session.user);
+        const profile = await getUserProfile(session.user.id);
+        if (isMounted) setCurrentUserProfile(profile);
+        await loadSaveData(session.user.id);
+      } else {
+        await loadSaveData(null);
+      }
+      setHasLoaded(true);
+    });
+
+    // 認証ステートの変更リスナー
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+      if (session?.user) {
+        setCurrentUser(session.user);
+        const profile = await getUserProfile(session.user.id);
+        if (isMounted) setCurrentUserProfile(profile);
+        await loadSaveData(session.user.id);
+      } else {
+        setCurrentUser(null);
+        setCurrentUserProfile(null);
+        await loadSaveData(null);
+      }
+    });
+
+    // アプリ起動時の魔導書レベル初期値を計算してセット
     try {
       const dataStr = secureStorage.getItem('it-rogue-save-data');
       let collected: string[] = [];
@@ -253,8 +351,23 @@ export default function App() {
     } catch (e) {
       prevCollectorLevelRef.current = 1;
     }
-    setHasLoaded(true);
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setCurrentUser(null);
+      setCurrentUserProfile(null);
+      await loadSaveData(null);
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
 
   // 魔導書レベルアップ時のストーリーカード解放検知
   useEffect(() => {
@@ -1512,6 +1625,25 @@ export default function App() {
           onInstallApp={handleInstallApp}
           isDailyDone={isDailyChallengeCompleted}
           isTimeAttackUnlocked={isTimeAttackUnlocked}
+          userProfile={currentUserProfile}
+          onOpenAuth={() => setIsAuthModalOpen(true)}
+          onLogout={handleLogout}
+          onOpenAdmin={() => {
+            setScreen('admin');
+            window.history.pushState({}, '', '/admin');
+          }}
+        />
+      )}
+
+      {screen === 'admin' && (
+        <AdminDashboard
+          currentUserProfile={currentUserProfile}
+          onBackToGame={() => {
+            setScreen('title');
+            if (window.location.pathname === '/admin') {
+              window.history.pushState({}, '', '/');
+            }
+          }}
         />
       )}
 
@@ -1630,6 +1762,21 @@ export default function App() {
           onClose={() => setUnlockedStories(null)}
         />
       )}
+
+      {/* 認証モーダル */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            setCurrentUser(session.user);
+            const profile = await getUserProfile(session.user.id);
+            setCurrentUserProfile(profile);
+            await loadSaveData(session.user.id);
+          }
+        }}
+      />
     </div>
   );
 }

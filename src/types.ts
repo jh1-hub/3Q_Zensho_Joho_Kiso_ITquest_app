@@ -150,3 +150,38 @@ export interface GameStats {
   dailyChallengeWins?: number;
 }
 
+export interface SaveData {
+  level: number;
+  xp: number;
+  collectedCards: string[];
+  bestTimeSeconds: number | null;
+  wrongTerms: string[];
+  stats?: GameStats;
+}
+
+export type UserRole = 'student' | 'admin';
+
+export interface UserProfile {
+  id: string;
+  email: string | null;
+  display_name: string | null;
+  role: UserRole;
+  created_at?: string;
+}
+
+export interface GameSaveRow {
+  user_id: string;
+  level: number;
+  xp: number;
+  collected_cards: string[];
+  best_time_seconds: number | null;
+  wrong_terms: string[];
+  stats: GameStats;
+  updated_at?: string;
+}
+
+export interface StudentOverview {
+  profile: UserProfile;
+  saveData: GameSaveRow | null;
+}
+

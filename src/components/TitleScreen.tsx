@@ -4,8 +4,9 @@
  */
 
 import React from 'react';
-import { Skull, Award, Play, Library, Zap, BookOpen, Swords, Flame, Download, Timer } from 'lucide-react';
+import { Skull, Award, Play, Library, Zap, BookOpen, Swords, Flame, Download, Timer, User, LogIn, LogOut, ShieldCheck } from 'lucide-react';
 import { TERM_CARDS } from '../data/problems';
+import type { UserProfile } from '../types';
 
 interface TitleScreenProps {
   collectedCardIds: string[];
@@ -20,6 +21,10 @@ interface TitleScreenProps {
   onInstallApp?: () => void;
   isDailyDone: boolean;
   isTimeAttackUnlocked: boolean;
+  userProfile?: UserProfile | null;
+  onOpenAuth?: () => void;
+  onLogout?: () => void;
+  onOpenAdmin?: () => void;
 }
 
 export default function TitleScreen({
@@ -34,7 +39,11 @@ export default function TitleScreen({
   installPrompt,
   onInstallApp,
   isDailyDone,
-  isTimeAttackUnlocked
+  isTimeAttackUnlocked,
+  userProfile,
+  onOpenAuth,
+  onLogout,
+  onOpenAdmin
 }: TitleScreenProps) {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -168,9 +177,62 @@ export default function TitleScreen({
       <div className="absolute -top-12 -right-12 w-64 h-64 bg-yellow-200/50 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute -bottom-12 -left-12 w-64 h-64 bg-emerald-200/50 rounded-full blur-3xl pointer-events-none"></div>
 
-      {/* トップレール */}
-      {installPrompt && onInstallApp ? (
-        <div className="max-w-4xl w-full mx-auto flex justify-end items-center z-10 border-b border-blue-100 pb-2.5 mb-4">
+      {/* トップレール（ユーザー認証 & PWAインストール） */}
+      <div className="max-w-4xl w-full mx-auto flex flex-wrap justify-between items-center z-10 border-b border-blue-200/60 pb-2.5 mb-4 gap-2">
+        {/* ユーザーアカウント状態 */}
+        <div className="flex items-center gap-2">
+          {userProfile ? (
+            <div className="flex items-center gap-2 bg-white/80 backdrop-blur border border-blue-200 py-1 px-2.5 rounded-xl shadow-xs">
+              <div className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
+                <User size={13} />
+              </div>
+              <div className="text-left">
+                <div className="text-[11px] font-bold text-slate-800 leading-none flex items-center gap-1">
+                  <span>{userProfile.display_name || '冒険者'}</span>
+                  {userProfile.role === 'admin' && (
+                    <span className="bg-amber-100 text-amber-800 text-[9px] px-1 py-0.2 rounded font-bold">
+                      先生
+                    </span>
+                  )}
+                </div>
+                <div className="text-[9px] text-slate-500 font-mono">クラウド同期中</div>
+              </div>
+
+              {/* 管理者ボタン */}
+              {userProfile.role === 'admin' && onOpenAdmin && (
+                <button
+                  onClick={onOpenAdmin}
+                  className="ml-1 flex items-center gap-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[10px] px-2 py-1 rounded-lg shadow-xs transition"
+                >
+                  <ShieldCheck size={12} />
+                  <span>管理画面</span>
+                </button>
+              )}
+
+              {/* ログアウトボタン */}
+              {onLogout && (
+                <button
+                  onClick={onLogout}
+                  className="ml-1 text-slate-400 hover:text-slate-600 p-1 rounded transition"
+                  title="ログアウト"
+                >
+                  <LogOut size={13} />
+                </button>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={onOpenAuth}
+              className="flex items-center gap-1.5 bg-white/90 hover:bg-white text-blue-900 font-bold text-xs px-3 py-1.5 rounded-xl border border-blue-300 shadow-xs hover:shadow transition active:scale-95"
+            >
+              <LogIn size={13} className="text-blue-600" />
+              <span>ログイン / クラウド保存</span>
+            </button>
+          )}
+        </div>
+
+        {/* PWAインストールボタン */}
+        {installPrompt && onInstallApp ? (
           <button
             onClick={onInstallApp}
             className="flex items-center gap-1 bg-gradient-to-r from-yellow-500 to-amber-500 text-yellow-950 font-black text-[11px] px-2.5 py-1 rounded-lg border border-yellow-300 shadow-md hover:scale-[1.03] active:scale-95 transition-all cursor-pointer select-none"
@@ -179,8 +241,8 @@ export default function TitleScreen({
             <Download size={11} className="animate-bounce" />
             <span>アプリをインストール</span>
           </button>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
 
       {/* メインヒーロー領域 */}
       <div className="max-w-4xl w-full mx-auto flex flex-col items-center text-center my-auto py-8 z-10 gap-6">
