@@ -19,7 +19,7 @@ import { AuthModal } from './components/AuthModal';
 import { AdminDashboard } from './components/AdminDashboard';
 import { secureStorage } from './utils/secureStorage';
 import { STORY_CARDS, StoryCard } from './data/stories';
-import { supabase, getUserProfile, getGameSave, upsertGameSave, mergeSaveData } from './lib/supabaseClient';
+import { supabase, getUserProfile, getGameSave, upsertGameSave, mergeSaveData, ensureUserRecordExists } from './lib/supabaseClient';
 
 import { PlayerState, BattleState, MapNode, NodeType, RawProblem, TermCard, ActiveProblem, GameStats, SaveData, UserProfile } from './types';
 import { quizCategories, RAW_PROBLEMS, TERM_CARDS } from './data/problems';
@@ -386,6 +386,8 @@ export default function App() {
       let loadedProfile: UserProfile | null = null;
       if (session?.user) {
         setCurrentUser(session.user);
+        // DB上のプロフィール＆初期セーブレコードの存在を確実に保証
+        await ensureUserRecordExists(session.user.id, session.user.email, session.user.user_metadata);
         loadedProfile = await getUserProfile(session.user.id);
         if (isMounted) setCurrentUserProfile(loadedProfile);
         await loadSaveData(session.user.id);
@@ -418,6 +420,7 @@ export default function App() {
       if (!isMounted) return;
       if (session?.user) {
         setCurrentUser(session.user);
+        await ensureUserRecordExists(session.user.id, session.user.email, session.user.user_metadata);
         const profile = await getUserProfile(session.user.id);
         if (isMounted) setCurrentUserProfile(profile);
         await loadSaveData(session.user.id);
@@ -826,7 +829,7 @@ export default function App() {
     setGameStats(prev => {
       const updated = { ...prev, attempts: prev.attempts + 1 };
       nextStats = updated;
-      saveToStorage(player.collectedCards, bestTime, [], 1, 0, updated);
+      saveToStorage(player.collectedCards, bestTime, wrongTerms, 1, 0, updated);
       return updated;
     });
     

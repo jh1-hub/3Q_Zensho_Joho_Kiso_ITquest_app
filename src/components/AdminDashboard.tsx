@@ -2,11 +2,87 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, Search, ArrowLeft, RefreshCw, Download, 
   Award, Clock, AlertTriangle, ShieldCheck, BookOpen, 
-  CheckCircle2, X, ChevronRight, BarChart3, Filter, Copy, Key, UserCheck, Flame
+  CheckCircle2, X, ChevronRight, BarChart3, Filter, Copy, Key, UserCheck, Flame, Trophy, Swords
 } from 'lucide-react';
 import type { StudentOverview, UserProfile, GameSaveRow, SaveData } from '../types';
 import { fetchAllStudentsOverview, promoteToAdmin } from '../lib/supabaseClient';
 import { TERM_CARDS } from '../data/problems';
+import { calculateCollectorLevel } from '../utils/gameHelpers';
+
+export interface StudentMetrics {
+  bookLevel: number;
+  cardsCount: number;
+  uniqueCount: number;
+  collectionRate: number;
+  attempts: number;
+  wins: number;
+  winRate: number;
+  totalQuestions: number;
+  totalCorrect: number;
+  accuracy: number;
+  grade: 'S' | 'A' | 'B' | 'C';
+  bestTimeSeconds: number | null;
+  wrongTermsCount: number;
+}
+
+export function getStudentMetrics(save?: GameSaveRow | null): StudentMetrics {
+  const cards = save?.collected_cards || [];
+  const bookLevel = calculateCollectorLevel(cards);
+  const attempts = save?.stats?.attempts || 0;
+  const wins = save?.stats?.wins || 0;
+  const winRate = attempts > 0 ? Math.round((wins / attempts) * 100) : 0;
+
+  let totalQuestions = 0;
+  let totalCorrect = 0;
+  Object.values(save?.stats?.termStats || {}).forEach((t: any) => {
+    totalQuestions += (t.attemptCount || 0);
+    totalCorrect += (t.correctCount || 0);
+  });
+  const accuracy = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+
+  const totalCardsCount = TERM_CARDS.length;
+  const uniqueCount = Array.from(new Set(cards)).length;
+  const collectionRate = totalCardsCount > 0 ? Math.round((uniqueCount / totalCardsCount) * 100) : 0;
+
+  let grade: 'S' | 'A' | 'B' | 'C' = 'C';
+  if (collectionRate >= 90 && accuracy >= 85) {
+    grade = 'S';
+  } else if (collectionRate >= 70 || accuracy >= 80) {
+    grade = 'A';
+  } else if (collectionRate >= 40 || accuracy >= 60) {
+    grade = 'B';
+  }
+
+  return {
+    bookLevel,
+    cardsCount: cards.length,
+    uniqueCount,
+    collectionRate,
+    attempts,
+    wins,
+    winRate,
+    totalQuestions,
+    totalCorrect,
+    accuracy,
+    grade,
+    bestTimeSeconds: save?.best_time_seconds ?? null,
+    wrongTermsCount: save?.wrong_terms?.length || 0,
+  };
+}
+
+export function getGradeBadgeStyle(grade: 'S' | 'A' | 'B' | 'C') {
+  switch (grade) {
+    case 'S':
+      return 'bg-amber-400/20 text-amber-300 border-amber-400/50 shadow-xs shadow-amber-400/20';
+    case 'A':
+      return 'bg-blue-500/20 text-blue-300 border-blue-400/50';
+    case 'B':
+      return 'bg-purple-500/20 text-purple-300 border-purple-400/50';
+    case 'C':
+    default:
+      return 'bg-slate-700/50 text-slate-300 border-slate-600/50';
+  }
+}
 
 interface AdminDashboardProps {
   currentUserProfile: UserProfile | null;
@@ -23,7 +99,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedStudent, setSelectedStudent] = useState<StudentOverview | null>(null);
-  const [sortBy, setSortBy] = useState<'level' | 'cards' | 'updated' | 'name'>('updated');
+  const [sortBy, setSortBy] = useState<'bookLevel' | 'cards' | 'attempts' | 'wins' | 'accuracy' | 'time' | 'updated' | 'name'>('updated');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [roleFilter, setRoleFilter] = useState<'all' | 'students' | 'teacher'>('all');
   const [isPromoting, setIsPromoting] = useState<boolean>(false);
@@ -114,43 +190,130 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     return students.map(s => s.profile.id === teacherOverview.profile.id ? teacherOverview : s);
   }, [students, teacherOverview]);
 
-  const rlsFixSQL = `-- Supabase SQL Editorで実行してください（無限再帰エラー解消＆全機能開放用）
--- 1. profiles テーブル（生徒プロフィール閲覧用）
+  const rlsFixSQL = `-- ============================================================
+-- Supabase SQL Editorで実行してください（テーブル完全作成＆全自動同期＆RLS開放用）
+-- ============================================================
+
+-- 1. profiles テーブル（生徒・先生のプロフィール管理）
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  email TEXT,
+  display_name TEXT,
+  role TEXT DEFAULT 'student',
+  student_year TEXT,
+  student_class TEXT,
+  student_no TEXT,
+  student_name TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 既存テーブルがある場合の不足カラム自動追加
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS student_year TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS student_class TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS student_no TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS student_name TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+
+-- 2. game_saves テーブル（生徒の永続学習統計・カード・クリア記録）
+CREATE TABLE IF NOT EXISTS public.game_saves (
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  level INT DEFAULT 1,
+  xp INT DEFAULT 0,
+  collected_cards TEXT[] DEFAULT '{}',
+  best_time_seconds INT,
+  wrong_terms TEXT[] DEFAULT '{}',
+  stats JSONB DEFAULT '{"attempts":0,"wins":0,"termStats":{}}'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 既存テーブルがある場合の不足カラム自動追加
+ALTER TABLE public.game_saves ADD COLUMN IF NOT EXISTS stats JSONB DEFAULT '{"attempts":0,"wins":0,"termStats":{}}'::jsonb;
+ALTER TABLE public.game_saves ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+
+-- 3. 自動連携トリガー：auth.users にアカウント作成された瞬間、自動で public.profiles と game_saves に登録！
+-- ※ メール確認前であっても、即座に先生画面に生徒として反映されます
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, display_name, role, student_year, student_class, student_no, student_name)
+  VALUES (
+    new.id,
+    new.email,
+    COALESCE(new.raw_user_meta_data->>'display_name', new.email),
+    COALESCE(new.raw_user_meta_data->>'role', 'student'),
+    new.raw_user_meta_data->>'student_year',
+    new.raw_user_meta_data->>'student_class',
+    new.raw_user_meta_data->>'student_no',
+    new.raw_user_meta_data->>'student_name'
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    display_name = COALESCE(EXCLUDED.display_name, profiles.display_name),
+    student_year = COALESCE(EXCLUDED.student_year, profiles.student_year),
+    student_class = COALESCE(EXCLUDED.student_class, profiles.student_class),
+    student_no = COALESCE(EXCLUDED.student_no, profiles.student_no),
+    student_name = COALESCE(EXCLUDED.student_name, profiles.student_name);
+
+  INSERT INTO public.game_saves (user_id, collected_cards, stats)
+  VALUES (new.id, '{}', '{"attempts":0,"wins":0,"termStats":{}}'::jsonb)
+  ON CONFLICT (user_id) DO NOTHING;
+
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+-- 4. RLS（行セキュリティ）の有効化と完全ポリシー設定
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.game_saves ENABLE ROW LEVEL SECURITY;
+
+-- profiles ポリシー
+DROP POLICY IF EXISTS "Allow all authenticated to read profiles" ON profiles;
+DROP POLICY IF EXISTS "Users can insert own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON profiles;
 DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
 DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
-DROP POLICY IF EXISTS "Allow all authenticated to read profiles" ON profiles;
-DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON profiles;
-DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 
 CREATE POLICY "Allow all authenticated to read profiles"
-ON profiles FOR SELECT
+ON public.profiles FOR SELECT
 TO authenticated
 USING ( true );
 
+CREATE POLICY "Users can insert own profile"
+ON public.profiles FOR INSERT
+TO authenticated
+WITH CHECK ( auth.uid() = id );
+
 CREATE POLICY "Users can update own profile"
-ON profiles FOR UPDATE
+ON public.profiles FOR UPDATE
 TO authenticated
 USING ( auth.uid() = id );
 
--- 2. game_saves テーブル（先生ダッシュボード集計＆生徒セーブ用）
-DROP POLICY IF EXISTS "Users can view own game save" ON game_saves;
+-- game_saves ポリシー
+DROP POLICY IF EXISTS "Allow all authenticated to read game_saves" ON game_saves;
 DROP POLICY IF EXISTS "Users can insert own game save" ON game_saves;
 DROP POLICY IF EXISTS "Users can update own game save" ON game_saves;
 DROP POLICY IF EXISTS "Admins can view all game saves" ON game_saves;
-DROP POLICY IF EXISTS "Allow all authenticated to read game_saves" ON game_saves;
+DROP POLICY IF EXISTS "Users can view own game save" ON game_saves;
 
 CREATE POLICY "Allow all authenticated to read game_saves"
-ON game_saves FOR SELECT
+ON public.game_saves FOR SELECT
 TO authenticated
 USING ( true );
 
 CREATE POLICY "Users can insert own game save"
-ON game_saves FOR INSERT
+ON public.game_saves FOR INSERT
 TO authenticated
 WITH CHECK ( auth.uid() = user_id );
 
 CREATE POLICY "Users can update own game save"
-ON game_saves FOR UPDATE
+ON public.game_saves FOR UPDATE
 TO authenticated
 USING ( auth.uid() = user_id );`;
 
@@ -247,8 +410,9 @@ USING ( auth.uid() = user_id );`;
       // 検索クエリ
       const name = (item.profile.display_name || '').toLowerCase();
       const email = (item.profile.email || '').toLowerCase();
+      const sName = (item.profile.student_name || '').toLowerCase();
       const q = searchQuery.toLowerCase().trim();
-      return !q || name.includes(q) || email.includes(q);
+      return !q || name.includes(q) || email.includes(q) || sName.includes(q);
     });
 
     result.sort((a, b) => {
@@ -256,21 +420,37 @@ USING ( auth.uid() = user_id );`;
       if (a.profile.id === currentUserProfile?.id && roleFilter === 'all') return -1;
       if (b.profile.id === currentUserProfile?.id && roleFilter === 'all') return 1;
 
+      const metA = getStudentMetrics(a.saveData);
+      const metB = getStudentMetrics(b.saveData);
+
       let valA = 0;
       let valB = 0;
 
-      if (sortBy === 'level') {
-        valA = a.saveData?.level || 1;
-        valB = b.saveData?.level || 1;
+      if (sortBy === 'bookLevel') {
+        valA = metA.bookLevel;
+        valB = metB.bookLevel;
       } else if (sortBy === 'cards') {
-        valA = a.saveData?.collected_cards?.length || 0;
-        valB = b.saveData?.collected_cards?.length || 0;
+        valA = metA.cardsCount;
+        valB = metB.cardsCount;
+      } else if (sortBy === 'attempts') {
+        valA = metA.attempts;
+        valB = metB.attempts;
+      } else if (sortBy === 'wins') {
+        valA = metA.wins;
+        valB = metB.wins;
+      } else if (sortBy === 'accuracy') {
+        valA = metA.accuracy;
+        valB = metB.accuracy;
+      } else if (sortBy === 'time') {
+        const timeA = metA.bestTimeSeconds !== null ? metA.bestTimeSeconds : 999999;
+        const timeB = metB.bestTimeSeconds !== null ? metB.bestTimeSeconds : 999999;
+        return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
       } else if (sortBy === 'updated') {
         valA = a.saveData?.updated_at ? new Date(a.saveData.updated_at).getTime() : 0;
         valB = b.saveData?.updated_at ? new Date(b.saveData.updated_at).getTime() : 0;
       } else if (sortBy === 'name') {
-        const nameA = a.profile.display_name || a.profile.email || '';
-        const nameB = b.profile.display_name || b.profile.email || '';
+        const nameA = a.profile.student_name || a.profile.display_name || a.profile.email || '';
+        const nameB = b.profile.student_name || b.profile.display_name || b.profile.email || '';
         return sortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
       }
 
@@ -282,8 +462,14 @@ USING ( auth.uid() = user_id );`;
 
   // CSVエクスポート
   const handleExportCSV = () => {
-    const headers = ['学年', '組', '番号', '氏名', '表示名', 'メールアドレス（ユーザID）', '区分', 'レベル', '経験値', '収集カード数', '最速クリア秒', '総挑戦数', '総勝利数', '最終更新日時'];
+    const headers = [
+      '学年', '組', '番号', '氏名', '表示名', 'メールアドレス（ユーザID）', '区分',
+      '魔導書レベル', '収集カード数', 'カード収集率(%)', '挑戦回数', 'クリア回数',
+      'クリア勝率(%)', '解答問題数', '総合正答率(%)', '最速クリア秒', '復習用語数',
+      '学修評価グレード', '最終更新日時'
+    ];
     const rows = filteredStudents.map(s => {
+      const met = getStudentMetrics(s.saveData);
       return [
         `"${s.profile.student_year || ''}"`,
         `"${s.profile.student_class || ''}"`,
@@ -292,12 +478,17 @@ USING ( auth.uid() = user_id );`;
         `"${s.profile.display_name || '未設定'}"`,
         `"${s.profile.email || ''}"`,
         `"${s.profile.id === currentUserProfile?.id ? '先生（ログイン中）' : s.profile.role}"`,
-        s.saveData?.level || 1,
-        s.saveData?.xp || 0,
-        s.saveData?.collected_cards?.length || 0,
-        s.saveData?.best_time_seconds != null ? s.saveData.best_time_seconds : '未記録',
-        s.saveData?.stats?.attempts || 0,
-        s.saveData?.stats?.wins || 0,
+        met.bookLevel,
+        met.cardsCount,
+        `"${met.collectionRate}%"`,
+        met.attempts,
+        met.wins,
+        `"${met.winRate}%"`,
+        met.totalQuestions,
+        `"${met.accuracy}%"`,
+        met.bestTimeSeconds != null ? met.bestTimeSeconds : '未記録',
+        met.wrongTermsCount,
+        `"${met.grade}"`,
         `"${s.saveData?.updated_at ? new Date(s.saveData.updated_at).toLocaleString('ja-JP') : '未プレイ'}"`
       ].join(',');
     });
@@ -398,54 +589,58 @@ USING ( auth.uid() = user_id );`;
             </div>
 
             {/* 先生の学習・プレイ状況ステータスグリッド */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1 border-t border-amber-500/20">
-              <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
-                <span className="text-[10px] text-slate-400 block mb-0.5">レベル・経験値</span>
-                <span className="text-base font-bold text-amber-400">
-                  Lv.{teacherOverview.saveData?.level || 1}
-                </span>
-                <span className="text-[10px] text-slate-500 ml-1.5">
-                  ({teacherOverview.saveData?.xp || 0} XP)
-                </span>
-              </div>
+            {(() => {
+              const tm = getStudentMetrics(teacherOverview.saveData);
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1 border-t border-amber-500/20">
+                  <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block mb-0.5">評価 / 魔導書Lv</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${getGradeBadgeStyle(tm.grade)}`}>
+                        {tm.grade}
+                      </span>
+                      <span className="text-base font-bold text-amber-400">
+                        Lv.{tm.bookLevel}
+                      </span>
+                    </div>
+                  </div>
 
-              <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
-                <span className="text-[10px] text-slate-400 block mb-0.5">収集カード数</span>
-                <span className="text-base font-bold text-emerald-400">
-                  {teacherOverview.saveData?.collected_cards?.length || 0}
-                </span>
-                <span className="text-[10px] text-slate-500 ml-1">枚</span>
-              </div>
+                  <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block mb-0.5">カード収集率</span>
+                    <span className="text-base font-bold text-emerald-400">
+                      {tm.collectionRate}%
+                    </span>
+                    <span className="text-[10px] text-slate-500 ml-1">({tm.uniqueCount}種)</span>
+                  </div>
 
-              <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
-                <span className="text-[10px] text-slate-400 block mb-0.5">最速クリアタイム</span>
-                <span className="text-base font-bold text-cyan-400 font-mono">
-                  {teacherOverview.saveData?.best_time_seconds != null
-                    ? `${Math.floor(teacherOverview.saveData.best_time_seconds / 60)}分${teacherOverview.saveData.best_time_seconds % 60}秒`
-                    : '未記録'}
-                </span>
-              </div>
+                  <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block mb-0.5">挑戦 / クリア</span>
+                    <span className="text-base font-bold text-purple-400">
+                      {tm.wins}勝 / {tm.attempts}戦
+                    </span>
+                    <span className="text-[10px] text-slate-500 ml-1">({tm.winRate}%)</span>
+                  </div>
 
-              <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
-                <span className="text-[10px] text-slate-400 block mb-0.5">勝率 / 挑戦回数</span>
-                <span className="text-base font-bold text-purple-400">
-                  {(teacherOverview.saveData?.stats?.attempts || 0) > 0
-                    ? `${Math.round(((teacherOverview.saveData?.stats?.wins || 0) / teacherOverview.saveData!.stats!.attempts) * 100)}%`
-                    : '-'}
-                </span>
-                <span className="text-[10px] text-slate-500 ml-1">
-                  ({teacherOverview.saveData?.stats?.wins || 0}勝 / {teacherOverview.saveData?.stats?.attempts || 0}戦)
-                </span>
-              </div>
+                  <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block mb-0.5">正答率 / 最速タイム</span>
+                    <div className="text-sm font-bold text-cyan-400 font-mono">
+                      {tm.totalQuestions > 0 ? `${tm.accuracy}%` : '-'}
+                      <span className="text-[11px] text-slate-400 font-sans ml-1">
+                        ({tm.bestTimeSeconds != null ? `${Math.floor(tm.bestTimeSeconds / 60)}分${tm.bestTimeSeconds % 60}秒` : '-'})
+                      </span>
+                    </div>
+                  </div>
 
-              <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800 col-span-2 sm:col-span-1">
-                <span className="text-[10px] text-slate-400 block mb-0.5">復習用語（誤答）</span>
-                <span className="text-base font-bold text-red-400">
-                  {teacherOverview.saveData?.wrong_terms?.length || 0}
-                </span>
-                <span className="text-[10px] text-slate-500 ml-1">件</span>
-              </div>
-            </div>
+                  <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800 col-span-2 sm:col-span-1">
+                    <span className="text-[10px] text-slate-400 block mb-0.5">復習用語（誤答）</span>
+                    <span className="text-base font-bold text-red-400">
+                      {tm.wrongTermsCount}
+                    </span>
+                    <span className="text-[10px] text-slate-500 ml-1">件</span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -464,27 +659,27 @@ USING ( auth.uid() = user_id );`;
 
           <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm">
             <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
-              <span>平均レベル</span>
+              <span>平均魔導書レベル</span>
               <Award className="w-4 h-4 text-amber-400" />
             </div>
             <div className="text-2xl font-bold text-amber-400">
               {students.length > 0 
-                ? (students.reduce((acc, s) => acc + (s.saveData?.level || 1), 0) / students.length).toFixed(1)
-                : 0}
+                ? (students.reduce((acc, s) => acc + getStudentMetrics(s.saveData).bookLevel, 0) / students.length).toFixed(1)
+                : '1.0'}
               <span className="text-xs font-normal text-slate-500 ml-1">Lv</span>
             </div>
           </div>
 
           <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm">
             <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
-              <span>平均カード収集数</span>
+              <span>平均カード収集率</span>
               <BookOpen className="w-4 h-4 text-emerald-400" />
             </div>
             <div className="text-2xl font-bold text-emerald-400">
               {students.length > 0 
-                ? (students.reduce((acc, s) => acc + (s.saveData?.collected_cards?.length || 0), 0) / students.length).toFixed(1)
+                ? (students.reduce((acc, s) => acc + getStudentMetrics(s.saveData).collectionRate, 0) / students.length).toFixed(0)
                 : 0}
-              <span className="text-xs font-normal text-slate-500 ml-1">種</span>
+              <span className="text-xs font-normal text-slate-500 ml-1">%</span>
             </div>
           </div>
 
@@ -566,9 +761,13 @@ USING ( auth.uid() = user_id );`;
               className="bg-slate-950 border border-slate-700/80 rounded-xl text-xs px-2.5 py-2 text-slate-200 focus:outline-none focus:border-amber-500"
             >
               <option value="updated">最終更新日時</option>
-              <option value="level">レベル</option>
+              <option value="bookLevel">魔導書レベル</option>
               <option value="cards">収集カード数</option>
-              <option value="name">表示名</option>
+              <option value="attempts">挑戦回数</option>
+              <option value="wins">クリア回数</option>
+              <option value="accuracy">問題正答率</option>
+              <option value="time">最速クリアタイム</option>
+              <option value="name">生徒氏名</option>
             </select>
 
             <button
@@ -587,12 +786,14 @@ USING ( auth.uid() = user_id );`;
             <table className="w-full text-left text-xs text-slate-300">
               <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider border-b border-slate-800 font-semibold">
                 <tr>
-                  <th className="py-3.5 px-4">表示名 / メール</th>
+                  <th className="py-3.5 px-4">年組番・氏名 / メール</th>
                   <th className="py-3.5 px-4 text-center">区分</th>
-                  <th className="py-3.5 px-4 text-center">レベル</th>
+                  <th className="py-3.5 px-4 text-center">評価</th>
+                  <th className="py-3.5 px-4 text-center">魔導書Lv</th>
                   <th className="py-3.5 px-4 text-center">収集カード</th>
-                  <th className="py-3.5 px-4 text-center">最速クリア</th>
-                  <th className="py-3.5 px-4 text-center">勝率 (勝利/挑戦)</th>
+                  <th className="py-3.5 px-4 text-center">挑戦 / クリア</th>
+                  <th className="py-3.5 px-4 text-center">正答率</th>
+                  <th className="py-3.5 px-4 text-center">最速タイム</th>
                   <th className="py-3.5 px-4 text-right">最終更新</th>
                   <th className="py-3.5 px-4 text-center">詳細</th>
                 </tr>
@@ -600,7 +801,7 @@ USING ( auth.uid() = user_id );`;
               <tbody className="divide-y divide-slate-800/60 font-sans">
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-500">
+                    <td colSpan={10} className="py-12 text-center text-slate-500">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
                         <span>データを読み込み中...</span>
@@ -609,16 +810,14 @@ USING ( auth.uid() = user_id );`;
                   </tr>
                 ) : filteredStudents.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-500">
+                    <td colSpan={10} className="py-12 text-center text-slate-500">
                       該当する生徒が見つかりませんでした。
                     </td>
                   </tr>
                 ) : (
                   filteredStudents.map((item) => {
                     const save = item.saveData;
-                    const attempts = save?.stats?.attempts || 0;
-                    const wins = save?.stats?.wins || 0;
-                    const winRate = attempts > 0 ? Math.round((wins / attempts) * 100) : 0;
+                    const met = getStudentMetrics(save);
                     const isSelf = item.profile.id === currentUserProfile?.id;
 
                     return (
@@ -665,35 +864,50 @@ USING ( auth.uid() = user_id );`;
                         </td>
 
                         <td className="py-3.5 px-4 text-center">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-black ${getGradeBadgeStyle(met.grade)}`}>
+                            {met.grade}
+                          </span>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-center">
                           <span className="font-bold text-amber-400 text-sm">
-                            Lv.{save?.level || 1}
+                            Lv.{met.bookLevel}
                           </span>
                         </td>
 
                         <td className="py-3.5 px-4 text-center">
                           <span className="font-semibold text-emerald-400">
-                            {save?.collected_cards?.length || 0}
+                            {met.uniqueCount}
                           </span>
-                          <span className="text-slate-500 text-[10px]"> 枚</span>
-                        </td>
-
-                        <td className="py-3.5 px-4 text-center font-mono">
-                          {save?.best_time_seconds != null ? (
-                            <span className="text-cyan-400 font-medium">
-                              {Math.floor(save.best_time_seconds / 60)}分{(save.best_time_seconds % 60).toString().padStart(2, '0')}秒
-                            </span>
-                          ) : (
-                            <span className="text-slate-600">-</span>
-                          )}
+                          <span className="text-slate-500 text-[10px]">種 ({met.collectionRate}%)</span>
                         </td>
 
                         <td className="py-3.5 px-4 text-center">
                           <div className="font-medium text-slate-200">
-                            {attempts > 0 ? `${winRate}%` : '-'}
+                            {met.wins}勝 / {met.attempts}戦
+                          </div>
+                          <div className="text-[10px] text-purple-400 font-bold">
+                            勝率 {met.winRate}%
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-center">
+                          <div className="font-semibold text-blue-400">
+                            {met.totalQuestions > 0 ? `${met.accuracy}%` : '-'}
                           </div>
                           <div className="text-[10px] text-slate-500">
-                            ({wins} / {attempts})
+                            ({met.totalCorrect}/{met.totalQuestions})
                           </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-center font-mono">
+                          {met.bestTimeSeconds != null ? (
+                            <span className="text-cyan-400 font-medium">
+                              {Math.floor(met.bestTimeSeconds / 60)}分{(met.bestTimeSeconds % 60).toString().padStart(2, '0')}秒
+                            </span>
+                          ) : (
+                            <span className="text-slate-600">-</span>
+                          )}
                         </td>
 
                         <td className="py-3.5 px-4 text-right text-slate-400 text-[11px]">
@@ -716,67 +930,103 @@ USING ( auth.uid() = user_id );`;
       </main>
 
       {/* 個別生徒の詳細分析モーダル */}
-      {selectedStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl text-slate-100 max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setSelectedStudent(null)}
-              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition"
-            >
-              <X className="w-5 h-5" />
-            </button>
+      {selectedStudent && (() => {
+        const studentMet = getStudentMetrics(selectedStudent.saveData);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+            <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl text-slate-100 max-h-[90vh] overflow-y-auto">
+              <button
+                onClick={() => setSelectedStudent(null)}
+                className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
 
-            {/* ヘッダー情報 */}
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-xl font-bold">
-                Lv.{selectedStudent.saveData?.level || 1}
+              {/* ヘッダー情報 */}
+              <div className="flex items-center gap-3 mb-6">
+                <div className={`px-3 py-2 rounded-2xl flex flex-col items-center justify-center border font-black ${getGradeBadgeStyle(studentMet.grade)}`}>
+                  <span className="text-[10px] uppercase tracking-wider font-semibold">評価</span>
+                  <span className="text-xl leading-none font-black">GRADE {studentMet.grade}</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2 flex-wrap">
+                    <span>
+                      {selectedStudent.profile.student_year && selectedStudent.profile.student_name
+                        ? `${selectedStudent.profile.student_year}年${selectedStudent.profile.student_class}組${selectedStudent.profile.student_no}番 ${selectedStudent.profile.student_name}`
+                        : selectedStudent.profile.display_name || '名前未設定'}
+                    </span>
+                    {selectedStudent.profile.id === currentUserProfile?.id ? (
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black">
+                        ⭐ あなた（先生）
+                      </span>
+                    ) : (
+                      <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
+                        {selectedStudent.profile.role === 'admin' ? '先生' : '生徒'}
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-slate-400 font-mono mt-0.5">
+                    {selectedStudent.profile.email} (ID: {selectedStudent.profile.id.slice(0, 8)}...)
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2 flex-wrap">
-                  <span>
-                    {selectedStudent.profile.student_year && selectedStudent.profile.student_name
-                      ? `${selectedStudent.profile.student_year}年${selectedStudent.profile.student_class}組${selectedStudent.profile.student_no}番 ${selectedStudent.profile.student_name}`
-                      : selectedStudent.profile.display_name || '名前未設定'}
+
+              {/* 進捗ステータス（ていしゅつ画面相当の学習記録） */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                  <span className="text-[10px] text-slate-400 block mb-1">魔導書レベル</span>
+                  <span className="text-base font-bold text-amber-400 font-mono">
+                    Lv.{studentMet.bookLevel}
                   </span>
-                  {selectedStudent.profile.id === currentUserProfile?.id ? (
-                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black">
-                      ⭐ あなた（先生）
-                    </span>
-                  ) : (
-                    <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
-                      {selectedStudent.profile.role === 'admin' ? '先生' : '生徒'}
-                    </span>
-                  )}
-                </h3>
-                <p className="text-xs text-slate-400 font-mono mt-0.5">
-                  {selectedStudent.profile.email} (ID: {selectedStudent.profile.id.slice(0, 8)}...)
-                </p>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">
+                    ({studentMet.uniqueCount}種収集)
+                  </span>
+                </div>
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                  <span className="text-[10px] text-slate-400 block mb-1">カード収集率</span>
+                  <span className="text-base font-bold text-emerald-400 font-mono">
+                    {studentMet.collectionRate}%
+                  </span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">
+                    ({studentMet.uniqueCount} / {TERM_CARDS.length}種)
+                  </span>
+                </div>
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                  <span className="text-[10px] text-slate-400 block mb-1">挑戦 / クリア</span>
+                  <span className="text-base font-bold text-purple-400 font-mono">
+                    {studentMet.wins}勝 / {studentMet.attempts}戦
+                  </span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">
+                    (勝率: {studentMet.winRate}%)
+                  </span>
+                </div>
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                  <span className="text-[10px] text-slate-400 block mb-1">問題総合正答率</span>
+                  <span className="text-base font-bold text-blue-400 font-mono">
+                    {studentMet.totalQuestions > 0 ? `${studentMet.accuracy}%` : '-'}
+                  </span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">
+                    ({studentMet.totalCorrect}/{studentMet.totalQuestions}問)
+                  </span>
+                </div>
               </div>
-            </div>
 
-            {/* 進捗ステータス */}
-            <div className="grid grid-cols-3 gap-3 mb-6">
-              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
-                <span className="text-[10px] text-slate-400 block mb-1">獲得経験値</span>
-                <span className="text-base font-bold text-amber-400 font-mono">
-                  {selectedStudent.saveData?.xp || 0} XP
-                </span>
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                  <span className="text-[10px] text-slate-400 block mb-1">最速クリアタイム</span>
+                  <span className="text-base font-bold text-cyan-400 font-mono">
+                    {studentMet.bestTimeSeconds != null
+                      ? `${Math.floor(studentMet.bestTimeSeconds / 60)}分${studentMet.bestTimeSeconds % 60}秒`
+                      : '未達成'}
+                  </span>
+                </div>
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                  <span className="text-[10px] text-slate-400 block mb-1">復習優先用語（誤答）</span>
+                  <span className="text-base font-bold text-red-400 font-mono">
+                    {studentMet.wrongTermsCount} 件
+                  </span>
+                </div>
               </div>
-              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
-                <span className="text-[10px] text-slate-400 block mb-1">収集カード</span>
-                <span className="text-base font-bold text-emerald-400 font-mono">
-                  {selectedStudent.saveData?.collected_cards?.length || 0} 枚
-                </span>
-              </div>
-              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
-                <span className="text-[10px] text-slate-400 block mb-1">最速クリアタイム</span>
-                <span className="text-base font-bold text-cyan-400 font-mono">
-                  {selectedStudent.saveData?.best_time_seconds != null
-                    ? `${Math.floor(selectedStudent.saveData.best_time_seconds / 60)}分${selectedStudent.saveData.best_time_seconds % 60}秒`
-                    : '未達成'}
-                </span>
-              </div>
-            </div>
 
             {/* 苦手な用語（誤答リスト） */}
             <div className="mb-6">
@@ -886,7 +1136,8 @@ USING ( auth.uid() = user_id );`;
             </div>
           </div>
         </div>
-      )}
+      );
+    })()}
     </div>
   );
 };

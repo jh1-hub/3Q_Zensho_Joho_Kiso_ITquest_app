@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import type { UserProfile, GameSaveRow, SaveData, StudentOverview } from '../types';
+import type { UserProfile, GameSaveRow, SaveData, StudentOverview, GameStats, TermStat, TrainingStats } from '../types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://oeutpjgtfztqfcocqtcf.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ldXRwamd0Znp0cWZjb2NxdGNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2OTU1OTgsImV4cCI6MjEwNDI3MTU5OH0.FyxN2db_TvPd54PbklXxd6NX2LSBotcw99c2Vy_MAVs';
@@ -140,9 +140,14 @@ export async function updateUserProfile(
       }
     });
 
-    // 2. profiles テーブルの更新（カラムが存在する場合に備えて安全に更新）
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // 2. profiles テーブルへの upsert（行が存在しなければ確実に新規作成）
     const profilePayload: any = {
+      id: userId,
+      email: user?.email || null,
       display_name: dispName,
+      updated_at: new Date().toISOString(),
     };
     if (year !== undefined) profilePayload.student_year = year;
     if (cls !== undefined) profilePayload.student_class = cls;
@@ -151,22 +156,105 @@ export async function updateUserProfile(
 
     const { error } = await supabase
       .from('profiles')
-      .update(profilePayload)
-      .eq('id', userId);
+      .upsert(profilePayload, { onConflict: 'id' });
 
     if (error) {
-      console.warn('profiles table update warning (may lack custom columns, user_metadata saved):', error);
-      // profilesのカラム定義にstudent_year等がない場合はdisplay_nameだけ更新を試行
+      console.warn('profiles table upsert warning (fallback to basic columns):', error);
+      // profilesのカラム定義にstudent_year等がない場合はidとdisplay_nameだけupsertを試行
       await supabase
         .from('profiles')
-        .update({ display_name: dispName })
-        .eq('id', userId);
+        .upsert({ id: userId, email: user?.email || null, display_name: dispName }, { onConflict: 'id' });
     }
 
     return true;
   } catch (err) {
     console.error('Failed to update user profile:', err);
     return false;
+  }
+}
+
+/**
+  ユーザーの初期レコード（profiles および game_saves）がDBに存在することを保証する
+ */
+export async function ensureUserRecordExists(
+  userId: string,
+  email?: string | null,
+  meta?: any
+): Promise<void> {
+  try {
+    const year = meta?.student_year ?? '';
+    const cls = meta?.student_class ?? '';
+    const no = meta?.student_no ?? '';
+    const name = meta?.student_name ?? '';
+    let dispName = meta?.display_name ?? '';
+    if (!dispName && name) {
+      dispName = year && cls && no ? `${year}年${cls}組${no}番 ${name}` : name;
+    }
+    const role = meta?.role || 'student';
+
+    // 1. profiles への upsert
+    const profilePayload: any = {
+      id: userId,
+      email: email || null,
+      display_name: dispName || null,
+      role,
+      updated_at: new Date().toISOString(),
+    };
+    if (year) profilePayload.student_year = year;
+    if (cls) profilePayload.student_class = cls;
+    if (no) profilePayload.student_no = no;
+    if (name) profilePayload.student_name = name;
+
+    const { error: pErr } = await supabase
+      .from('profiles')
+      .upsert(profilePayload, { onConflict: 'id' });
+
+    if (pErr) {
+      await supabase
+        .from('profiles')
+        .upsert({ id: userId, email: email || null, display_name: dispName || null, role }, { onConflict: 'id' });
+    }
+
+    // 2. game_saves への初期レコード保証（既存データが無ければ初期作成）
+    const { data: existingSave } = await supabase
+      .from('game_saves')
+      .select('user_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (!existingSave) {
+      const initialStats: GameStats = {
+        attempts: 0,
+        wins: 0,
+        termStats: {},
+        trainingStats: {
+          categoryAttempts: { '1': 0, '2': 0, '3': 0 },
+          categoryCorrects: { '1': 0, '2': 0, '3': 0 },
+          categoryWins: { '1': 0, '2': 0, '3': 0, 'drill': 0 },
+          subcategoryAttempts: {},
+          subcategoryCorrects: {},
+          subcategoryWins: {},
+          drillAttempts: 0,
+          drillCorrects: 0,
+          drillWins: 0,
+        }
+      };
+
+      await supabase
+        .from('game_saves')
+        .upsert({
+          user_id: userId,
+          level: 1,
+          xp: 0,
+          collected_cards: [],
+          best_time_seconds: null,
+          wrong_terms: [],
+          stats: initialStats,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+    }
+  } catch (err) {
+    console.warn('ensureUserRecordExists warning:', err);
   }
 }
 
@@ -188,13 +276,79 @@ export function mergeSaveData(a: SaveData | null, b: SaveData | null, ownerId?: 
     bestTime = a.bestTimeSeconds ?? b.bestTimeSeconds ?? null;
   }
 
-  const mergedStats = {
-    attempts: Math.max(a.stats?.attempts || 0, b.stats?.attempts || 0),
-    wins: Math.max(a.stats?.wins || 0, b.stats?.wins || 0),
-    termStats: {
-      ...(a.stats?.termStats || {}),
-      ...(b.stats?.termStats || {}),
+  // 挑戦回数 & クリア回数（ていしゅつ画面で重要な総合記録）
+  const attempts = Math.max(a.stats?.attempts || 0, b.stats?.attempts || 0);
+  const wins = Math.max(a.stats?.wins || 0, b.stats?.wins || 0);
+
+  // 用語別正誤統計（回答数と正解数の深いマージ）
+  const mergedTermStats: Record<string, TermStat> = {};
+  const allTermIds = new Set([
+    ...Object.keys(a.stats?.termStats || {}),
+    ...Object.keys(b.stats?.termStats || {})
+  ]);
+  for (const tid of allTermIds) {
+    const statA = a.stats?.termStats?.[tid];
+    const statB = b.stats?.termStats?.[tid];
+    mergedTermStats[tid] = {
+      attemptCount: Math.max(statA?.attemptCount || 0, statB?.attemptCount || 0),
+      correctCount: Math.max(statA?.correctCount || 0, statB?.correctCount || 0),
+    };
+  }
+
+  // シラバス大分類・小分類別マスタリー統計の深いマージ
+  const trA = a.stats?.trainingStats;
+  const trB = b.stats?.trainingStats;
+  const mergedTrainingStats: TrainingStats = {
+    categoryAttempts: {
+      '1': Math.max(trA?.categoryAttempts?.['1'] || 0, trB?.categoryAttempts?.['1'] || 0),
+      '2': Math.max(trA?.categoryAttempts?.['2'] || 0, trB?.categoryAttempts?.['2'] || 0),
+      '3': Math.max(trA?.categoryAttempts?.['3'] || 0, trB?.categoryAttempts?.['3'] || 0),
     },
+    categoryCorrects: {
+      '1': Math.max(trA?.categoryCorrects?.['1'] || 0, trB?.categoryCorrects?.['1'] || 0),
+      '2': Math.max(trA?.categoryCorrects?.['2'] || 0, trB?.categoryCorrects?.['2'] || 0),
+      '3': Math.max(trA?.categoryCorrects?.['3'] || 0, trB?.categoryCorrects?.['3'] || 0),
+    },
+    categoryWins: {
+      '1': Math.max(trA?.categoryWins?.['1'] || 0, trB?.categoryWins?.['1'] || 0),
+      '2': Math.max(trA?.categoryWins?.['2'] || 0, trB?.categoryWins?.['2'] || 0),
+      '3': Math.max(trA?.categoryWins?.['3'] || 0, trB?.categoryWins?.['3'] || 0),
+      'drill': Math.max(trA?.categoryWins?.['drill'] || 0, trB?.categoryWins?.['drill'] || 0),
+    },
+    subcategoryAttempts: {},
+    subcategoryCorrects: {},
+    subcategoryWins: {},
+    drillAttempts: Math.max(trA?.drillAttempts || 0, trB?.drillAttempts || 0),
+    drillCorrects: Math.max(trA?.drillCorrects || 0, trB?.drillCorrects || 0),
+    drillWins: Math.max(trA?.drillWins || 0, trB?.drillWins || 0),
+  };
+
+  const allSubIds = new Set([
+    ...Object.keys(trA?.subcategoryAttempts || {}),
+    ...Object.keys(trB?.subcategoryAttempts || {})
+  ]);
+  for (const sid of allSubIds) {
+    if (mergedTrainingStats.subcategoryAttempts) {
+      mergedTrainingStats.subcategoryAttempts[sid] = Math.max(
+        trA?.subcategoryAttempts?.[sid] || 0,
+        trB?.subcategoryAttempts?.[sid] || 0
+      );
+    }
+    if (mergedTrainingStats.subcategoryCorrects) {
+      mergedTrainingStats.subcategoryCorrects[sid] = Math.max(
+        trA?.subcategoryCorrects?.[sid] || 0,
+        trB?.subcategoryCorrects?.[sid] || 0
+      );
+    }
+  }
+
+  const mergedStats: GameStats = {
+    attempts,
+    wins,
+    termStats: mergedTermStats,
+    trainingStats: mergedTrainingStats,
+    dailyChallengeAttempts: Math.max(a.stats?.dailyChallengeAttempts || 0, b.stats?.dailyChallengeAttempts || 0) || undefined,
+    dailyChallengeWins: Math.max(a.stats?.dailyChallengeWins || 0, b.stats?.dailyChallengeWins || 0) || undefined,
     timeAttackHighScore: Math.max(a.stats?.timeAttackHighScore || 0, b.stats?.timeAttackHighScore || 0) || undefined,
     timeAttackMaxCombo: Math.max(a.stats?.timeAttackMaxCombo || 0, b.stats?.timeAttackMaxCombo || 0) || undefined,
   };
@@ -388,35 +542,35 @@ export async function fetchAllStudentsOverview(): Promise<StudentOverview[]> {
       });
     }
 
-    // もし profiles が取得できた場合は profiles をベースに結合
-    if (profiles.length > 0) {
-      const overviews: StudentOverview[] = profiles.map((p: any) => ({
-        profile: p as UserProfile,
-        saveData: saveMap.get(p.id) || null,
-      }));
-      return overviews;
+    // profiles が取得できた場合は profiles をベースに結合 + profiles に未登録の saves も合算
+    const profileIds = new Set(profiles.map((p: any) => p.id));
+    const overviews: StudentOverview[] = profiles.map((p: any) => ({
+      profile: p as UserProfile,
+      saveData: saveMap.get(p.id) || null,
+    }));
+
+    if (saves) {
+      saves.forEach((s: any) => {
+        if (!profileIds.has(s.user_id)) {
+          overviews.push({
+            profile: {
+              id: s.user_id,
+              email: null,
+              display_name: `生徒 (${s.user_id.slice(0, 6)})`,
+              role: 'student',
+              student_year: null,
+              student_class: null,
+              student_no: null,
+              student_name: null,
+              created_at: s.updated_at,
+            },
+            saveData: s as GameSaveRow,
+          });
+        }
+      });
     }
 
-    // もし profiles が RLS 等で取得できなかったが saves がある場合、saves から一覧を生成
-    if (saves && saves.length > 0) {
-      const overviews: StudentOverview[] = saves.map((s: any) => ({
-        profile: {
-          id: s.user_id,
-          email: null,
-          display_name: `生徒 (${s.user_id.slice(0, 6)})`,
-          role: 'student',
-          student_year: null,
-          student_class: null,
-          student_no: null,
-          student_name: null,
-          created_at: s.updated_at,
-        },
-        saveData: s as GameSaveRow,
-      }));
-      return overviews;
-    }
-
-    return [];
+    return overviews;
   } catch (err) {
     console.error('Failed to fetch all students overview:', err);
     return [];

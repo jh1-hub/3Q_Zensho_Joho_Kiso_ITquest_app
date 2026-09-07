@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LogIn, UserPlus, Mail, Lock, User, X, AlertCircle, CheckCircle2, Shield, School, Hash, BookOpen, Eye, EyeOff, RefreshCw, HelpCircle, Send } from 'lucide-react';
-import { supabase, updateUserProfile, getUserProfile } from '../lib/supabaseClient';
+import { supabase, updateUserProfile, getUserProfile, ensureUserRecordExists } from '../lib/supabaseClient';
 import { secureStorage } from '../utils/secureStorage';
 
 interface AuthModalProps {
@@ -131,8 +131,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           throw error;
         }
 
-        // ログインしたユーザーの生徒情報をローカルストレージへ同期
+        // ログインしたユーザーの生徒情報をローカルストレージへ同期 & DBレコードを確実に保証
         if (data.user) {
+          await ensureUserRecordExists(data.user.id, data.user.email, data.user.user_metadata);
           const profile = await getUserProfile(data.user.id);
           if (profile) {
             const studentInfo = {
@@ -198,16 +199,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         secureStorage.setItem('it-rogue-student-info', JSON.stringify(studentInfo));
 
         // もしすでにセッションがある場合（メール確認不要の環境、またはAuto-confirm）
-        if (data.session) {
-          if (data.user) {
-            await updateUserProfile(data.user.id, {
-              student_year: studentInfo.year,
-              student_class: studentInfo.class,
-              student_no: studentInfo.no,
-              student_name: studentInfo.name,
-              display_name: formattedDisplayName
-            });
-          }
+        if (data.session && data.user) {
+          await updateUserProfile(data.user.id, {
+            student_year: studentInfo.year,
+            student_class: studentInfo.class,
+            student_no: studentInfo.no,
+            student_name: studentInfo.name,
+            display_name: formattedDisplayName
+          });
+          await ensureUserRecordExists(data.user.id, data.user.email, {
+            student_year: studentInfo.year,
+            student_class: studentInfo.class,
+            student_no: studentInfo.no,
+            student_name: studentInfo.name,
+            display_name: formattedDisplayName,
+          });
 
           setSuccessMessage('ユーザー登録が完了しました！自動ログインしました。');
           setTimeout(() => {
