@@ -4,11 +4,12 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Award, Trophy, TrendingUp, CheckCircle, HelpCircle, Swords, BookOpen, AlertCircle, FileText, Download, Printer, User, RefreshCw, X, Timer, Flame } from 'lucide-react';
-import { GameStats, TermCard } from '../types';
+import { ArrowLeft, Award, Trophy, TrendingUp, CheckCircle, HelpCircle, Swords, BookOpen, AlertCircle, FileText, Download, Printer, User, RefreshCw, X, Timer, Flame, CloudCheck, Cloud } from 'lucide-react';
+import { GameStats, TermCard, UserProfile } from '../types';
 import { TERM_CARDS, quizCategories, CLUSTERS } from '../data/problems';
 import { getTermEmoji } from '../utils/gameHelpers';
 import { secureStorage } from '../utils/secureStorage';
+import { updateUserProfile } from '../lib/supabaseClient';
 
 interface StatsScreenProps {
   gameStats: GameStats;
@@ -16,6 +17,7 @@ interface StatsScreenProps {
   collectedIds: string[];
   onBack: () => void;
   onResetData?: () => void;
+  userProfile?: UserProfile | null;
   onDebugGoToResult?: (
     isWin: boolean,
     totalTimeSeconds: number,
@@ -35,6 +37,7 @@ export default function StatsScreen({
   collectedIds,
   onBack,
   onResetData,
+  userProfile,
   onDebugGoToResult
 }: StatsScreenProps) {
   // 大カテゴリ選択タブ (すべて, 1, 2, 3)
@@ -57,21 +60,41 @@ export default function StatsScreen({
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // 初回起動時に入力情報をローカルストレージから復元
+  // 初回起動時に入力情報をローカルストレージおよびユーザープロフィールから復元
   useEffect(() => {
     try {
       const savedInfo = secureStorage.getItem('it-rogue-student-info');
+      let foundYear = '';
+      let foundClass = '';
+      let foundNo = '';
+      let foundName = '';
+
       if (savedInfo) {
         const parsed = JSON.parse(savedInfo);
-        setStudentYear(parsed.year || '');
-        setStudentClass(parsed.class || '');
-        setStudentNo(parsed.no || '');
-        setStudentName(parsed.name || '');
+        foundYear = parsed.year || '';
+        foundClass = parsed.class || '';
+        foundNo = parsed.no || '';
+        foundName = parsed.name || '';
       }
+
+      // プロフィールに値があれば優先・補完
+      if (userProfile) {
+        if (!foundYear && userProfile.student_year) foundYear = userProfile.student_year;
+        if (!foundClass && userProfile.student_class) foundClass = userProfile.student_class;
+        if (!foundNo && userProfile.student_no) foundNo = userProfile.student_no;
+        if (!foundName && (userProfile.student_name || userProfile.display_name)) {
+          foundName = userProfile.student_name || userProfile.display_name || '';
+        }
+      }
+
+      if (foundYear) setStudentYear(foundYear);
+      if (foundClass) setStudentClass(foundClass);
+      if (foundNo) setStudentNo(foundNo);
+      if (foundName) setStudentName(foundName);
     } catch (e) {
       console.error('Failed to load student info:', e);
     }
-  }, []);
+  }, [userProfile]);
 
   // 警告用カウントダウンタイマーの処理
   useEffect(() => {
@@ -781,16 +804,28 @@ export default function StatsScreen({
     }
   }, [showSubmitModal, studentYear, studentClass, studentNo, studentName]);
 
-  // ローカルストレージに入力情報を保存する
+  // ローカルストレージおよびユーザープロフィールに入力情報を保存する
   const saveStudentInfoLocally = () => {
     try {
       const info = {
-        year: studentYear,
-        class: studentClass,
-        no: studentNo,
-        name: studentName
+        year: studentYear.trim(),
+        class: studentClass.trim(),
+        no: studentNo.trim(),
+        name: studentName.trim()
       };
       secureStorage.setItem('it-rogue-student-info', JSON.stringify(info));
+
+      // ログイン中の場合はSupabaseプロフィールも同期
+      if (userProfile?.id) {
+        updateUserProfile(userProfile.id, {
+          student_year: info.year,
+          student_class: info.class,
+          student_no: info.no,
+          student_name: info.name,
+        }).catch(err => {
+          console.error('Failed to sync student info to Supabase:', err);
+        });
+      }
     } catch (e) {
       console.error(e);
     }
@@ -1334,7 +1369,7 @@ export default function StatsScreen({
                 </div>
 
                 <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg text-[10px] text-amber-800 leading-normal font-semibold">
-                  🔹 <strong>ヒント：</strong>一度入力した氏名や年組は自動保存され、次回起動時も自動で読み込まれます。
+                  🔹 <strong>クラウド自動同期：</strong> 入力した年・組・番・氏名は自動保存され、ログイン中のアカウントおよび先生の成績管理画面と双方向で同期されます。
                 </div>
               </div>
 

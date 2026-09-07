@@ -161,11 +161,22 @@ export interface SaveData {
 
 export type UserRole = 'student' | 'admin';
 
+export interface StudentInfo {
+  year: string;
+  class: string;
+  no: string;
+  name: string;
+}
+
 export interface UserProfile {
   id: string;
   email: string | null;
   display_name: string | null;
   role: UserRole;
+  student_year?: string | null;
+  student_class?: string | null;
+  student_no?: string | null;
+  student_name?: string | null;
   created_at?: string;
 }
 

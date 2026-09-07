@@ -188,11 +188,24 @@ export default function TitleScreen({
               </div>
               <div className="text-left">
                 <div className="text-[11px] font-bold text-slate-800 leading-none flex items-center gap-1">
-                  <span>{userProfile.display_name || '冒険者'}</span>
+                  <span>
+                    {userProfile.student_year && userProfile.student_class && userProfile.student_no && userProfile.student_name
+                      ? `${userProfile.student_year}年${userProfile.student_class}組${userProfile.student_no}番 ${userProfile.student_name}`
+                      : userProfile.display_name || '冒険者'}
+                  </span>
                   {userProfile.role === 'admin' && (
                     <span className="bg-amber-100 text-amber-800 text-[9px] px-1 py-0.2 rounded font-bold">
                       先生
                     </span>
+                  )}
+                  {(!userProfile.student_year || !userProfile.student_name) && onOpenAuth && (
+                    <button
+                      onClick={onOpenAuth}
+                      className="bg-red-100 text-red-700 text-[9px] px-1 py-0.2 rounded font-bold hover:bg-red-200 transition"
+                      title="生徒情報（年組番氏名）を登録してください"
+                    >
+                      年組番未登録
+                    </button>
                   )}
                 </div>
                 <div className="text-[9px] text-slate-500 font-mono">クラウド同期中</div>
@@ -226,7 +239,7 @@ export default function TitleScreen({
               className="flex items-center gap-1.5 bg-white/90 hover:bg-white text-blue-900 font-bold text-xs px-3 py-1.5 rounded-xl border border-blue-300 shadow-xs hover:shadow transition active:scale-95"
             >
               <LogIn size={13} className="text-blue-600" />
-              <span>ログイン / クラウド保存</span>
+              <span>新規登録 / ログイン</span>
             </button>
           )}
         </div>

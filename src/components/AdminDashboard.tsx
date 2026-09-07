@@ -110,10 +110,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // CSVエクスポート
   const handleExportCSV = () => {
-    const headers = ['ユーザーID', '表示名', 'メールアドレス', '区分', 'レベル', '経験値', '収集カード数', '最速クリア秒', '総挑戦数', '総勝利数', '最終更新日時'];
+    const headers = ['学年', '組', '番号', '氏名', '表示名', 'メールアドレス（ユーザID）', '区分', 'レベル', '経験値', '収集カード数', '最速クリア秒', '総挑戦数', '総勝利数', '最終更新日時'];
     const rows = filteredStudents.map(s => {
       return [
-        `"${s.profile.id}"`,
+        `"${s.profile.student_year || ''}"`,
+        `"${s.profile.student_class || ''}"`,
+        `"${s.profile.student_no || ''}"`,
+        `"${s.profile.student_name || ''}"`,
         `"${s.profile.display_name || '未設定'}"`,
         `"${s.profile.email || ''}"`,
         `"${s.profile.role}"`,

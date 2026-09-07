@@ -70,6 +70,8 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('signup');
+  const [isFirstLaunchPrompt, setIsFirstLaunchPrompt] = useState<boolean>(false);
 
   // ----------------------------------------------------
   // ゲームのメインステート
@@ -309,18 +311,37 @@ export default function App() {
   useEffect(() => {
     let isMounted = true;
 
-    // 初期セッションチェック
+    // 初期セッションチェック & 初回起動時の新規登録モーダル判定
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!isMounted) return;
+      let loadedProfile: UserProfile | null = null;
       if (session?.user) {
         setCurrentUser(session.user);
-        const profile = await getUserProfile(session.user.id);
-        if (isMounted) setCurrentUserProfile(profile);
+        loadedProfile = await getUserProfile(session.user.id);
+        if (isMounted) setCurrentUserProfile(loadedProfile);
         await loadSaveData(session.user.id);
       } else {
         await loadSaveData(null);
       }
       setHasLoaded(true);
+
+      // 初回起動時のチェック：
+      // はじめてのユーザ（未ログイン）またはプレイしているがまだ生徒データ未登録のユーザの場合、新規登録画面を開く
+      const alreadyPrompted = sessionStorage.getItem('it-rogue-first-auth-prompted');
+      if (!alreadyPrompted && isMounted) {
+        sessionStorage.setItem('it-rogue-first-auth-prompted', 'true');
+        if (!session?.user) {
+          // 未ログイン・初回ユーザー
+          setAuthModalMode('signup');
+          setIsFirstLaunchPrompt(true);
+          setIsAuthModalOpen(true);
+        } else if (loadedProfile && (!loadedProfile.student_year || !loadedProfile.student_class || !loadedProfile.student_no || !loadedProfile.student_name)) {
+          // ログイン中だが生徒情報（年組番氏名）が未登録のユーザー
+          setAuthModalMode('signup');
+          setIsFirstLaunchPrompt(true);
+          setIsAuthModalOpen(true);
+        }
+      }
     });
 
     // 認証ステートの変更リスナー
@@ -1626,7 +1647,17 @@ export default function App() {
           isDailyDone={isDailyChallengeCompleted}
           isTimeAttackUnlocked={isTimeAttackUnlocked}
           userProfile={currentUserProfile}
-          onOpenAuth={() => setIsAuthModalOpen(true)}
+          onOpenAuth={() => {
+            if (currentUserProfile && (!currentUserProfile.student_year || !currentUserProfile.student_name)) {
+              setAuthModalMode('signup');
+            } else if (currentUserProfile) {
+              setAuthModalMode('login');
+            } else {
+              setAuthModalMode('signup');
+            }
+            setIsFirstLaunchPrompt(false);
+            setIsAuthModalOpen(true);
+          }}
           onLogout={handleLogout}
           onOpenAdmin={() => {
             setScreen('admin');
@@ -1731,6 +1762,7 @@ export default function App() {
           collectedIds={player.collectedCards}
           onBack={() => setScreen('title')}
           onResetData={handleResetAllData}
+          userProfile={currentUserProfile}
           onDebugGoToResult={handleDebugGoToResult}
         />
       )}
@@ -1766,6 +1798,8 @@ export default function App() {
       {/* 認証モーダル */}
       <AuthModal
         isOpen={isAuthModalOpen}
+        initialMode={authModalMode}
+        isFirstLaunch={isFirstLaunchPrompt}
         onClose={() => setIsAuthModalOpen(false)}
         onSuccess={async () => {
           const { data: { session } } = await supabase.auth.getSession();
