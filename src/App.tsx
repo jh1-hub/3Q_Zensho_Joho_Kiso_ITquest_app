@@ -182,7 +182,13 @@ export default function App() {
   useEffect(() => {
     const checkAdminRoute = () => {
       if (window.location.pathname === '/admin' || window.location.hash === '#admin') {
-        setScreen('admin');
+        if (currentUserProfile && currentUserProfile.role !== 'admin') {
+          // 生徒アカウントの場合はタイトル画面へリダイレクト
+          setScreen('title');
+          window.history.replaceState({}, '', '/');
+        } else {
+          setScreen('admin');
+        }
       }
     };
     checkAdminRoute();
@@ -192,7 +198,15 @@ export default function App() {
       window.removeEventListener('popstate', checkAdminRoute);
       window.removeEventListener('hashchange', checkAdminRoute);
     };
-  }, []);
+  }, [currentUserProfile]);
+
+  // 生徒アカウントが admin 画面に遷移した場合はタイトルへ戻す
+  useEffect(() => {
+    if (screen === 'admin' && currentUserProfile && currentUserProfile.role !== 'admin') {
+      setScreen('title');
+      window.history.replaceState({}, '', '/');
+    }
+  }, [screen, currentUserProfile]);
 
   // 先生自身・現在のセーブデータ
   const currentSaveData: SaveData = useMemo(() => ({
@@ -1747,10 +1761,10 @@ export default function App() {
             setIsAuthModalOpen(true);
           }}
           onLogout={handleLogout}
-          onOpenAdmin={() => {
+          onOpenAdmin={currentUserProfile?.role === 'admin' ? () => {
             setScreen('admin');
             window.history.pushState({}, '', '/admin');
-          }}
+          } : undefined}
           isSyncing={isSyncing}
           onManualSync={async () => {
             if (!currentUser?.id) {

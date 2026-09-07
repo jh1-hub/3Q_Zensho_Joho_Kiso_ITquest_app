@@ -231,19 +231,15 @@ export default function TitleScreen({
                 </div>
               </div>
 
-              {/* 管理者ボタン */}
-              {onOpenAdmin && (
+              {/* 管理者ボタン（adminのみ表示） */}
+              {onOpenAdmin && userProfile?.role === 'admin' && (
                 <button
                   onClick={onOpenAdmin}
-                  className={`ml-1 flex items-center gap-1 font-bold text-[10px] px-2 py-1 rounded-lg shadow-xs transition ${
-                    userProfile.role === 'admin'
-                      ? 'bg-amber-500 hover:bg-amber-400 text-slate-950'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
-                  }`}
+                  className="ml-1 flex items-center gap-1 font-bold text-[10px] px-2 py-1 rounded-lg shadow-xs transition bg-amber-500 hover:bg-amber-400 text-slate-950"
                   title="先生・管理者ダッシュボードを開く"
                 >
-                  <ShieldCheck size={12} className={userProfile.role === 'admin' ? 'text-slate-950' : 'text-amber-600'} />
-                  <span>{userProfile.role === 'admin' ? '管理画面' : '先生・管理'}</span>
+                  <ShieldCheck size={12} className="text-slate-950" />
+                  <span>管理画面</span>
                 </button>
               )}
 
@@ -522,7 +518,7 @@ export default function TitleScreen({
       {/* フッター */}
       <div className="max-w-4xl w-full mx-auto flex flex-wrap justify-between items-center py-4 border-t border-blue-200 z-10 text-blue-600 font-extrabold text-[10px] tracking-wider uppercase gap-2">
         <div>© 2026 IT QUEST. WITH LOVE FROM SAVANNAH LANDS.</div>
-        {onOpenAdmin && (
+        {onOpenAdmin && userProfile?.role === 'admin' && (
           <button
             onClick={onOpenAdmin}
             className="flex items-center gap-1 text-slate-500 hover:text-amber-600 transition normal-case font-bold cursor-pointer"
