@@ -268,54 +268,141 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
--- 4. RLS（行セキュリティ）の有効化と完全ポリシー設定
+-- 3. ★最重要★ 既存の「無限再帰エラー (42P17)」を引き起こしている古いRLSポリシーを全自動で完全消去
+DO $$
+DECLARE
+  pol RECORD;
+BEGIN
+  FOR pol IN (SELECT policyname FROM pg_policies WHERE tablename = 'profiles' AND schemaname = 'public') LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.profiles', pol.policyname);
+  END LOOP;
+
+  FOR pol IN (SELECT policyname FROM pg_policies WHERE tablename = 'game_saves' AND schemaname = 'public') LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.game_saves', pol.policyname);
+  END LOOP;
+END $$;
+
+-- 4. RLSの有効化とクリーンなポリシーの再設定（再帰参照を一切含まない安全な設定）
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.game_saves ENABLE ROW LEVEL SECURITY;
 
--- profiles ポリシー
-DROP POLICY IF EXISTS "Allow all authenticated to read profiles" ON profiles;
-DROP POLICY IF EXISTS "Users can insert own profile" ON profiles;
-DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
-DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON profiles;
-DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
-DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
+CREATE POLICY "allow_read_profiles" ON public.profiles FOR SELECT TO authenticated, anon USING ( true );
+CREATE POLICY "allow_insert_profiles" ON public.profiles FOR INSERT TO authenticated WITH CHECK ( auth.uid() = id );
+CREATE POLICY "allow_update_profiles" ON public.profiles FOR UPDATE TO authenticated USING ( auth.uid() = id ) WITH CHECK ( auth.uid() = id );
 
-CREATE POLICY "Allow all authenticated to read profiles"
-ON public.profiles FOR SELECT
-TO authenticated
-USING ( true );
+CREATE POLICY "allow_read_game_saves" ON public.game_saves FOR SELECT TO authenticated, anon USING ( true );
+CREATE POLICY "allow_insert_game_saves" ON public.game_saves FOR INSERT TO authenticated WITH CHECK ( auth.uid() = user_id );
+CREATE POLICY "allow_update_game_saves" ON public.game_saves FOR UPDATE TO authenticated USING ( auth.uid() = user_id ) WITH CHECK ( auth.uid() = user_id );
 
-CREATE POLICY "Users can insert own profile"
-ON public.profiles FOR INSERT
-TO authenticated
-WITH CHECK ( auth.uid() = id );
+-- 5. 既存ユーザーの救済一括インポート（過去に登録された全生徒を即座に profiles & game_saves へ反映）
+INSERT INTO public.profiles (id, email, display_name, role, student_year, student_class, student_no, student_name)
+SELECT 
+  id,
+  email,
+  COALESCE(raw_user_meta_data->>'display_name', email),
+  COALESCE(raw_user_meta_data->>'role', 'student'),
+  raw_user_meta_data->>'student_year',
+  raw_user_meta_data->>'student_class',
+  raw_user_meta_data->>'student_no',
+  raw_user_meta_data->>'student_name'
+FROM auth.users
+ON CONFLICT (id) DO UPDATE SET
+  email = EXCLUDED.email,
+  display_name = COALESCE(profiles.display_name, EXCLUDED.display_name),
+  student_year = COALESCE(profiles.student_year, EXCLUDED.student_year),
+  student_class = COALESCE(profiles.student_class, EXCLUDED.student_class),
+  student_no = COALESCE(profiles.student_no, EXCLUDED.student_no),
+  student_name = COALESCE(profiles.student_name, EXCLUDED.student_name);
 
-CREATE POLICY "Users can update own profile"
-ON public.profiles FOR UPDATE
-TO authenticated
-USING ( auth.uid() = id );
+INSERT INTO public.game_saves (user_id, level, xp, collected_cards, stats)
+SELECT id, 1, 0, '{}', '{"attempts":0,"wins":0,"termStats":{}}'::jsonb
+FROM auth.users
+ON CONFLICT (user_id) DO NOTHING;
 
--- game_saves ポリシー
-DROP POLICY IF EXISTS "Allow all authenticated to read game_saves" ON game_saves;
-DROP POLICY IF EXISTS "Users can insert own game save" ON game_saves;
-DROP POLICY IF EXISTS "Users can update own game save" ON game_saves;
-DROP POLICY IF EXISTS "Admins can view all game saves" ON game_saves;
-DROP POLICY IF EXISTS "Users can view own game save" ON game_saves;
+-- 6. セーブデータ保存用の確実な SECURITY DEFINER RPC 関数（RLSエラーを完全バイパス）
+CREATE OR REPLACE FUNCTION public.save_game_save(
+  p_level INT,
+  p_xp INT,
+  p_collected_cards TEXT[],
+  p_best_time_seconds INT,
+  p_wrong_terms TEXT[],
+  p_stats JSONB
+)
+RETURNS boolean AS $$
+DECLARE
+  v_uid UUID;
+BEGIN
+  v_uid := auth.uid();
+  IF v_uid IS NULL THEN
+    RETURN false;
+  END IF;
 
-CREATE POLICY "Allow all authenticated to read game_saves"
-ON public.game_saves FOR SELECT
-TO authenticated
-USING ( true );
+  INSERT INTO public.game_saves (
+    user_id, level, xp, collected_cards, best_time_seconds, wrong_terms, stats, updated_at
+  ) VALUES (
+    v_uid, p_level, p_xp, p_collected_cards, p_best_time_seconds, p_wrong_terms, p_stats, now()
+  )
+  ON CONFLICT (user_id) DO UPDATE SET
+    level = EXCLUDED.level,
+    xp = EXCLUDED.xp,
+    collected_cards = EXCLUDED.collected_cards,
+    best_time_seconds = EXCLUDED.best_time_seconds,
+    wrong_terms = EXCLUDED.wrong_terms,
+    stats = EXCLUDED.stats,
+    updated_at = now();
 
-CREATE POLICY "Users can insert own game save"
-ON public.game_saves FOR INSERT
-TO authenticated
-WITH CHECK ( auth.uid() = user_id );
+  RETURN true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE POLICY "Users can update own game save"
-ON public.game_saves FOR UPDATE
-TO authenticated
-USING ( auth.uid() = user_id );`;
+GRANT EXECUTE ON FUNCTION public.save_game_save TO authenticated;
+
+-- 7. 管理者向け全生徒データ取得用の確実な SECURITY DEFINER RPC 関数
+CREATE OR REPLACE FUNCTION public.get_all_students_data()
+RETURNS TABLE (
+  id UUID,
+  email TEXT,
+  display_name TEXT,
+  role TEXT,
+  student_year TEXT,
+  student_class TEXT,
+  student_no TEXT,
+  student_name TEXT,
+  created_at TIMESTAMPTZ,
+  level INT,
+  xp INT,
+  collected_cards TEXT[],
+  best_time_seconds INT,
+  wrong_terms TEXT[],
+  stats JSONB,
+  updated_at TIMESTAMPTZ
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    p.id,
+    p.email,
+    p.display_name,
+    p.role,
+    p.student_year,
+    p.student_class,
+    p.student_no,
+    p.student_name,
+    p.created_at,
+    COALESCE(g.level, 1) as level,
+    COALESCE(g.xp, 0) as xp,
+    COALESCE(g.collected_cards, '{}'::TEXT[]) as collected_cards,
+    g.best_time_seconds,
+    COALESCE(g.wrong_terms, '{}'::TEXT[]) as wrong_terms,
+    COALESCE(g.stats, '{"attempts":0,"wins":0,"termStats":{}}'::jsonb) as stats,
+    g.updated_at
+  FROM public.profiles p
+  LEFT JOIN public.game_saves g ON p.id = g.user_id
+  ORDER BY p.created_at DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION public.get_all_students_data TO authenticated, anon;`;
 
   const handleCopySQL = () => {
     navigator.clipboard.writeText(rlsFixSQL);

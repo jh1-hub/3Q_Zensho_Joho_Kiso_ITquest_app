@@ -481,25 +481,40 @@ export async function upsertGameSave(userId: string, saveData: SaveData): Promis
 
   // 2. game_saves テーブルへの保存 (管理者・先生の一覧画面用)
   try {
-    const row: Partial<GameSaveRow> = {
-      user_id: userId,
-      level: saveData.level,
-      xp: saveData.xp,
-      collected_cards: saveData.collectedCards || [],
-      best_time_seconds: saveData.bestTimeSeconds,
-      wrong_terms: saveData.wrongTerms || [],
-      stats: saveData.stats || { attempts: 0, wins: 0, termStats: {} },
-      updated_at: nowIso,
-    };
+    // まず SECURITY DEFINER RPC での保存を試みる（RLSポリシー競合や再帰エラーの影響を完全回避）
+    const { error: rpcError } = await supabase.rpc('save_game_save', {
+      p_level: saveData.level,
+      p_xp: saveData.xp,
+      p_collected_cards: saveData.collectedCards || [],
+      p_best_time_seconds: saveData.bestTimeSeconds ?? null,
+      p_wrong_terms: saveData.wrongTerms || [],
+      p_stats: saveData.stats || { attempts: 0, wins: 0, termStats: {} },
+    });
 
-    const { error } = await supabase
-      .from('game_saves')
-      .upsert(row, { onConflict: 'user_id' });
-
-    if (!error) {
+    if (!rpcError) {
       tableSuccess = true;
     } else {
-      console.warn('game_saves table upsert warning (user_metadata fallback saved successfully):', error);
+      // RPCが未作成の場合は直接 upsert を試みる
+      const row: Partial<GameSaveRow> = {
+        user_id: userId,
+        level: saveData.level,
+        xp: saveData.xp,
+        collected_cards: saveData.collectedCards || [],
+        best_time_seconds: saveData.bestTimeSeconds,
+        wrong_terms: saveData.wrongTerms || [],
+        stats: saveData.stats || { attempts: 0, wins: 0, termStats: {} },
+        updated_at: nowIso,
+      };
+
+      const { error } = await supabase
+        .from('game_saves')
+        .upsert(row, { onConflict: 'user_id' });
+
+      if (!error) {
+        tableSuccess = true;
+      } else {
+        console.warn('game_saves table upsert warning (user_metadata fallback saved successfully):', error);
+      }
     }
   } catch (err) {
     console.warn('Exception upserting to game_saves table:', err);
@@ -513,7 +528,39 @@ export async function upsertGameSave(userId: string, saveData: SaveData): Promis
  */
 export async function fetchAllStudentsOverview(): Promise<StudentOverview[]> {
   try {
-    // 1. 全プロフィールの取得
+    // 1. まず SECURITY DEFINER RPC get_all_students_data を試みる（RLS再帰エラー・権限問題を完全回避）
+    const { data: rpcData, error: rpcError } = await supabase.rpc('get_all_students_data');
+    if (!rpcError && Array.isArray(rpcData)) {
+      return rpcData.map((row: any) => ({
+        profile: {
+          id: row.id,
+          email: row.email,
+          display_name: row.display_name,
+          role: row.role || 'student',
+          student_year: row.student_year,
+          student_class: row.student_class,
+          student_no: row.student_no,
+          student_name: row.student_name,
+          created_at: row.created_at,
+        },
+        saveData: {
+          user_id: row.id,
+          level: row.level ?? 1,
+          xp: row.xp ?? 0,
+          collected_cards: row.collected_cards || [],
+          best_time_seconds: row.best_time_seconds,
+          wrong_terms: row.wrong_terms || [],
+          stats: row.stats || { attempts: 0, wins: 0, termStats: {} },
+          updated_at: row.updated_at,
+        }
+      }));
+    }
+
+    if (rpcError) {
+      console.warn('RPC get_all_students_data not available, falling back to direct table select:', rpcError);
+    }
+
+    // 2. フォールバック：全プロフィールの直接取得
     let profiles: any[] = [];
     const { data: pData, error: pError } = await supabase
       .from('profiles')
