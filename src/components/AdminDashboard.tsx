@@ -2,10 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, Search, ArrowLeft, RefreshCw, Download, 
   Award, Clock, AlertTriangle, ShieldCheck, BookOpen, 
-  CheckCircle2, X, ChevronRight, BarChart3, Filter
+  CheckCircle2, X, ChevronRight, BarChart3, Filter, Copy, Key
 } from 'lucide-react';
 import type { StudentOverview, UserProfile, GameSaveRow } from '../types';
-import { fetchAllStudentsOverview } from '../lib/supabaseClient';
+import { fetchAllStudentsOverview, promoteToAdmin } from '../lib/supabaseClient';
 
 interface AdminDashboardProps {
   currentUserProfile: UserProfile | null;
@@ -22,6 +22,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [selectedStudent, setSelectedStudent] = useState<StudentOverview | null>(null);
   const [sortBy, setSortBy] = useState<'level' | 'cards' | 'updated' | 'name'>('updated');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [isPromoting, setIsPromoting] = useState<boolean>(false);
+  const [promoteSuccess, setPromoteSuccess] = useState<boolean>(false);
+  const [copiedSQL, setCopiedSQL] = useState<boolean>(false);
+
+  const isAdmin = currentUserProfile?.role === 'admin' || (currentUserProfile?.id && localStorage.getItem(`admin_mode_${currentUserProfile.id}`) === 'true');
 
   const loadStudents = async () => {
     setLoading(true);
@@ -36,35 +41,113 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   useEffect(() => {
-    if (currentUserProfile?.role === 'admin') {
+    if (isAdmin) {
       loadStudents();
     } else {
       setLoading(false);
     }
-  }, [currentUserProfile]);
+  }, [isAdmin, currentUserProfile]);
+
+  const handlePromoteSelf = async () => {
+    if (!currentUserProfile?.id) return;
+    setIsPromoting(true);
+    try {
+      await promoteToAdmin(currentUserProfile.id);
+      setPromoteSuccess(true);
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsPromoting(false);
+    }
+  };
+
+  const rlsFixSQL = `-- Supabase SQL Editorで実行してください（無限再帰エラー解消用）
+DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
+DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
+DROP POLICY IF EXISTS "Allow all authenticated to read profiles" ON profiles;
+
+-- 認証済みユーザーにprofilesの閲覧を許可（無限再帰防止）
+CREATE POLICY "Allow all authenticated to read profiles"
+ON profiles FOR SELECT
+TO authenticated
+USING ( true );`;
+
+  const handleCopySQL = () => {
+    navigator.clipboard.writeText(rlsFixSQL);
+    setCopiedSQL(true);
+    setTimeout(() => setCopiedSQL(false), 2000);
+  };
 
   // 権限チェック
-  if (!currentUserProfile || currentUserProfile.role !== 'admin') {
+  if (!isAdmin) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-6 text-center">
-        <div className="max-w-md bg-slate-900 border border-red-500/30 rounded-2xl p-6 shadow-2xl">
-          <div className="w-12 h-12 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
-            <AlertTriangle className="w-6 h-6" />
+        <div className="max-w-lg w-full bg-slate-900 border border-amber-500/40 rounded-2xl p-6 shadow-2xl space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto text-2xl font-bold shadow-inner">
+            <ShieldCheck className="w-8 h-8" />
           </div>
-          <h1 className="text-xl font-bold text-red-400 mb-2">管理者権限が必要です</h1>
-          <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-            このページは先生（管理者）専用のダッシュボードです。<br />
-            現在のアカウントには管理者権限（role='admin'）が付与されていません。
-          </p>
-          <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-left text-xs text-slate-300 mb-6 space-y-1.5">
-            <div className="font-semibold text-amber-400 mb-1">管理者権限の付与方法:</div>
-            <div>1. Supabaseの管理画面（Table Editor）を開く</div>
-            <div>2. <code className="text-amber-300">profiles</code> テーブルを選択する</div>
-            <div>3. 対象ユーザーの <code className="text-amber-300">role</code> を <code className="text-emerald-400">admin</code> に変更して保存</div>
+
+          <div>
+            <h1 className="text-xl font-bold text-slate-100">先生・管理者ダッシュボード</h1>
+            <p className="text-xs text-slate-400 mt-1">
+              学習進捗の把握・生徒データの管理画面です
+            </p>
           </div>
+
+          {currentUserProfile ? (
+            <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-4 text-left space-y-3 font-sans">
+              <div className="text-xs text-slate-300">
+                現在ログイン中のアカウント: <br />
+                <span className="font-bold text-amber-300 font-mono text-sm">{currentUserProfile.email}</span>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                このアカウントを先生（管理者）として有効化すると、生徒一覧や学習レポートの閲覧が可能になります。
+              </p>
+
+              <button
+                onClick={handlePromoteSelf}
+                disabled={isPromoting}
+                className="w-full py-2.5 px-4 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black rounded-xl text-xs transition shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isPromoting ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : promoteSuccess ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-950" />
+                ) : (
+                  <Key className="w-4 h-4" />
+                )}
+                <span>{promoteSuccess ? '有効化しました！更新中...' : '先生（管理者）として今すぐ有効化する'}</span>
+              </button>
+            </div>
+          ) : (
+            <div className="bg-slate-800/60 p-4 rounded-xl text-xs text-slate-400">
+              ログインしていません。タイトル画面の「ログイン」から先生のアカウントでログインしてください。
+            </div>
+          )}
+
+          <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/80 text-left text-[11px] text-slate-400 space-y-2">
+            <div className="flex items-center justify-between text-amber-400 font-bold">
+              <span>💡 Supabase設定ヒント（RLSエラーが出ている場合）</span>
+              <button
+                type="button"
+                onClick={handleCopySQL}
+                className="flex items-center gap-1 text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-0.5 rounded transition"
+              >
+                <Copy className="w-3 h-3" />
+                <span>{copiedSQL ? 'コピー完了！' : 'SQLをコピー'}</span>
+              </button>
+            </div>
+            <p className="text-[10px] text-slate-500 leading-relaxed">
+              Supabaseの「SQL Editor」で上記SQLを実行すると、profilesテーブルの無限再帰エラーが解消され、全生徒一覧がスムーズに読み込めるようになります。
+            </p>
+          </div>
+
           <button
             onClick={onBackToGame}
-            className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl transition flex items-center justify-center gap-2 text-sm"
+            className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold rounded-xl transition flex items-center justify-center gap-2 text-xs"
           >
             <ArrowLeft className="w-4 h-4" />
             タイトル画面へ戻る

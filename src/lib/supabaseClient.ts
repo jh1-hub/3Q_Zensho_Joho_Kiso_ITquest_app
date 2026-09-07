@@ -4,6 +4,12 @@ import type { UserProfile, GameSaveRow, SaveData, StudentOverview } from '../typ
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://oeutpjgtfztqfcocqtcf.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ldXRwamd0Znp0cWZjb2NxdGNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2OTU1OTgsImV4cCI6MjEwNDI3MTU5OH0.FyxN2db_TvPd54PbklXxd6NX2LSBotcw99c2Vy_MAVs';
 
+// 管理者メールアドレスのリスト（自動的に管理者権限を付与する対象）
+const ADMIN_EMAILS = [
+  'bard77633@gmail.com',
+  ...(import.meta.env.VITE_ADMIN_EMAILS ? import.meta.env.VITE_ADMIN_EMAILS.split(',').map((e: string) => e.trim().toLowerCase()) : [])
+];
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
@@ -31,10 +37,11 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     const { data: { user } } = await supabase.auth.getUser();
     const meta = user?.id === userId ? user?.user_metadata : null;
 
-    if (!data && !meta) {
+    if (!data && !meta && !user) {
       return null;
     }
 
+    const email = (data?.email || user?.email || '').toLowerCase();
     const year = data?.student_year ?? meta?.student_year ?? '';
     const cls = data?.student_class ?? meta?.student_class ?? '';
     const no = data?.student_no ?? meta?.student_no ?? '';
@@ -46,11 +53,22 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
       formattedDisplayName = year && cls && no ? `${year}年${cls}組${no}番 ${name}` : name;
     }
 
+    // 管理者判定:
+    // 1. profiles テーブルで role === 'admin'
+    // 2. ユーザーメタデータで role === 'admin'
+    // 3. ADMIN_EMAILS に登録されているメールアドレス
+    // 4. ローカル管理者フラグが立っている場合
+    const isExplicitAdmin = data?.role === 'admin' || meta?.role === 'admin';
+    const isEmailAdmin = email ? ADMIN_EMAILS.includes(email) : false;
+    const isLocalAdmin = localStorage.getItem(`admin_mode_${userId}`) === 'true';
+
+    const role = (isExplicitAdmin || isEmailAdmin || isLocalAdmin) ? 'admin' : 'student';
+
     const profile: UserProfile = {
       id: userId,
-      email: data?.email || user?.email || null,
+      email: email || null,
       display_name: formattedDisplayName,
-      role: (data?.role as any) || (meta?.role as any) || 'student',
+      role,
       student_year: year || null,
       student_class: cls || null,
       student_no: no || null,
@@ -62,6 +80,31 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   } catch (err) {
     console.error('Failed to get user profile:', err);
     return null;
+  }
+}
+
+/**
+  ユーザーを管理者（先生）に昇格させる
+ */
+export async function promoteToAdmin(userId: string): Promise<boolean> {
+  try {
+    localStorage.setItem(`admin_mode_${userId}`, 'true');
+
+    // 1. auth の user_metadata を更新
+    await supabase.auth.updateUser({
+      data: { role: 'admin' }
+    });
+
+    // 2. profiles テーブルの更新を試みる
+    await supabase
+      .from('profiles')
+      .update({ role: 'admin' })
+      .eq('id', userId);
+
+    return true;
+  } catch (err) {
+    console.error('Failed to promote to admin:', err);
+    return false;
   }
 }
 
@@ -185,14 +228,16 @@ export async function upsertGameSave(userId: string, saveData: SaveData): Promis
 export async function fetchAllStudentsOverview(): Promise<StudentOverview[]> {
   try {
     // 1. 全プロフィールの取得
-    const { data: profiles, error: pError } = await supabase
+    let profiles: any[] = [];
+    const { data: pData, error: pError } = await supabase
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (pError || !profiles) {
-      console.error('Error fetching student profiles:', pError);
-      return [];
+    if (pError) {
+      console.warn('Warning fetching student profiles (possibly RLS restriction):', pError);
+    } else if (pData) {
+      profiles = pData;
     }
 
     // 2. 全セーブデータの取得
@@ -211,13 +256,35 @@ export async function fetchAllStudentsOverview(): Promise<StudentOverview[]> {
       });
     }
 
-    // 結合
-    const overviews: StudentOverview[] = profiles.map((p: any) => ({
-      profile: p as UserProfile,
-      saveData: saveMap.get(p.id) || null,
-    }));
+    // もし profiles が取得できた場合は profiles をベースに結合
+    if (profiles.length > 0) {
+      const overviews: StudentOverview[] = profiles.map((p: any) => ({
+        profile: p as UserProfile,
+        saveData: saveMap.get(p.id) || null,
+      }));
+      return overviews;
+    }
 
-    return overviews;
+    // もし profiles が RLS 等で取得できなかったが saves がある場合、saves から一覧を生成
+    if (saves && saves.length > 0) {
+      const overviews: StudentOverview[] = saves.map((s: any) => ({
+        profile: {
+          id: s.user_id,
+          email: null,
+          display_name: `生徒 (${s.user_id.slice(0, 6)})`,
+          role: 'student',
+          student_year: null,
+          student_class: null,
+          student_no: null,
+          student_name: null,
+          created_at: s.updated_at,
+        },
+        saveData: s as GameSaveRow,
+      }));
+      return overviews;
+    }
+
+    return [];
   } catch (err) {
     console.error('Failed to fetch all students overview:', err);
     return [];
