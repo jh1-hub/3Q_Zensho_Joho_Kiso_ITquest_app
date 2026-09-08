@@ -3,7 +3,7 @@ import {
   Users, Search, ArrowLeft, RefreshCw, Download, 
   Award, Clock, AlertTriangle, ShieldCheck, BookOpen, 
   CheckCircle2, X, ChevronRight, BarChart3, Filter, Copy, Key, UserCheck, Flame, Trophy, Swords, Cloud,
-  Mail, Send, Lock, Check, Database, Code, ExternalLink, Terminal
+  Mail, Send, Lock, Check
 } from 'lucide-react';
 import type { StudentOverview, UserProfile, GameSaveRow, SaveData } from '../types';
 import { 
@@ -117,8 +117,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [roleFilter, setRoleFilter] = useState<'all' | 'students' | 'teacher'>('all');
   const [isPromoting, setIsPromoting] = useState<boolean>(false);
   const [promoteSuccess, setPromoteSuccess] = useState<boolean>(false);
-  const [copiedSQL, setCopiedSQL] = useState<boolean>(false);
-  const [isSqlModalOpen, setIsSqlModalOpen] = useState<boolean>(false);
 
   // パスワード再発行用ステート
   const [resetPasswordTarget, setResetPasswordTarget] = useState<StudentOverview | null>(null);
@@ -352,404 +350,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     return students.map(s => s.profile.id === teacherOverview.profile.id ? teacherOverview : s);
   }, [students, teacherOverview]);
 
-  const rlsFixSQL = `-- ============================================================
--- Supabase SQL Editorで実行してください（テーブル完全作成＆全自動同期＆RLS開放用）
--- ============================================================
-
--- 1. profiles テーブル（生徒・先生のプロフィール管理）
-CREATE TABLE IF NOT EXISTS public.profiles (
-  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-  email TEXT,
-  display_name TEXT,
-  role TEXT DEFAULT 'student',
-  student_year TEXT,
-  student_class TEXT,
-  student_no TEXT,
-  student_name TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- 既存テーブルがある場合の不足カラム自動追加
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS student_year TEXT;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS student_class TEXT;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS student_no TEXT;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS student_name TEXT;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
-
--- 2. game_saves テーブル（生徒の永続学習統計・カード・クリア記録）
-CREATE TABLE IF NOT EXISTS public.game_saves (
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-  level INT DEFAULT 1,
-  xp INT DEFAULT 0,
-  collected_cards TEXT[] DEFAULT '{}',
-  best_time_seconds INT,
-  wrong_terms TEXT[] DEFAULT '{}',
-  stats JSONB DEFAULT '{"attempts":0,"wins":0,"termStats":{}}'::jsonb,
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- 既存テーブルがある場合の不足カラム自動追加
-ALTER TABLE public.game_saves ADD COLUMN IF NOT EXISTS stats JSONB DEFAULT '{"attempts":0,"wins":0,"termStats":{}}'::jsonb;
-ALTER TABLE public.game_saves ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
-
--- 3. 自動連携トリガー：auth.users にアカウント作成された瞬間、自動で public.profiles と game_saves に登録！
--- ※ メール確認前であっても、即座に先生画面に生徒として反映されます
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger AS $$
-BEGIN
-  INSERT INTO public.profiles (id, email, display_name, role, student_year, student_class, student_no, student_name)
-  VALUES (
-    new.id,
-    new.email,
-    COALESCE(new.raw_user_meta_data->>'display_name', new.email),
-    COALESCE(new.raw_user_meta_data->>'role', 'student'),
-    new.raw_user_meta_data->>'student_year',
-    new.raw_user_meta_data->>'student_class',
-    new.raw_user_meta_data->>'student_no',
-    new.raw_user_meta_data->>'student_name'
-  )
-  ON CONFLICT (id) DO UPDATE SET
-    email = EXCLUDED.email,
-    display_name = COALESCE(EXCLUDED.display_name, profiles.display_name),
-    student_year = COALESCE(EXCLUDED.student_year, profiles.student_year),
-    student_class = COALESCE(EXCLUDED.student_class, profiles.student_class),
-    student_no = COALESCE(EXCLUDED.student_no, profiles.student_no),
-    student_name = COALESCE(EXCLUDED.student_name, profiles.student_name);
-
-  INSERT INTO public.game_saves (user_id, collected_cards, stats)
-  VALUES (new.id, '{}', '{"attempts":0,"wins":0,"termStats":{}}'::jsonb)
-  ON CONFLICT (user_id) DO NOTHING;
-
-  RETURN new;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
-
--- 3. ★最重要★ 既存の「無限再帰エラー (42P17)」を引き起こしている古いRLSポリシーを全自動で完全消去
-DO $$
-DECLARE
-  pol RECORD;
-BEGIN
-  FOR pol IN (SELECT policyname FROM pg_policies WHERE tablename = 'profiles' AND schemaname = 'public') LOOP
-    EXECUTE format('DROP POLICY IF EXISTS %I ON public.profiles', pol.policyname);
-  END LOOP;
-
-  FOR pol IN (SELECT policyname FROM pg_policies WHERE tablename = 'game_saves' AND schemaname = 'public') LOOP
-    EXECUTE format('DROP POLICY IF EXISTS %I ON public.game_saves', pol.policyname);
-  END LOOP;
-END $$;
-
--- 4. RLSの有効化とクリーンなポリシーの再設定（再帰参照を一切含まない安全な設定）
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.game_saves ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "allow_read_profiles" ON public.profiles FOR SELECT TO authenticated, anon USING ( true );
-CREATE POLICY "allow_insert_profiles" ON public.profiles FOR INSERT TO authenticated WITH CHECK ( auth.uid() = id );
-CREATE POLICY "allow_update_profiles" ON public.profiles FOR UPDATE TO authenticated USING ( auth.uid() = id ) WITH CHECK ( auth.uid() = id );
-
-CREATE POLICY "allow_read_game_saves" ON public.game_saves FOR SELECT TO authenticated, anon USING ( true );
-CREATE POLICY "allow_insert_game_saves" ON public.game_saves FOR INSERT TO authenticated WITH CHECK ( auth.uid() = user_id );
-CREATE POLICY "allow_update_game_saves" ON public.game_saves FOR UPDATE TO authenticated USING ( auth.uid() = user_id ) WITH CHECK ( auth.uid() = user_id );
-
--- 5. 既存ユーザーの救済一括インポート（過去に登録された全生徒を即座に profiles & game_saves へ反映）
-INSERT INTO public.profiles (id, email, display_name, role, student_year, student_class, student_no, student_name)
-SELECT 
-  id,
-  email,
-  COALESCE(raw_user_meta_data->>'display_name', email),
-  COALESCE(raw_user_meta_data->>'role', 'student'),
-  raw_user_meta_data->>'student_year',
-  raw_user_meta_data->>'student_class',
-  raw_user_meta_data->>'student_no',
-  raw_user_meta_data->>'student_name'
-FROM auth.users
-ON CONFLICT (id) DO UPDATE SET
-  email = EXCLUDED.email,
-  display_name = COALESCE(profiles.display_name, EXCLUDED.display_name),
-  student_year = COALESCE(profiles.student_year, EXCLUDED.student_year),
-  student_class = COALESCE(profiles.student_class, EXCLUDED.student_class),
-  student_no = COALESCE(profiles.student_no, EXCLUDED.student_no),
-  student_name = COALESCE(profiles.student_name, EXCLUDED.student_name);
-
-INSERT INTO public.game_saves (user_id, level, xp, collected_cards, stats)
-SELECT id, 1, 0, '{}', '{"attempts":0,"wins":0,"termStats":{}}'::jsonb
-FROM auth.users
-ON CONFLICT (user_id) DO NOTHING;
-
--- 6. セーブデータ保存用の確実な SECURITY DEFINER RPC 関数（RLSエラーを完全バイパス）
-CREATE OR REPLACE FUNCTION public.save_game_save(
-  p_level INT,
-  p_xp INT,
-  p_collected_cards TEXT[],
-  p_best_time_seconds INT,
-  p_wrong_terms TEXT[],
-  p_stats JSONB
-)
-RETURNS boolean AS $$
-DECLARE
-  v_uid UUID;
-BEGIN
-  v_uid := auth.uid();
-  IF v_uid IS NULL THEN
-    RETURN false;
-  END IF;
-
-  INSERT INTO public.game_saves (
-    user_id, level, xp, collected_cards, best_time_seconds, wrong_terms, stats, updated_at
-  ) VALUES (
-    v_uid, p_level, p_xp, p_collected_cards, p_best_time_seconds, p_wrong_terms, p_stats, now()
-  )
-  ON CONFLICT (user_id) DO UPDATE SET
-    level = EXCLUDED.level,
-    xp = EXCLUDED.xp,
-    collected_cards = EXCLUDED.collected_cards,
-    best_time_seconds = EXCLUDED.best_time_seconds,
-    wrong_terms = EXCLUDED.wrong_terms,
-    stats = EXCLUDED.stats,
-    updated_at = now();
-
-  RETURN true;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-GRANT EXECUTE ON FUNCTION public.save_game_save TO authenticated;
-
--- 7. 管理者向け全生徒データ取得用の確実な SECURITY DEFINER RPC 関数
-CREATE OR REPLACE FUNCTION public.get_all_students_data()
-RETURNS TABLE (
-  id UUID,
-  email TEXT,
-  display_name TEXT,
-  role TEXT,
-  student_year TEXT,
-  student_class TEXT,
-  student_no TEXT,
-  student_name TEXT,
-  created_at TIMESTAMPTZ,
-  level INT,
-  xp INT,
-  collected_cards TEXT[],
-  best_time_seconds INT,
-  wrong_terms TEXT[],
-  stats JSONB,
-  updated_at TIMESTAMPTZ
-) AS $$
-BEGIN
-  RETURN QUERY
-  SELECT 
-    p.id,
-    p.email,
-    p.display_name,
-    p.role,
-    p.student_year,
-    p.student_class,
-    p.student_no,
-    p.student_name,
-    p.created_at,
-    COALESCE(g.level, 1) as level,
-    COALESCE(g.xp, 0) as xp,
-    COALESCE(g.collected_cards, '{}'::TEXT[]) as collected_cards,
-    g.best_time_seconds,
-    COALESCE(g.wrong_terms, '{}'::TEXT[]) as wrong_terms,
-    COALESCE(g.stats, '{"attempts":0,"wins":0,"termStats":{}}'::jsonb) as stats,
-    g.updated_at
-  FROM public.profiles p
-  LEFT JOIN public.game_saves g ON p.id = g.user_id
-  ORDER BY p.created_at DESC;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-GRANT EXECUTE ON FUNCTION public.get_all_students_data TO authenticated, anon;
-
--- 8. ★先生・管理者による生徒パスワード再発行（ワンタイム一時パスワード化）RPC関数★
--- 先生が指定した生徒の一時パスワードを設定し、同時に初回変更フラグ（must_change_password）を有効化
-CREATE OR REPLACE FUNCTION public.admin_reset_user_password(
-  p_target_user_id UUID,
-  p_temp_password TEXT
-)
-RETURNS JSONB AS $$
-DECLARE
-  v_caller_id UUID;
-  v_caller_role TEXT;
-  v_encrypted_pw TEXT;
-BEGIN
-  v_caller_id := auth.uid();
-  IF v_caller_id IS NULL THEN
-    RETURN jsonb_build_object('success', false, 'error', '認証セッションが必要です。');
-  END IF;
-
-  -- 呼び出し元が先生（admin）であることを確認
-  SELECT role INTO v_caller_role FROM public.profiles WHERE id = v_caller_id;
-  IF v_caller_role IS DISTINCT FROM 'admin' THEN
-    IF NOT EXISTS (
-      SELECT 1 FROM auth.users 
-      WHERE id = v_caller_id AND (raw_user_meta_data->>'role' = 'admin')
-    ) THEN
-      RETURN jsonb_build_object('success', false, 'error', '管理者（先生）権限が必要です。');
-    END IF;
-  END IF;
-
-  -- 対象生徒の存在確認
-  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id = p_target_user_id) THEN
-    RETURN jsonb_build_object('success', false, 'error', '指定された生徒アカウントが見つかりません。');
-  END IF;
-
-  -- pgcrypto拡張機能によりbcrypt暗号化ハッシュを生成
-  CREATE EXTENSION IF NOT EXISTS pgcrypto;
-  v_encrypted_pw := crypt(p_temp_password, gen_salt('bf'));
-
-  -- auth.users のパスワードと must_change_password メタデータを更新
-  UPDATE auth.users
-  SET 
-    encrypted_password = v_encrypted_pw,
-    raw_user_meta_data = jsonb_set(
-      COALESCE(raw_user_meta_data, '{}'::jsonb),
-      '{must_change_password}',
-      'true'::jsonb
-    ),
-    updated_at = now()
-  WHERE id = p_target_user_id;
-
-  -- public.profiles のカラム自動追加とフラグ更新
-  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT false;
-  UPDATE public.profiles
-  SET must_change_password = true, updated_at = now()
-  WHERE id = p_target_user_id;
-
-  RETURN jsonb_build_object('success', true);
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-GRANT EXECUTE ON FUNCTION public.admin_reset_user_password TO authenticated;`;
-
-  const handleCopySQL = () => {
-    navigator.clipboard.writeText(rlsFixSQL);
-    setCopiedSQL(true);
-    setTimeout(() => setCopiedSQL(false), 2000);
-  };
-
-  // Supabase SQLエディター用スクリプト モーダル（全文閲覧・コピー）
-  const renderSqlModal = () => {
-    if (!isSqlModalOpen) return null;
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-fade-in">
-        <div className="relative w-full max-w-3xl bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl text-slate-100 max-h-[92vh] flex flex-col">
-          {/* 閉じるボタン */}
-          <button
-            onClick={() => setIsSqlModalOpen(false)}
-            className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition"
-            aria-label="閉じる"
-          >
-            <X className="w-5 h-5" />
-          </button>
-
-          {/* ヘッダー */}
-          <div className="flex items-center gap-3 mb-4 shrink-0">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center">
-              <Database className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                <span>Supabase SQL Editor 実行用スクリプト</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-normal">
-                  全8セクション
-                </span>
-              </h3>
-              <p className="text-xs text-slate-400">
-                Supabaseのダッシュボードに貼り付けて実行することで、集計権限・生徒一覧・パスワード再発行機能が有効化されます
-              </p>
-            </div>
-          </div>
-
-          {/* 実行手順ガイド */}
-          <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 mb-4 text-xs space-y-2 shrink-0">
-            <div className="font-bold text-slate-200 flex items-center gap-1.5">
-              <Terminal className="w-4 h-4 text-emerald-400" />
-              <span>簡単な実行手順（3ステップ・約1分）</span>
-            </div>
-            <ol className="list-decimal list-inside text-slate-300 space-y-1 text-[11px] leading-relaxed pl-1">
-              <li>
-                下の<strong className="text-amber-400">「SQLをすべてコピー」</strong>ボタンを押してスクリプト全体をコピーします。
-              </li>
-              <li>
-                <a
-                  href="https://supabase.com/dashboard"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-400 hover:text-blue-300 underline font-semibold inline-flex items-center gap-1 ml-0.5"
-                >
-                  <span>Supabaseダッシュボード</span>
-                  <ExternalLink className="w-3 h-3 inline" />
-                </a>
-                を開き、プロジェクトを選択して左メニューの<strong className="text-slate-100">「SQL Editor」</strong>をクリックします。
-              </li>
-              <li>
-                上部の「+ New query」を押して枠内に貼り付け、右下の緑色の<strong className="text-emerald-400">「▶ Run」</strong>ボタンをクリックします。
-              </li>
-            </ol>
-          </div>
-
-          {/* コピー＆アクションバー */}
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-2 shrink-0">
-            <span className="text-xs text-slate-400 font-semibold flex items-center gap-1">
-              <Code className="w-3.5 h-3.5 text-amber-400" />
-              <span>SQLコード全文（スクロールして閲覧・選択可能）:</span>
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleCopySQL}
-                className="py-1.5 px-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg text-xs transition shadow-md flex items-center gap-1.5 cursor-pointer"
-              >
-                {copiedSQL ? (
-                  <>
-                    <Check className="w-4 h-4" />
-                    <span>コピー完了！</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4" />
-                    <span>SQLをすべてコピー</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* コード表示エリア（スクロール可能・全文閲覧・選択可能） */}
-          <div className="flex-1 min-h-[200px] max-h-[380px] overflow-hidden rounded-xl border border-slate-800 bg-slate-950 relative flex flex-col">
-            <div className="bg-slate-900/90 px-3 py-1.5 border-b border-slate-800 flex items-center justify-between text-[10px] text-slate-400 font-mono shrink-0">
-              <span>supabase_setup_and_rpc.sql</span>
-              <span>PostgreSQL / PL-pgSQL</span>
-            </div>
-            <pre className="flex-1 p-3.5 text-amber-200/90 font-mono text-[11px] leading-relaxed overflow-x-auto overflow-y-auto select-all whitespace-pre">
-              {rlsFixSQL}
-            </pre>
-          </div>
-
-          {/* フッター */}
-          <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between shrink-0">
-            <p className="text-[11px] text-slate-400">
-              ※何度実行しても安全な「CREATE OR REPLACE / IF NOT EXISTS」形式です。
-            </p>
-            <button
-              type="button"
-              onClick={() => setIsSqlModalOpen(false)}
-              className="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition cursor-pointer"
-            >
-              閉じる
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   // 権限チェック
   if (!isAdmin) {
     return (
@@ -797,37 +397,14 @@ GRANT EXECUTE ON FUNCTION public.admin_reset_user_password TO authenticated;`;
             </div>
           )}
 
-          <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800/80 text-left text-[11px] text-slate-400 space-y-2.5">
-            <div className="flex items-center justify-between text-amber-400 font-bold">
-              <span className="flex items-center gap-1.5">
-                <Database className="w-3.5 h-3.5" />
-                <span>Supabase データベース設定・修復SQL</span>
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsSqlModalOpen(true)}
-                className="flex items-center gap-1 text-[11px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-2.5 py-1 rounded-lg transition shadow-xs cursor-pointer"
-              >
-                <Code className="w-3 h-3" />
-                <span>SQLを確認・コピー</span>
-              </button>
-            </div>
-            <p className="text-[10px] text-slate-400 leading-relaxed">
-              Supabaseの「SQL Editor」で上記SQLを実行すると、profilesテーブルの無限再帰エラーが解消され、全生徒一覧の読み込みやパスワード再発行機能が有効化されます。
-            </p>
-          </div>
-
           <button
             onClick={onBackToGame}
-            className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold rounded-xl transition flex items-center justify-center gap-2 text-xs"
+            className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold rounded-xl transition flex items-center justify-center gap-2 text-xs cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
             タイトル画面へ戻る
           </button>
         </div>
-
-        {/* SQL表示モーダル */}
-        {renderSqlModal()}
       </div>
     );
   }
@@ -980,14 +557,6 @@ GRANT EXECUTE ON FUNCTION public.admin_reset_user_password TO authenticated;`;
               <span className="hidden md:inline">{isSyncing ? '同期送信中...' : 'クラウド同期'}</span>
             </button>
           )}
-          <button
-            onClick={() => setIsSqlModalOpen(true)}
-            className="p-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 border border-amber-500/30 rounded-xl transition flex items-center gap-1.5 text-xs font-bold cursor-pointer"
-            title="Supabase SQL Editorで実行するセットアップ用SQLを表示・コピー"
-          >
-            <Database className="w-4 h-4" />
-            <span className="hidden md:inline">SQL確認・更新</span>
-          </button>
           <button
             onClick={loadStudents}
             disabled={loading}
@@ -1742,19 +1311,11 @@ GRANT EXECUTE ON FUNCTION public.admin_reset_user_password TO authenticated;`;
               </div>
 
               {resetResult.isRpcMissing && (
-                <div className="pt-2 border-t border-red-500/30 space-y-2">
+                <div className="pt-2 border-t border-red-500/30">
                   <p className="text-[11px] text-red-300 leading-relaxed">
-                    ※Supabaseプロジェクトに再発行用SQL関数（<code>admin_reset_user_password</code>）が登録されていないため発生しています。
-                    下記の「SQLをコピー」からSQLを取得し、SupabaseのSQL Editorで実行してください。
+                    ※Supabaseプロジェクトに再発行用関数（<code>admin_reset_user_password</code>）が登録されていないため発生しています。
+                    プロジェクト管理者に連絡の上、<code>supabase_setup.sql</code> の実行をご確認ください。
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => setIsSqlModalOpen(true)}
-                    className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    <Database className="w-4 h-4" />
-                    <span>SQLコードを確認・コピーする</span>
-                  </button>
                 </div>
               )}
             </div>
@@ -1847,9 +1408,6 @@ GRANT EXECUTE ON FUNCTION public.admin_reset_user_password TO authenticated;`;
         </div>
       </div>
     )}
-
-      {/* Supabase SQL表示・コピーモーダル */}
-      {renderSqlModal()}
     </div>
   );
 };
