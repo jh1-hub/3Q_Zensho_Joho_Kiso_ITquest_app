@@ -250,9 +250,9 @@ export default function App() {
             ownerUserId: uid,
             level: cloudSave.level || 1,
             xp: cloudSave.xp || 0,
-            collectedCards: cloudSave.collected_cards || [],
+            collectedCards: Array.isArray(cloudSave.collected_cards) ? cloudSave.collected_cards : [],
             bestTimeSeconds: cloudSave.best_time_seconds,
-            wrongTerms: cloudSave.wrong_terms || [],
+            wrongTerms: Array.isArray(cloudSave.wrong_terms) ? cloudSave.wrong_terms : [],
             stats: cloudSave.stats || { attempts: 0, wins: 0, termStats: {} },
             updated_at: cloudSave.updated_at,
           };
@@ -266,7 +266,16 @@ export default function App() {
         if (cloudData && localData) {
           // ローカルが別のユーザーIDのデータであれば、他生徒のデータを混入させずクラウド側を採用
           if (localData.ownerUserId && localData.ownerUserId !== uid) {
-            dataToApply = cloudData;
+            // ただし、クラウド側がまだ空（新規作成直後）でローカルに実績がある場合は、ローカル実績を引き継ぐ
+            const cloudHasProgress = (cloudData.collectedCards?.length || 0) > 0 || (cloudData.stats?.attempts || 0) > 0;
+            if (!cloudHasProgress) {
+              dataToApply = mergeSaveData(cloudData, localData, uid);
+              if (dataToApply) {
+                await upsertGameSave(uid, dataToApply);
+              }
+            } else {
+              dataToApply = cloudData;
+            }
           } else {
             // 同一ユーザー、または未ログイン（ゲスト）時のプレイデータを引き継ぐマージ
             dataToApply = mergeSaveData(cloudData, localData, uid);
@@ -385,6 +394,54 @@ export default function App() {
       }
     } catch (e) {
       console.error('Error saving data:', e);
+    }
+  };
+
+  /**
+   * 手動同期ボタン（現在の画面・端末の成績データをSupabaseへ確実にアップロードし、最新化）
+   */
+  const handleManualSync = async () => {
+    if (!currentUser?.id) {
+      setAuthModalMode('login');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    try {
+      setIsSyncing(true);
+
+      // 1. 現在の画面・メモリ上の最新成績データを構築
+      const currentMemorySave: SaveData = {
+        ownerUserId: currentUser.id,
+        level: player.level,
+        xp: player.xp,
+        collectedCards: player.collectedCards,
+        bestTimeSeconds: bestTime,
+        wrongTerms: wrongTerms,
+        stats: gameStats,
+        updated_at: new Date().toISOString(),
+      };
+
+      // 2. ローカルストレージ内のセーブデータとも最善マージ
+      let localSaved: SaveData | null = null;
+      try {
+        const localStr = secureStorage.getItem('it-rogue-save-data');
+        if (localStr) localSaved = JSON.parse(localStr);
+      } catch {}
+
+      const localBest = mergeSaveData(currentMemorySave, localSaved, currentUser.id) || currentMemorySave;
+
+      // 3. Supabase クラウド (game_saves テーブル + user_metadata) へ確実にアップロード送信
+      await upsertGameSave(currentUser.id, localBest);
+
+      // 4. クラウド側のデータ（他端末や過去のデータ）ともマージして最新状態を同期
+      await loadSaveData(currentUser.id);
+
+      setLastSyncTime(new Date().toLocaleTimeString());
+    } catch (err) {
+      console.error('Manual sync failed:', err);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -1766,14 +1823,7 @@ export default function App() {
             window.history.pushState({}, '', '/admin');
           } : undefined}
           isSyncing={isSyncing}
-          onManualSync={async () => {
-            if (!currentUser?.id) {
-              setAuthModalMode('login');
-              setIsAuthModalOpen(true);
-              return;
-            }
-            await loadSaveData(currentUser.id);
-          }}
+          onManualSync={handleManualSync}
         />
       )}
 
@@ -1876,6 +1926,8 @@ export default function App() {
           onResetData={handleResetAllData}
           userProfile={currentUserProfile}
           onDebugGoToResult={handleDebugGoToResult}
+          onManualSync={handleManualSync}
+          isSyncing={isSyncing}
         />
       )}
 

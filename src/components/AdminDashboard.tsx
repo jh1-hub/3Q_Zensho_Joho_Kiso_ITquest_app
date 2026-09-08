@@ -26,7 +26,7 @@ export interface StudentMetrics {
 }
 
 export function getStudentMetrics(save?: GameSaveRow | null): StudentMetrics {
-  const cards = save?.collected_cards || [];
+  const cards = Array.isArray(save?.collected_cards) ? save.collected_cards : [];
   const bookLevel = calculateCollectorLevel(cards);
   const attempts = save?.stats?.attempts || 0;
   const wins = save?.stats?.wins || 0;
@@ -66,7 +66,7 @@ export function getStudentMetrics(save?: GameSaveRow | null): StudentMetrics {
     accuracy,
     grade,
     bestTimeSeconds: save?.best_time_seconds ?? null,
-    wrongTermsCount: save?.wrong_terms?.length || 0,
+    wrongTermsCount: Array.isArray(save?.wrong_terms) ? save.wrong_terms.length : 0,
   };
 }
 

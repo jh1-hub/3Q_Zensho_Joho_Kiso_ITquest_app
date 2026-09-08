@@ -266,8 +266,13 @@ export function mergeSaveData(a: SaveData | null, b: SaveData | null, ownerId?: 
   if (!a) return b;
   if (!b) return a;
 
-  const collected = Array.from(new Set([...(a.collectedCards || []), ...(b.collectedCards || [])]));
-  const wrong = Array.from(new Set([...(a.wrongTerms || []), ...(b.wrongTerms || [])]));
+  const aCards = Array.isArray(a.collectedCards) ? a.collectedCards : [];
+  const bCards = Array.isArray(b.collectedCards) ? b.collectedCards : [];
+  const collected = Array.from(new Set([...aCards, ...bCards]));
+
+  const aWrong = Array.isArray(a.wrongTerms) ? a.wrongTerms : [];
+  const bWrong = Array.isArray(b.wrongTerms) ? b.wrongTerms : [];
+  const wrong = Array.from(new Set([...aWrong, ...bWrong]));
 
   let bestTime: number | null = null;
   if (a.bestTimeSeconds !== null && b.bestTimeSeconds !== null) {
@@ -404,9 +409,9 @@ export async function getGameSave(userId: string): Promise<GameSaveRow | null> {
     const tableAsSaveData: SaveData = {
       level: tableSave.level,
       xp: tableSave.xp,
-      collectedCards: tableSave.collected_cards || [],
+      collectedCards: Array.isArray(tableSave.collected_cards) ? tableSave.collected_cards : [],
       bestTimeSeconds: tableSave.best_time_seconds,
-      wrongTerms: tableSave.wrong_terms || [],
+      wrongTerms: Array.isArray(tableSave.wrong_terms) ? tableSave.wrong_terms : [],
       stats: tableSave.stats,
       updated_at: tableSave.updated_at,
     };
@@ -425,16 +430,22 @@ export async function getGameSave(userId: string): Promise<GameSaveRow | null> {
     }
   }
 
-  if (tableSave) return tableSave;
+  if (tableSave) {
+    return {
+      ...tableSave,
+      collected_cards: Array.isArray(tableSave.collected_cards) ? tableSave.collected_cards : [],
+      wrong_terms: Array.isArray(tableSave.wrong_terms) ? tableSave.wrong_terms : [],
+    };
+  }
 
   if (metaSave) {
     return {
       user_id: userId,
       level: metaSave.level || 1,
       xp: metaSave.xp || 0,
-      collected_cards: metaSave.collectedCards || [],
+      collected_cards: Array.isArray(metaSave.collectedCards) ? metaSave.collectedCards : [],
       best_time_seconds: metaSave.bestTimeSeconds ?? null,
-      wrong_terms: metaSave.wrongTerms || [],
+      wrong_terms: Array.isArray(metaSave.wrongTerms) ? metaSave.wrongTerms : [],
       stats: metaSave.stats || { attempts: 0, wins: 0, termStats: {} },
       updated_at: metaSave.updated_at || new Date().toISOString(),
     };
@@ -451,19 +462,21 @@ export async function upsertGameSave(userId: string, saveData: SaveData): Promis
   let metaSuccess = false;
   let tableSuccess = false;
 
+  const cards = Array.isArray(saveData.collectedCards) ? saveData.collectedCards : [];
+  const wrong = Array.isArray(saveData.wrongTerms) ? saveData.wrongTerms : [];
+  const stats = saveData.stats || { attempts: 0, wins: 0, termStats: {} };
+
   // 1. Supabase Auth の user_metadata に直接保存
-  // ※ RLSポリシーやPostgresテーブル再帰エラーの影響を一切受けず、
-  //    別のブラウザや端末でログインした際にも確実に即時引き継がれます
   try {
     const { error: metaError } = await supabase.auth.updateUser({
       data: {
         game_save: {
-          level: saveData.level,
-          xp: saveData.xp,
-          collectedCards: saveData.collectedCards || [],
-          bestTimeSeconds: saveData.bestTimeSeconds,
-          wrongTerms: saveData.wrongTerms || [],
-          stats: saveData.stats || { attempts: 0, wins: 0, termStats: {} },
+          level: saveData.level ?? 1,
+          xp: saveData.xp ?? 0,
+          collectedCards: cards,
+          bestTimeSeconds: saveData.bestTimeSeconds ?? null,
+          wrongTerms: wrong,
+          stats: stats,
           ownerUserId: userId,
           updated_at: nowIso,
         }
@@ -479,41 +492,37 @@ export async function upsertGameSave(userId: string, saveData: SaveData): Promis
     console.warn('Exception updating user_metadata game_save:', err);
   }
 
-  // 2. game_saves テーブルへの保存 (管理者・先生の一覧画面用)
+  // 2. game_saves テーブルへの直接保存 (管理者・先生の一覧画面用)
   try {
-    // まず SECURITY DEFINER RPC での保存を試みる（RLSポリシー競合や再帰エラーの影響を完全回避）
-    const { error: rpcError } = await supabase.rpc('save_game_save', {
-      p_level: saveData.level,
-      p_xp: saveData.xp,
-      p_collected_cards: saveData.collectedCards || [],
-      p_best_time_seconds: saveData.bestTimeSeconds ?? null,
-      p_wrong_terms: saveData.wrongTerms || [],
-      p_stats: saveData.stats || { attempts: 0, wins: 0, termStats: {} },
-    });
+    const row: Partial<GameSaveRow> = {
+      user_id: userId,
+      level: saveData.level ?? 1,
+      xp: saveData.xp ?? 0,
+      collected_cards: cards,
+      best_time_seconds: saveData.bestTimeSeconds ?? null,
+      wrong_terms: wrong,
+      stats: stats,
+      updated_at: nowIso,
+    };
 
-    if (!rpcError) {
+    const { error: directError } = await supabase
+      .from('game_saves')
+      .upsert(row, { onConflict: 'user_id' });
+
+    if (!directError) {
       tableSuccess = true;
     } else {
-      // RPCが未作成の場合は直接 upsert を試みる
-      const row: Partial<GameSaveRow> = {
-        user_id: userId,
-        level: saveData.level,
-        xp: saveData.xp,
-        collected_cards: saveData.collectedCards || [],
-        best_time_seconds: saveData.bestTimeSeconds,
-        wrong_terms: saveData.wrongTerms || [],
-        stats: saveData.stats || { attempts: 0, wins: 0, termStats: {} },
-        updated_at: nowIso,
-      };
-
-      const { error } = await supabase
-        .from('game_saves')
-        .upsert(row, { onConflict: 'user_id' });
-
-      if (!error) {
+      console.warn('Direct game_saves upsert warning, attempting RPC fallback:', directError);
+      const { data: rpcData, error: rpcError } = await supabase.rpc('save_game_save', {
+        p_level: saveData.level ?? 1,
+        p_xp: saveData.xp ?? 0,
+        p_collected_cards: cards,
+        p_best_time_seconds: saveData.bestTimeSeconds ?? null,
+        p_wrong_terms: wrong,
+        p_stats: stats,
+      });
+      if (!rpcError && rpcData === true) {
         tableSuccess = true;
-      } else {
-        console.warn('game_saves table upsert warning (user_metadata fallback saved successfully):', error);
       }
     }
   } catch (err) {
@@ -547,9 +556,9 @@ export async function fetchAllStudentsOverview(): Promise<StudentOverview[]> {
           user_id: row.id,
           level: row.level ?? 1,
           xp: row.xp ?? 0,
-          collected_cards: row.collected_cards || [],
+          collected_cards: Array.isArray(row.collected_cards) ? row.collected_cards : [],
           best_time_seconds: row.best_time_seconds,
-          wrong_terms: row.wrong_terms || [],
+          wrong_terms: Array.isArray(row.wrong_terms) ? row.wrong_terms : [],
           stats: row.stats || { attempts: 0, wins: 0, termStats: {} },
           updated_at: row.updated_at,
         }

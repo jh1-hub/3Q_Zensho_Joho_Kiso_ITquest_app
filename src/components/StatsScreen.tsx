@@ -18,6 +18,8 @@ interface StatsScreenProps {
   onBack: () => void;
   onResetData?: () => void;
   userProfile?: UserProfile | null;
+  onManualSync?: () => Promise<void>;
+  isSyncing?: boolean;
   onDebugGoToResult?: (
     isWin: boolean,
     totalTimeSeconds: number,
@@ -38,6 +40,8 @@ export default function StatsScreen({
   onBack,
   onResetData,
   userProfile,
+  onManualSync,
+  isSyncing,
   onDebugGoToResult
 }: StatsScreenProps) {
   // 大カテゴリ選択タブ (すべて, 1, 2, 3)
@@ -826,6 +830,13 @@ export default function StatsScreen({
           console.error('Failed to sync student info to Supabase:', err);
         });
       }
+
+      // 成績・セーブデータもクラウドへ即時同期
+      if (onManualSync) {
+        onManualSync().catch(err => {
+          console.warn('Background sync failed on student info save:', err);
+        });
+      }
     } catch (e) {
       console.error(e);
     }
@@ -871,15 +882,39 @@ export default function StatsScreen({
           <span>せんせき & 実績の記録（成績表）</span>
         </h1>
         
-        {/* ていしゅつ（提出用レポート作成）ボタン */}
-        <button
-          onClick={() => setShowSubmitModal(true)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 border-2 border-emerald-400 text-white font-extrabold rounded-xl text-xs uppercase tracking-widest transition-all cursor-pointer shadow-lg hover:shadow-xl hover:-translate-y-0.5"
-          id="trigger-report-btn"
-        >
-          <FileText size={15} className="animate-pulse" />
-          <span>ていしゅつ</span>
-        </button>
+        {/* アクションボタン群 */}
+        <div className="flex items-center gap-2">
+          {onManualSync && (
+            <button
+              onClick={async () => {
+                saveStudentInfoLocally();
+                await onManualSync();
+              }}
+              disabled={isSyncing}
+              className="flex items-center gap-1.5 px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-extrabold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer shadow-md hover:shadow-lg disabled:opacity-50"
+              title="最新の成績・獲得カードを先生の管理画面へ送信同期"
+              id="stats-manual-sync-btn"
+            >
+              <Cloud size={15} className={isSyncing ? "animate-spin" : ""} />
+              <span>{isSyncing ? '送信中...' : 'クラウド送信'}</span>
+            </button>
+          )}
+
+          {/* ていしゅつ（提出用レポート作成）ボタン */}
+          <button
+            onClick={() => {
+              setShowSubmitModal(true);
+              if (onManualSync) {
+                onManualSync();
+              }
+            }}
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 border-2 border-emerald-400 text-white font-extrabold rounded-xl text-xs uppercase tracking-widest transition-all cursor-pointer shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+            id="trigger-report-btn"
+          >
+            <FileText size={15} className="animate-pulse" />
+            <span>ていしゅつ</span>
+          </button>
+        </div>
       </div>
 
       <div className="max-w-6xl w-full mx-auto flex flex-col gap-6 flex-1 z-10">
