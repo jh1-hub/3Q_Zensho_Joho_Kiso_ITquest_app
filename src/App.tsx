@@ -1837,6 +1837,8 @@ export default function App() {
               window.history.pushState({}, '', '/');
             }
           }}
+          onManualSync={handleManualSync}
+          isSyncing={isSyncing}
         />
       )}
 

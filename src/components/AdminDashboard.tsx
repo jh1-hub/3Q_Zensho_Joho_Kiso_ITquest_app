@@ -2,10 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, Search, ArrowLeft, RefreshCw, Download, 
   Award, Clock, AlertTriangle, ShieldCheck, BookOpen, 
-  CheckCircle2, X, ChevronRight, BarChart3, Filter, Copy, Key, UserCheck, Flame, Trophy, Swords
+  CheckCircle2, X, ChevronRight, BarChart3, Filter, Copy, Key, UserCheck, Flame, Trophy, Swords, Cloud
 } from 'lucide-react';
 import type { StudentOverview, UserProfile, GameSaveRow, SaveData } from '../types';
-import { fetchAllStudentsOverview, promoteToAdmin } from '../lib/supabaseClient';
+import { fetchAllStudentsOverview, promoteToAdmin, upsertGameSave, mergeSaveData } from '../lib/supabaseClient';
+import { secureStorage } from '../utils/secureStorage';
 import { TERM_CARDS } from '../data/problems';
 import { calculateCollectorLevel } from '../utils/gameHelpers';
 
@@ -88,12 +89,16 @@ interface AdminDashboardProps {
   currentUserProfile: UserProfile | null;
   currentSaveData?: SaveData | null;
   onBackToGame: () => void;
+  onManualSync?: () => Promise<void>;
+  isSyncing?: boolean;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
   currentUserProfile, 
   currentSaveData,
-  onBackToGame 
+  onBackToGame,
+  onManualSync,
+  isSyncing = false
 }) => {
   const [students, setStudents] = useState<StudentOverview[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -111,6 +116,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const loadStudents = async () => {
     setLoading(true);
     try {
+      // 先生自身の端末にカード・戦績データがある場合、Supabaseへ自動アップロード・同期
+      if (currentUserProfile?.id) {
+        let localSaved: SaveData | null = null;
+        try {
+          const localStr = secureStorage.getItem('it-rogue-save-data');
+          if (localStr) localSaved = JSON.parse(localStr);
+        } catch {}
+
+        const bestTeacherSave = mergeSaveData(currentSaveData || null, localSaved, currentUserProfile.id);
+        const hasTeacherProgress = (bestTeacherSave?.collectedCards?.length || 0) > 0 || (bestTeacherSave?.stats?.attempts || 0) > 0;
+        
+        if (hasTeacherProgress && bestTeacherSave) {
+          try {
+            await upsertGameSave(currentUserProfile.id, bestTeacherSave);
+          } catch (e) {
+            console.warn('Auto-upsert teacher save failed:', e);
+          }
+        }
+      }
+
       const data = await fetchAllStudentsOverview();
       setStudents(data);
     } catch (err) {
@@ -144,26 +169,51 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  // 先生自身（ログイン中のアカウント）のセーブデータ行
+  // 先生自身（ログイン中のアカウント）のセーブデータ行（クラウドとローカルの両方から最善状態を自動マージ）
   const teacherSaveDataRow = useMemo<GameSaveRow | null>(() => {
     if (!currentUserProfile?.id) return null;
-    // 1. Supabaseからフェッチした一覧に先生のデータがあるか
     const remoteTeacher = students.find(s => s.profile.id === currentUserProfile.id)?.saveData;
-    if (remoteTeacher) return remoteTeacher;
 
-    // 2. なければローカルの currentSaveData から生成
-    if (currentSaveData) {
-      return {
-        user_id: currentUserProfile.id,
-        level: currentSaveData.level || 1,
-        xp: currentSaveData.xp || 0,
-        collected_cards: currentSaveData.collectedCards || [],
-        best_time_seconds: currentSaveData.bestTimeSeconds ?? null,
-        wrong_terms: currentSaveData.wrongTerms || [],
-        stats: currentSaveData.stats || { attempts: 0, wins: 0, termStats: {} },
-        updated_at: new Date().toISOString(),
+    let localSaved: SaveData | null = null;
+    try {
+      const localStr = secureStorage.getItem('it-rogue-save-data');
+      if (localStr) localSaved = JSON.parse(localStr);
+    } catch {}
+
+    let remoteAsSaveData: SaveData | null = null;
+    if (remoteTeacher) {
+      remoteAsSaveData = {
+        ownerUserId: currentUserProfile.id,
+        level: remoteTeacher.level,
+        xp: remoteTeacher.xp,
+        collectedCards: Array.isArray(remoteTeacher.collected_cards) ? remoteTeacher.collected_cards : [],
+        bestTimeSeconds: remoteTeacher.best_time_seconds,
+        wrongTerms: Array.isArray(remoteTeacher.wrong_terms) ? remoteTeacher.wrong_terms : [],
+        stats: remoteTeacher.stats || { attempts: 0, wins: 0, termStats: {} },
+        updated_at: remoteTeacher.updated_at,
       };
     }
+
+    // ローカル（メモリ＋ローカルストレージ）の最善実績
+    const localBest = mergeSaveData(currentSaveData || null, localSaved, currentUserProfile.id);
+
+    // クラウド側とローカル実績を統合（クラウド側が0枚でもローカル実績が引き継がれる）
+    const bestMerged = mergeSaveData(remoteAsSaveData, localBest, currentUserProfile.id);
+
+    if (bestMerged) {
+      return {
+        user_id: currentUserProfile.id,
+        level: bestMerged.level,
+        xp: bestMerged.xp,
+        collected_cards: bestMerged.collectedCards || [],
+        best_time_seconds: bestMerged.bestTimeSeconds ?? null,
+        wrong_terms: bestMerged.wrongTerms || [],
+        stats: bestMerged.stats || { attempts: 0, wins: 0, termStats: {} },
+        updated_at: bestMerged.updated_at || remoteTeacher?.updated_at || new Date().toISOString(),
+      };
+    }
+
+    if (remoteTeacher) return remoteTeacher;
     return null;
   }, [students, currentUserProfile, currentSaveData]);
 
@@ -615,11 +665,25 @@ GRANT EXECUTE ON FUNCTION public.get_all_students_data TO authenticated, anon;`;
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="text-right hidden sm:block">
             <div className="text-xs font-medium text-slate-200">{currentUserProfile?.display_name || '管理者（先生）'}</div>
             <div className="text-[10px] text-amber-400/90 font-mono">{currentUserProfile?.email} (admin)</div>
           </div>
+          {onManualSync && (
+            <button
+              onClick={async () => {
+                await onManualSync();
+                await loadStudents();
+              }}
+              disabled={loading || isSyncing}
+              className="p-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 rounded-xl transition flex items-center gap-1.5 text-xs font-bold disabled:opacity-50"
+              title="先生自身のプレイ実績をSupabaseへ送信し、全生徒のデータも最新化"
+            >
+              <Cloud className={`w-4 h-4 ${isSyncing ? 'animate-pulse text-blue-400' : ''}`} />
+              <span className="hidden md:inline">{isSyncing ? '同期送信中...' : 'クラウド同期'}</span>
+            </button>
+          )}
           <button
             onClick={loadStudents}
             disabled={loading}
@@ -666,13 +730,29 @@ GRANT EXECUTE ON FUNCTION public.get_all_students_data TO authenticated, anon;`;
                 </div>
               </div>
 
-              <button
-                onClick={() => setSelectedStudent(teacherOverview)}
-                className="py-2 px-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5"
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>自分の詳細データ・カード一覧を見る</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                {onManualSync && (
+                  <button
+                    onClick={async () => {
+                      await onManualSync();
+                      await loadStudents();
+                    }}
+                    disabled={loading || isSyncing}
+                    className="py-2 px-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                    title="先生自身のカード・戦績データをクラウドへ送信し、最新化"
+                  >
+                    <Cloud className={`w-3.5 h-3.5 ${isSyncing ? 'animate-bounce' : ''}`} />
+                    <span>{isSyncing ? '送信中...' : '先生データをクラウド送信'}</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setSelectedStudent(teacherOverview)}
+                  className="py-2 px-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>自分の詳細データ・カード一覧を見る</span>
+                </button>
+              </div>
             </div>
 
             {/* 先生の学習・プレイ状況ステータスグリッド */}
