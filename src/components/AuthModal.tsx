@@ -26,9 +26,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [studentNo, setStudentNo] = useState('');
   const [studentName, setStudentName] = useState('');
 
-  // 認証情報（ログイン時はこの2つのみ使用）
+  // 認証情報（ログイン時はこの2つのみ使用、新規登録時は確認用も使用）
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   // 状態管理
@@ -47,6 +48,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setMode(initialMode);
       setErrorMessage(null);
       setSuccessMessage(null);
+      setPasswordConfirm('');
       setWaitingForConfirmation(false);
       try {
         const saved = secureStorage.getItem('it-rogue-student-info');
@@ -161,6 +163,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         if (password.length < 6) {
           throw new Error('パスワードは6文字以上で入力してください。');
+        }
+
+        if (password !== passwordConfirm) {
+          throw new Error('パスワード（確認用）が一致しません。もう一度お確かめください。');
         }
 
         const formattedDisplayName = `${studentYear.trim()}年${studentClass.trim()}組${studentNo.trim()}番 ${studentName.trim()}`;
@@ -355,6 +361,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   setMode('login');
                   setErrorMessage(null);
                   setSuccessMessage(null);
+                  setPasswordConfirm('');
                 }}
                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   mode === 'login'
@@ -371,6 +378,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   setMode('signup');
                   setErrorMessage(null);
                   setSuccessMessage(null);
+                  setPasswordConfirm('');
                 }}
                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   mode === 'signup'
@@ -382,30 +390,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <span>新規登録（はじめての方）</span>
               </button>
             </div>
-
-            {/* ログイン画面時の新規登録案内カード */}
-            {mode === 'login' && (
-              <div className="mb-4 p-3 bg-blue-950/40 border border-blue-500/40 rounded-xl text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
-                <div className="flex items-center gap-2 text-blue-200">
-                  <UserPlus className="w-4 h-4 text-blue-400 shrink-0" />
-                  <div>
-                    <span className="font-bold text-white">はじめてプレイされる方へ</span>
-                    <p className="text-[11px] text-blue-300">アカウントをお持ちでない場合は新規登録を行ってください。</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('signup');
-                    setErrorMessage(null);
-                    setSuccessMessage(null);
-                  }}
-                  className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition shadow-xs whitespace-nowrap cursor-pointer self-end sm:self-auto"
-                >
-                  新規登録はこちら ➔
-                </button>
-              </div>
-            )}
 
             {/* メッセージ表示 */}
             {errorMessage && (
@@ -556,6 +540,41 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     </button>
                   </div>
                 </div>
+
+                {/* 新規登録時のみ：パスワードの再入力（確認） */}
+                {mode === 'signup' && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1">
+                        <Lock className="w-3.5 h-3.5 text-amber-400" />
+                        <span>パスワード（確認用）</span>
+                        <span className="text-red-400">*</span>
+                      </span>
+                      {passwordConfirm && password && (
+                        <span className={`text-[10px] font-bold ${password === passwordConfirm ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {password === passwordConfirm ? '✓ 一致しています' : '✕ 一致していません'}
+                        </span>
+                      )}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        minLength={6}
+                        value={passwordConfirm}
+                        onChange={(e) => setPasswordConfirm(e.target.value)}
+                        placeholder="もう一度同じパスワードを入力"
+                        className={`w-full bg-slate-800/90 border rounded-xl px-3 py-2 pr-10 text-sm text-slate-100 placeholder-slate-500 focus:outline-hidden font-mono ${
+                          passwordConfirm && password !== passwordConfirm 
+                            ? 'border-red-500/80 focus:border-red-400' 
+                            : passwordConfirm && password === passwordConfirm
+                            ? 'border-emerald-500/80 focus:border-emerald-400'
+                            : 'border-slate-700 focus:border-amber-400'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 送信ボタン */}

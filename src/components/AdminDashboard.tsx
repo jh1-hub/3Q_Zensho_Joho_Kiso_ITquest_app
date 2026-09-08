@@ -3,7 +3,7 @@ import {
   Users, Search, ArrowLeft, RefreshCw, Download, 
   Award, Clock, AlertTriangle, ShieldCheck, BookOpen, 
   CheckCircle2, X, ChevronRight, BarChart3, Filter, Copy, Key, UserCheck, Flame, Trophy, Swords, Cloud,
-  Mail, Send, Lock, Check
+  Mail, Send, Lock, Check, Database, Code, ExternalLink, Terminal
 } from 'lucide-react';
 import type { StudentOverview, UserProfile, GameSaveRow, SaveData } from '../types';
 import { 
@@ -118,6 +118,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [isPromoting, setIsPromoting] = useState<boolean>(false);
   const [promoteSuccess, setPromoteSuccess] = useState<boolean>(false);
   const [copiedSQL, setCopiedSQL] = useState<boolean>(false);
+  const [isSqlModalOpen, setIsSqlModalOpen] = useState<boolean>(false);
 
   // パスワード再発行用ステート
   const [resetPasswordTarget, setResetPasswordTarget] = useState<StudentOverview | null>(null);
@@ -632,6 +633,123 @@ GRANT EXECUTE ON FUNCTION public.admin_reset_user_password TO authenticated;`;
     setTimeout(() => setCopiedSQL(false), 2000);
   };
 
+  // Supabase SQLエディター用スクリプト モーダル（全文閲覧・コピー）
+  const renderSqlModal = () => {
+    if (!isSqlModalOpen) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-fade-in">
+        <div className="relative w-full max-w-3xl bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl text-slate-100 max-h-[92vh] flex flex-col">
+          {/* 閉じるボタン */}
+          <button
+            onClick={() => setIsSqlModalOpen(false)}
+            className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition"
+            aria-label="閉じる"
+          >
+            <X className="w-5 h-5" />
+          </button>
+
+          {/* ヘッダー */}
+          <div className="flex items-center gap-3 mb-4 shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center">
+              <Database className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                <span>Supabase SQL Editor 実行用スクリプト</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-normal">
+                  全8セクション
+                </span>
+              </h3>
+              <p className="text-xs text-slate-400">
+                Supabaseのダッシュボードに貼り付けて実行することで、集計権限・生徒一覧・パスワード再発行機能が有効化されます
+              </p>
+            </div>
+          </div>
+
+          {/* 実行手順ガイド */}
+          <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 mb-4 text-xs space-y-2 shrink-0">
+            <div className="font-bold text-slate-200 flex items-center gap-1.5">
+              <Terminal className="w-4 h-4 text-emerald-400" />
+              <span>簡単な実行手順（3ステップ・約1分）</span>
+            </div>
+            <ol className="list-decimal list-inside text-slate-300 space-y-1 text-[11px] leading-relaxed pl-1">
+              <li>
+                下の<strong className="text-amber-400">「SQLをすべてコピー」</strong>ボタンを押してスクリプト全体をコピーします。
+              </li>
+              <li>
+                <a
+                  href="https://supabase.com/dashboard"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:text-blue-300 underline font-semibold inline-flex items-center gap-1 ml-0.5"
+                >
+                  <span>Supabaseダッシュボード</span>
+                  <ExternalLink className="w-3 h-3 inline" />
+                </a>
+                を開き、プロジェクトを選択して左メニューの<strong className="text-slate-100">「SQL Editor」</strong>をクリックします。
+              </li>
+              <li>
+                上部の「+ New query」を押して枠内に貼り付け、右下の緑色の<strong className="text-emerald-400">「▶ Run」</strong>ボタンをクリックします。
+              </li>
+            </ol>
+          </div>
+
+          {/* コピー＆アクションバー */}
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2 shrink-0">
+            <span className="text-xs text-slate-400 font-semibold flex items-center gap-1">
+              <Code className="w-3.5 h-3.5 text-amber-400" />
+              <span>SQLコード全文（スクロールして閲覧・選択可能）:</span>
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCopySQL}
+                className="py-1.5 px-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg text-xs transition shadow-md flex items-center gap-1.5 cursor-pointer"
+              >
+                {copiedSQL ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>コピー完了！</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    <span>SQLをすべてコピー</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* コード表示エリア（スクロール可能・全文閲覧・選択可能） */}
+          <div className="flex-1 min-h-[200px] max-h-[380px] overflow-hidden rounded-xl border border-slate-800 bg-slate-950 relative flex flex-col">
+            <div className="bg-slate-900/90 px-3 py-1.5 border-b border-slate-800 flex items-center justify-between text-[10px] text-slate-400 font-mono shrink-0">
+              <span>supabase_setup_and_rpc.sql</span>
+              <span>PostgreSQL / PL-pgSQL</span>
+            </div>
+            <pre className="flex-1 p-3.5 text-amber-200/90 font-mono text-[11px] leading-relaxed overflow-x-auto overflow-y-auto select-all whitespace-pre">
+              {rlsFixSQL}
+            </pre>
+          </div>
+
+          {/* フッター */}
+          <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between shrink-0">
+            <p className="text-[11px] text-slate-400">
+              ※何度実行しても安全な「CREATE OR REPLACE / IF NOT EXISTS」形式です。
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsSqlModalOpen(false)}
+              className="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition cursor-pointer"
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // 権限チェック
   if (!isAdmin) {
     return (
@@ -679,20 +797,23 @@ GRANT EXECUTE ON FUNCTION public.admin_reset_user_password TO authenticated;`;
             </div>
           )}
 
-          <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/80 text-left text-[11px] text-slate-400 space-y-2">
+          <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800/80 text-left text-[11px] text-slate-400 space-y-2.5">
             <div className="flex items-center justify-between text-amber-400 font-bold">
-              <span>💡 Supabase設定ヒント（RLSエラーが出ている場合）</span>
+              <span className="flex items-center gap-1.5">
+                <Database className="w-3.5 h-3.5" />
+                <span>Supabase データベース設定・修復SQL</span>
+              </span>
               <button
                 type="button"
-                onClick={handleCopySQL}
-                className="flex items-center gap-1 text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-0.5 rounded transition"
+                onClick={() => setIsSqlModalOpen(true)}
+                className="flex items-center gap-1 text-[11px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-2.5 py-1 rounded-lg transition shadow-xs cursor-pointer"
               >
-                <Copy className="w-3 h-3" />
-                <span>{copiedSQL ? 'コピー完了！' : 'SQLをコピー'}</span>
+                <Code className="w-3 h-3" />
+                <span>SQLを確認・コピー</span>
               </button>
             </div>
-            <p className="text-[10px] text-slate-500 leading-relaxed">
-              Supabaseの「SQL Editor」で上記SQLを実行すると、profilesテーブルの無限再帰エラーが解消され、全生徒一覧がスムーズに読み込めるようになります。
+            <p className="text-[10px] text-slate-400 leading-relaxed">
+              Supabaseの「SQL Editor」で上記SQLを実行すると、profilesテーブルの無限再帰エラーが解消され、全生徒一覧の読み込みやパスワード再発行機能が有効化されます。
             </p>
           </div>
 
@@ -704,6 +825,9 @@ GRANT EXECUTE ON FUNCTION public.admin_reset_user_password TO authenticated;`;
             タイトル画面へ戻る
           </button>
         </div>
+
+        {/* SQL表示モーダル */}
+        {renderSqlModal()}
       </div>
     );
   }
@@ -856,6 +980,14 @@ GRANT EXECUTE ON FUNCTION public.admin_reset_user_password TO authenticated;`;
               <span className="hidden md:inline">{isSyncing ? '同期送信中...' : 'クラウド同期'}</span>
             </button>
           )}
+          <button
+            onClick={() => setIsSqlModalOpen(true)}
+            className="p-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 border border-amber-500/30 rounded-xl transition flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+            title="Supabase SQL Editorで実行するセットアップ用SQLを表示・コピー"
+          >
+            <Database className="w-4 h-4" />
+            <span className="hidden md:inline">SQL確認・更新</span>
+          </button>
           <button
             onClick={loadStudents}
             disabled={loading}
@@ -1617,11 +1749,11 @@ GRANT EXECUTE ON FUNCTION public.admin_reset_user_password TO authenticated;`;
                   </p>
                   <button
                     type="button"
-                    onClick={handleCopySQL}
-                    className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    onClick={() => setIsSqlModalOpen(true)}
+                    className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                   >
-                    <Copy className="w-4 h-4" />
-                    <span>{copiedSQL ? 'SQLをコピーしました！' : '修復用SQLをコピー'}</span>
+                    <Database className="w-4 h-4" />
+                    <span>SQLコードを確認・コピーする</span>
                   </button>
                 </div>
               )}
@@ -1715,6 +1847,9 @@ GRANT EXECUTE ON FUNCTION public.admin_reset_user_password TO authenticated;`;
         </div>
       </div>
     )}
+
+      {/* Supabase SQL表示・コピーモーダル */}
+      {renderSqlModal()}
     </div>
   );
 };
