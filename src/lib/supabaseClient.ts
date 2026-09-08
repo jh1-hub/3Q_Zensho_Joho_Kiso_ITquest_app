@@ -64,6 +64,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     const isLocalAdmin = localStorage.getItem(`admin_mode_${userId}`) === 'true';
 
     const role = (isExplicitAdmin || isEmailAdmin || isLocalAdmin) ? 'admin' : 'student';
+    const mustChangePassword = Boolean(data?.must_change_password || meta?.must_change_password);
 
     const profile: UserProfile = {
       id: userId,
@@ -74,6 +75,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
       student_class: cls || null,
       student_no: no || null,
       student_name: name || null,
+      must_change_password: mustChangePassword,
       created_at: data?.created_at,
     };
 
@@ -120,6 +122,7 @@ export async function updateUserProfile(
     student_no?: string;
     student_name?: string;
     display_name?: string;
+    must_change_password?: boolean;
   }
 ): Promise<boolean> {
   try {
@@ -130,14 +133,18 @@ export async function updateUserProfile(
     const dispName = updates.display_name || (year && cls && no && name ? `${year}年${cls}組${no}番 ${name}` : name);
 
     // 1. Supabase auth user_metadata の更新
+    const metaDataToUpdate: any = {
+      student_year: year,
+      student_class: cls,
+      student_no: no,
+      student_name: name,
+      display_name: dispName,
+    };
+    if (updates.must_change_password !== undefined) {
+      metaDataToUpdate.must_change_password = updates.must_change_password;
+    }
     await supabase.auth.updateUser({
-      data: {
-        student_year: year,
-        student_class: cls,
-        student_no: no,
-        student_name: name,
-        display_name: dispName,
-      }
+      data: metaDataToUpdate
     });
 
     const { data: { user } } = await supabase.auth.getUser();
@@ -153,6 +160,7 @@ export async function updateUserProfile(
     if (cls !== undefined) profilePayload.student_class = cls;
     if (no !== undefined) profilePayload.student_no = no;
     if (name !== undefined) profilePayload.student_name = name;
+    if (updates.must_change_password !== undefined) profilePayload.must_change_password = updates.must_change_password;
 
     const { error } = await supabase
       .from('profiles')
@@ -630,5 +638,60 @@ export async function fetchAllStudentsOverview(): Promise<StudentOverview[]> {
   } catch (err) {
     console.error('Failed to fetch all students overview:', err);
     return [];
+  }
+}
+
+/**
+ * 管理者（先生）による特定ユーザーのパスワード再発行（ワンタイム一時パスワード化）
+ */
+export async function adminResetUserPassword(
+  targetUserId: string,
+  tempPassword: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { data, error } = await supabase.rpc('admin_reset_user_password', {
+      p_target_user_id: targetUserId,
+      p_temp_password: tempPassword,
+    });
+
+    if (error) {
+      // RPC関数が未作成の場合など
+      if (error.message.includes('Could not find the function') || error.code === 'PGRST202') {
+        return {
+          success: false,
+          error: 'RPC_NOT_INSTALLED: Supabase側に再発行用SQL関数（admin_reset_user_password）がまだ作成されていません。管理画面の「SQL修復」スクリプトを実行してください。',
+        };
+      }
+      return { success: false, error: error.message };
+    }
+
+    if (data && data.success === false) {
+      return { success: false, error: data.error || 'パスワードの再発行に失敗しました。' };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || '通信エラーが発生しました。' };
+  }
+}
+
+/**
+ * パスワード再設定メールを送信（Supabase標準メール機能）
+ */
+export async function sendPasswordResetEmail(
+  email: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'メール送信エラーが発生しました。' };
   }
 }

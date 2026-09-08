@@ -2,10 +2,18 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, Search, ArrowLeft, RefreshCw, Download, 
   Award, Clock, AlertTriangle, ShieldCheck, BookOpen, 
-  CheckCircle2, X, ChevronRight, BarChart3, Filter, Copy, Key, UserCheck, Flame, Trophy, Swords, Cloud
+  CheckCircle2, X, ChevronRight, BarChart3, Filter, Copy, Key, UserCheck, Flame, Trophy, Swords, Cloud,
+  Mail, Send, Lock, Check
 } from 'lucide-react';
 import type { StudentOverview, UserProfile, GameSaveRow, SaveData } from '../types';
-import { fetchAllStudentsOverview, promoteToAdmin, upsertGameSave, mergeSaveData } from '../lib/supabaseClient';
+import { 
+  fetchAllStudentsOverview, 
+  promoteToAdmin, 
+  upsertGameSave, 
+  mergeSaveData,
+  adminResetUserPassword,
+  sendPasswordResetEmail
+} from '../lib/supabaseClient';
 import { secureStorage } from '../utils/secureStorage';
 import { TERM_CARDS } from '../data/problems';
 import { calculateCollectorLevel } from '../utils/gameHelpers';
@@ -110,6 +118,109 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [isPromoting, setIsPromoting] = useState<boolean>(false);
   const [promoteSuccess, setPromoteSuccess] = useState<boolean>(false);
   const [copiedSQL, setCopiedSQL] = useState<boolean>(false);
+
+  // パスワード再発行用ステート
+  const [resetPasswordTarget, setResetPasswordTarget] = useState<StudentOverview | null>(null);
+  const [tempPasswordInput, setTempPasswordInput] = useState<string>('');
+  const [isResettingPassword, setIsResettingPassword] = useState<boolean>(false);
+  const [isSendingEmail, setIsSendingEmail] = useState<boolean>(false);
+  const [resetResult, setResetResult] = useState<{
+    type: 'success' | 'error' | null;
+    message?: string;
+    copyText?: string;
+    isRpcMissing?: boolean;
+  }>({ type: null });
+  const [copiedGuide, setCopiedGuide] = useState<boolean>(false);
+
+  const generateRandomPassword = () => {
+    const chars = 'abcdefghijkmnpqrstuvwxyz23456789';
+    let pass = 'temp';
+    for (let i = 0; i < 4; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return pass;
+  };
+
+  const handleOpenPasswordReset = (student: StudentOverview) => {
+    setResetPasswordTarget(student);
+    setTempPasswordInput(generateRandomPassword());
+    setResetResult({ type: null });
+    setCopiedGuide(false);
+  };
+
+  const handleExecuteResetPassword = async () => {
+    if (!resetPasswordTarget) return;
+    if (!tempPasswordInput || tempPasswordInput.length < 6) {
+      setResetResult({
+        type: 'error',
+        message: '一時パスワードは6文字以上で入力してください。',
+      });
+      return;
+    }
+
+    setIsResettingPassword(true);
+    setResetResult({ type: null });
+
+    const res = await adminResetUserPassword(resetPasswordTarget.profile.id, tempPasswordInput);
+    setIsResettingPassword(false);
+
+    if (res.success) {
+      const studentLabel = resetPasswordTarget.profile.student_year && resetPasswordTarget.profile.student_name
+        ? `${resetPasswordTarget.profile.student_year}年${resetPasswordTarget.profile.student_class}組${resetPasswordTarget.profile.student_no}番 ${resetPasswordTarget.profile.student_name}`
+        : (resetPasswordTarget.profile.display_name || '生徒');
+
+      const guideText = `【ITローグ ログイン一時パスワードのご案内】\n生徒氏名: ${studentLabel}\nログインID（メール）: ${resetPasswordTarget.profile.email || '未設定'}\n一時パスワード: ${tempPasswordInput}\n※ログインすると自動的に新パスワード設定画面が開きます。`;
+
+      setResetResult({
+        type: 'success',
+        message: `ワンタイム一時パスワード（${tempPasswordInput}）を発行しました！\n生徒がこのパスワードでログインすると、初回に新しいパスワードへの変更画面が表示されます。`,
+        copyText: guideText,
+      });
+    } else {
+      const isMissing = res.error?.includes('RPC_NOT_INSTALLED');
+      setResetResult({
+        type: 'error',
+        message: res.error || 'パスワードの再発行に失敗しました。',
+        isRpcMissing: isMissing,
+      });
+    }
+  };
+
+  const handleSendResetEmail = async () => {
+    if (!resetPasswordTarget?.profile.email) {
+      setResetResult({
+        type: 'error',
+        message: 'このユーザーにはメールアドレスが登録されていません。',
+      });
+      return;
+    }
+
+    setIsSendingEmail(true);
+    setResetResult({ type: null });
+
+    const res = await sendPasswordResetEmail(resetPasswordTarget.profile.email);
+    setIsSendingEmail(false);
+
+    if (res.success) {
+      setResetResult({
+        type: 'success',
+        message: `${resetPasswordTarget.profile.email} 宛にパスワード再設定メールを送信しました。メール内のリンクから再設定を行ってください。`,
+      });
+    } else {
+      setResetResult({
+        type: 'error',
+        message: res.error || 'メール送信に失敗しました。',
+      });
+    }
+  };
+
+  const handleCopyGuide = () => {
+    if (resetResult.copyText) {
+      navigator.clipboard.writeText(resetResult.copyText);
+      setCopiedGuide(true);
+      setTimeout(() => setCopiedGuide(false), 2500);
+    }
+  };
 
   const isAdmin = currentUserProfile?.role === 'admin' || (currentUserProfile?.id && localStorage.getItem(`admin_mode_${currentUserProfile.id}`) === 'true');
 
@@ -452,7 +563,68 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-GRANT EXECUTE ON FUNCTION public.get_all_students_data TO authenticated, anon;`;
+GRANT EXECUTE ON FUNCTION public.get_all_students_data TO authenticated, anon;
+
+-- 8. ★先生・管理者による生徒パスワード再発行（ワンタイム一時パスワード化）RPC関数★
+-- 先生が指定した生徒の一時パスワードを設定し、同時に初回変更フラグ（must_change_password）を有効化
+CREATE OR REPLACE FUNCTION public.admin_reset_user_password(
+  p_target_user_id UUID,
+  p_temp_password TEXT
+)
+RETURNS JSONB AS $$
+DECLARE
+  v_caller_id UUID;
+  v_caller_role TEXT;
+  v_encrypted_pw TEXT;
+BEGIN
+  v_caller_id := auth.uid();
+  IF v_caller_id IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', '認証セッションが必要です。');
+  END IF;
+
+  -- 呼び出し元が先生（admin）であることを確認
+  SELECT role INTO v_caller_role FROM public.profiles WHERE id = v_caller_id;
+  IF v_caller_role IS DISTINCT FROM 'admin' THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM auth.users 
+      WHERE id = v_caller_id AND (raw_user_meta_data->>'role' = 'admin')
+    ) THEN
+      RETURN jsonb_build_object('success', false, 'error', '管理者（先生）権限が必要です。');
+    END IF;
+  END IF;
+
+  -- 対象生徒の存在確認
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id = p_target_user_id) THEN
+    RETURN jsonb_build_object('success', false, 'error', '指定された生徒アカウントが見つかりません。');
+  END IF;
+
+  -- pgcrypto拡張機能によりbcrypt暗号化ハッシュを生成
+  CREATE EXTENSION IF NOT EXISTS pgcrypto;
+  v_encrypted_pw := crypt(p_temp_password, gen_salt('bf'));
+
+  -- auth.users のパスワードと must_change_password メタデータを更新
+  UPDATE auth.users
+  SET 
+    encrypted_password = v_encrypted_pw,
+    raw_user_meta_data = jsonb_set(
+      COALESCE(raw_user_meta_data, '{}'::jsonb),
+      '{must_change_password}',
+      'true'::jsonb
+    ),
+    updated_at = now()
+  WHERE id = p_target_user_id;
+
+  -- public.profiles のカラム自動追加とフラグ更新
+  ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT false;
+  UPDATE public.profiles
+  SET must_change_password = true, updated_at = now()
+  WHERE id = p_target_user_id;
+
+  RETURN jsonb_build_object('success', true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION public.admin_reset_user_password TO authenticated;`;
 
   const handleCopySQL = () => {
     navigator.clipboard.writeText(rlsFixSQL);
@@ -962,7 +1134,7 @@ GRANT EXECUTE ON FUNCTION public.get_all_students_data TO authenticated, anon;`;
                   <th className="py-3.5 px-4 text-center">正答率</th>
                   <th className="py-3.5 px-4 text-center">最速タイム</th>
                   <th className="py-3.5 px-4 text-right">最終更新</th>
-                  <th className="py-3.5 px-4 text-center">詳細</th>
+                  <th className="py-3.5 px-4 text-center">操作 / 詳細</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-sans">
@@ -1083,8 +1255,26 @@ GRANT EXECUTE ON FUNCTION public.get_all_students_data TO authenticated, anon;`;
                             : '未プレイ'}
                         </td>
 
-                        <td className="py-3.5 px-4 text-center text-slate-500">
-                          <ChevronRight className="w-4 h-4 mx-auto" />
+                        <td className="py-3.5 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenPasswordReset(item)}
+                              title="パスワード再発行（ワンタイム設定）"
+                              className="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 border border-amber-500/30 rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
+                            >
+                              <Key className="w-3 h-3" />
+                              <span className="hidden sm:inline">再発行</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedStudent(item)}
+                              title="詳細分析"
+                              className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1136,6 +1326,27 @@ GRANT EXECUTE ON FUNCTION public.get_all_students_data TO authenticated, anon;`;
                     {selectedStudent.profile.email} (ID: {selectedStudent.profile.id.slice(0, 8)}...)
                   </p>
                 </div>
+              </div>
+
+              {/* パスワード再発行・アカウント管理セクション */}
+              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                    <Key className="w-4 h-4 text-amber-400" />
+                    <span>パスワード再発行（ワンタイム一時パスワード）</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    生徒がパスワードを忘れた場合、一時パスワードを発行して次回ログイン時に新パスワードを設定させることができます。
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleOpenPasswordReset(selectedStudent)}
+                  className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 text-xs font-black rounded-xl transition shadow-md flex items-center gap-1.5 shrink-0 cursor-pointer"
+                >
+                  <Key className="w-3.5 h-3.5" />
+                  <span>パスワードを再発行する</span>
+                </button>
               </div>
 
               {/* 進捗ステータス（ていしゅつ画面相当の学習記録） */}
@@ -1305,6 +1516,205 @@ GRANT EXECUTE ON FUNCTION public.get_all_students_data TO authenticated, anon;`;
         </div>
       );
     })()}
+
+    {/* パスワード再発行モーダル */}
+    {resetPasswordTarget && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+        <div className="relative w-full max-w-lg bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl text-slate-100 max-h-[90vh] overflow-y-auto">
+          <button
+            onClick={() => {
+              setResetPasswordTarget(null);
+              setResetResult({ type: null });
+            }}
+            className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition"
+          >
+            <X className="w-5 h-5" />
+          </button>
+
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center">
+              <Key className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-100">
+                パスワード再発行・ワンタイム設定
+              </h3>
+              <p className="text-xs text-slate-400">
+                生徒の一時パスワードを発行し、次回ログイン時に新パスワードを設定させます
+              </p>
+            </div>
+          </div>
+
+          {/* 対象生徒情報カード */}
+          <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 mb-5 space-y-1 text-xs">
+            <div className="font-bold text-slate-200 text-sm flex items-center gap-2">
+              <span>
+                {resetPasswordTarget.profile.student_year && resetPasswordTarget.profile.student_name
+                  ? `${resetPasswordTarget.profile.student_year}年${resetPasswordTarget.profile.student_class}組${resetPasswordTarget.profile.student_no}番 ${resetPasswordTarget.profile.student_name}`
+                  : (resetPasswordTarget.profile.display_name || '名前未設定')}
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
+                {resetPasswordTarget.profile.role === 'admin' ? '先生' : '生徒'}
+              </span>
+            </div>
+            <div className="text-slate-400 font-mono">
+              ログインID: {resetPasswordTarget.profile.email || 'メール未設定'}
+            </div>
+          </div>
+
+          {/* 結果メッセージ表示 */}
+          {resetResult.type === 'success' && (
+            <div className="mb-5 p-4 bg-emerald-950/60 border border-emerald-500/50 rounded-xl text-emerald-200 text-xs space-y-3">
+              <div className="flex items-start gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                <div className="flex-1 font-medium whitespace-pre-line">
+                  {resetResult.message}
+                </div>
+              </div>
+
+              {resetResult.copyText && (
+                <div className="space-y-2 pt-1 border-t border-emerald-500/30">
+                  <div className="text-[11px] font-bold text-emerald-300">
+                    生徒への連絡用テキスト:
+                  </div>
+                  <pre className="p-3 bg-slate-950 rounded-lg text-slate-200 font-mono text-[11px] whitespace-pre-wrap select-all border border-slate-800">
+                    {resetResult.copyText}
+                  </pre>
+                  <button
+                    type="button"
+                    onClick={handleCopyGuide}
+                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold rounded-lg text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    {copiedGuide ? (
+                      <>
+                        <Check className="w-4 h-4" />
+                        <span>コピーしました！</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        <span>生徒への案内文をコピー</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {resetResult.type === 'error' && (
+            <div className="mb-5 p-4 bg-red-950/60 border border-red-500/50 rounded-xl text-red-200 text-xs space-y-2">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <div className="flex-1 whitespace-pre-line">{resetResult.message}</div>
+              </div>
+
+              {resetResult.isRpcMissing && (
+                <div className="pt-2 border-t border-red-500/30 space-y-2">
+                  <p className="text-[11px] text-red-300 leading-relaxed">
+                    ※Supabaseプロジェクトに再発行用SQL関数（<code>admin_reset_user_password</code>）が登録されていないため発生しています。
+                    下記の「SQLをコピー」からSQLを取得し、SupabaseのSQL Editorで実行してください。
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleCopySQL}
+                    className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Copy className="w-4 h-4" />
+                    <span>{copiedSQL ? 'SQLをコピーしました！' : '修復用SQLをコピー'}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 再発行フォーム */}
+          <div className="space-y-4">
+            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-amber-400" />
+                  <span>ワンタイム一時パスワード（6文字以上）</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setTempPasswordInput(generateRandomPassword())}
+                  className="text-[11px] text-amber-400 hover:text-amber-300 font-medium flex items-center gap-1 cursor-pointer"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>ランダム再生成</span>
+                </button>
+              </div>
+
+              <input
+                type="text"
+                value={tempPasswordInput}
+                onChange={(e) => setTempPasswordInput(e.target.value)}
+                placeholder="一時パスワード"
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-100 font-mono tracking-wider focus:border-amber-400 focus:outline-hidden"
+              />
+
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                ※この一時パスワードで生徒がログインすると、初回に必ず生徒自身の「新しいパスワード設定」画面が開きます。
+              </p>
+
+              <button
+                type="button"
+                disabled={isResettingPassword || !tempPasswordInput || tempPasswordInput.length < 6}
+                onClick={handleExecuteResetPassword}
+                className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black rounded-xl text-xs transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {isResettingPassword ? (
+                  <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Key className="w-4 h-4" />
+                    <span>ワンタイム一時パスワードを発行する</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* 補助機能: メール送信 */}
+            {resetPasswordTarget.profile.email && (
+              <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 flex items-center justify-between gap-3">
+                <div className="text-[11px] text-slate-400">
+                  <div className="font-semibold text-slate-300">メールで再設定リンクを送る場合</div>
+                  <div>生徒のメールアドレス宛に再設定URLを送信します</div>
+                </div>
+                <button
+                  type="button"
+                  disabled={isSendingEmail}
+                  onClick={handleSendResetEmail}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shrink-0 disabled:opacity-50 cursor-pointer"
+                >
+                  {isSendingEmail ? (
+                    <div className="w-3.5 h-3.5 border-2 border-slate-200 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Mail className="w-3.5 h-3.5 text-blue-400" />
+                      <span>再設定メール送信</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={() => {
+                setResetPasswordTarget(null);
+                setResetResult({ type: null });
+              }}
+              className="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition cursor-pointer"
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   );
 };

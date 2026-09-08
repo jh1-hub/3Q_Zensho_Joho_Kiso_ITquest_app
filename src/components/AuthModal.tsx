@@ -15,7 +15,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
-  initialMode = 'signup',
+  initialMode = 'login',
   isFirstLaunch = false
 }) => {
   const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
@@ -347,24 +347,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         ) : (
           <>
-            {/* タブ切り替え */}
+            {/* タブ切り替え（ログインを先頭、新規登録を2番目に配置） */}
             <div className="flex bg-slate-800/80 p-1 rounded-xl mb-4 border border-slate-700/50">
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('signup');
-                  setErrorMessage(null);
-                  setSuccessMessage(null);
-                }}
-                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                  mode === 'signup'
-                    ? 'bg-amber-500 text-slate-950 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>新規登録（初回）</span>
-              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -372,16 +356,56 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   setErrorMessage(null);
                   setSuccessMessage(null);
                 }}
-                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   mode === 'login'
                     ? 'bg-amber-500 text-slate-950 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 <LogIn className="w-3.5 h-3.5" />
-                <span>ログイン（次回以降）</span>
+                <span>ログイン</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('signup');
+                  setErrorMessage(null);
+                  setSuccessMessage(null);
+                }}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  mode === 'signup'
+                    ? 'bg-amber-500 text-slate-950 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>新規登録（はじめての方）</span>
               </button>
             </div>
+
+            {/* ログイン画面時の新規登録案内カード */}
+            {mode === 'login' && (
+              <div className="mb-4 p-3 bg-blue-950/40 border border-blue-500/40 rounded-xl text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2 text-blue-200">
+                  <UserPlus className="w-4 h-4 text-blue-400 shrink-0" />
+                  <div>
+                    <span className="font-bold text-white">はじめてプレイされる方へ</span>
+                    <p className="text-[11px] text-blue-300">アカウントをお持ちでない場合は新規登録を行ってください。</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('signup');
+                    setErrorMessage(null);
+                    setSuccessMessage(null);
+                  }}
+                  className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition shadow-xs whitespace-nowrap cursor-pointer self-end sm:self-auto"
+                >
+                  新規登録はこちら ➔
+                </button>
+              </div>
+            )}
 
             {/* メッセージ表示 */}
             {errorMessage && (
@@ -564,6 +588,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 >
                   {isFirstLaunch ? 'いまは登録せずにゲームを遊ぶ（オフライン）' : 'キャンセル'}
                 </button>
+
+                {/* ログイン・新規登録の切り替えリンク */}
+                {mode === 'login' ? (
+                  <div className="text-center pt-1 border-t border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('signup');
+                        setErrorMessage(null);
+                        setSuccessMessage(null);
+                      }}
+                      className="text-xs text-amber-400 hover:text-amber-300 underline font-medium cursor-pointer"
+                    >
+                      未登録の方はこちらから新規登録を行ってください ➔
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-center pt-1 border-t border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('login');
+                        setErrorMessage(null);
+                        setSuccessMessage(null);
+                      }}
+                      className="text-xs text-blue-400 hover:text-blue-300 underline font-medium cursor-pointer"
+                    >
+                      すでにアカウントをお持ちの方はこちら（ログイン） ➔
+                    </button>
+                  </div>
+                )}
               </div>
             </form>
           </>

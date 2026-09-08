@@ -179,6 +179,7 @@ export interface UserProfile {
   student_class?: string | null;
   student_no?: string | null;
   student_name?: string | null;
+  must_change_password?: boolean | null;
   created_at?: string;
 }
 

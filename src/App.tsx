@@ -16,6 +16,7 @@ import TimeAttackScreen from './components/TimeAttackScreen';
 import StoryUnlockModal from './components/StoryUnlockModal';
 import { SoundToggleButton } from './components/SoundToggleButton';
 import { AuthModal } from './components/AuthModal';
+import { ForcePasswordChangeModal } from './components/ForcePasswordChangeModal';
 import { AdminDashboard } from './components/AdminDashboard';
 import { secureStorage } from './utils/secureStorage';
 import { STORY_CARDS, StoryCard } from './data/stories';
@@ -70,7 +71,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
-  const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('signup');
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
   const [isFirstLaunchPrompt, setIsFirstLaunchPrompt] = useState<boolean>(false);
 
   // ----------------------------------------------------
@@ -473,8 +474,8 @@ export default function App() {
       if (!alreadyPrompted && isMounted) {
         sessionStorage.setItem('it-rogue-first-auth-prompted', 'true');
         if (!session?.user) {
-          // 未ログイン・初回ユーザー
-          setAuthModalMode('signup');
+          // 未ログイン・初回ユーザー：まずはログイン画面を表示（未登録者向け案内カード付き）
+          setAuthModalMode('login');
           setIsFirstLaunchPrompt(true);
           setIsAuthModalOpen(true);
         } else if (loadedProfile && (!loadedProfile.student_year || !loadedProfile.student_class || !loadedProfile.student_no || !loadedProfile.student_name)) {
@@ -1809,10 +1810,8 @@ export default function App() {
           onOpenAuth={() => {
             if (currentUserProfile && (!currentUserProfile.student_year || !currentUserProfile.student_name)) {
               setAuthModalMode('signup');
-            } else if (currentUserProfile) {
-              setAuthModalMode('login');
             } else {
-              setAuthModalMode('signup');
+              setAuthModalMode('login');
             }
             setIsFirstLaunchPrompt(false);
             setIsAuthModalOpen(true);
@@ -1977,6 +1976,19 @@ export default function App() {
           }
         }}
       />
+
+      {/* ワンタイムパスワード変更（強制）モーダル */}
+      {currentUser && currentUserProfile?.must_change_password && (
+        <ForcePasswordChangeModal
+          isOpen={Boolean(currentUserProfile?.must_change_password)}
+          userId={currentUser.id}
+          userEmail={currentUser.email || null}
+          onSuccess={async () => {
+            const updated = await getUserProfile(currentUser.id);
+            setCurrentUserProfile(updated);
+          }}
+        />
+      )}
     </div>
   );
 }
