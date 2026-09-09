@@ -58,12 +58,11 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     // 1. profiles テーブルで role === 'admin'
     // 2. ユーザーメタデータで role === 'admin'
     // 3. ADMIN_EMAILS に登録されているメールアドレス
-    // 4. ローカル管理者フラグが立っている場合
+    // ※ クライアント側（localStorage）での改ざん・偽装を防ぐため、DB/メタデータ/環境変数の認証情報のみを正とする
     const isExplicitAdmin = data?.role === 'admin' || meta?.role === 'admin';
     const isEmailAdmin = email ? ADMIN_EMAILS.includes(email) : false;
-    const isLocalAdmin = localStorage.getItem(`admin_mode_${userId}`) === 'true';
 
-    const role = (isExplicitAdmin || isEmailAdmin || isLocalAdmin) ? 'admin' : 'student';
+    const role = (isExplicitAdmin || isEmailAdmin) ? 'admin' : 'student';
     const mustChangePassword = Boolean(data?.must_change_password || meta?.must_change_password);
 
     const profile: UserProfile = {
@@ -91,8 +90,6 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
  */
 export async function promoteToAdmin(userId: string): Promise<boolean> {
   try {
-    localStorage.setItem(`admin_mode_${userId}`, 'true');
-
     // 1. auth の user_metadata を更新
     await supabase.auth.updateUser({
       data: { role: 'admin' }

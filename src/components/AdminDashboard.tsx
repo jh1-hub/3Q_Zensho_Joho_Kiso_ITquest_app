@@ -221,7 +221,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  const isAdmin = currentUserProfile?.role === 'admin' || (currentUserProfile?.id && localStorage.getItem(`admin_mode_${currentUserProfile.id}`) === 'true');
+  const isAdmin = currentUserProfile?.role === 'admin';
 
   const loadStudents = async () => {
     setLoading(true);
